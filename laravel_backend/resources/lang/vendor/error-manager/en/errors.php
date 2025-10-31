@@ -82,7 +82,7 @@ return [
 
         // Routing errors
         'route_not_found' => 'Page not found.',
-        'unexpected_error' => 'Resource not found.',
+        'resource_not_found' => 'Resource not found.',
         'method_not_allowed' => 'Operation not allowed.',
         'too_many_requests' => 'You have made too many requests. Please wait a few minutes before trying again.',
 
