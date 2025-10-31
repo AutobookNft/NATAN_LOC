@@ -79,7 +79,6 @@ class UseAuditService
                 'avg_urs' => $useResult['avg_urs'] ?? null,
                 'log_category' => 'USE_RESULT_SAVED'
             ]);
-
         } catch (\Exception $e) {
             $this->errorManager->handle(
                 'USE_AUDIT_SAVE_FAILED',
@@ -312,4 +311,3 @@ class UseAuditService
         }
     }
 }
-

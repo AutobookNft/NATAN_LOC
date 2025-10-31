@@ -147,7 +147,6 @@ class UseOrchestrator
             ]);
 
             return $result;
-
         } catch (\Exception $e) {
             $this->errorManager->handle(
                 'USE_QUERY_FAILED',
@@ -188,7 +187,6 @@ class UseOrchestrator
 
             $result = $response->json();
             return $result['embedding'] ?? [];
-
         } catch (\Exception $e) {
             $this->errorManager->handle(
                 'USE_EMBEDDING_FAILED',

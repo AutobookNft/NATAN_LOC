@@ -55,25 +55,25 @@ class ClaimRenderer
 
         // Get CSS classes based on URS label
         $colorClasses = $this->getColorClasses($ursLabel);
-        
+
         // Build claim HTML
         $html = '<div class="use-claim ' . $colorClasses['container'] . ' p-4 rounded-lg border">';
-        
+
         // URS Badge
         $html .= $this->renderUrsBadge($ursLabel, $urs);
-        
+
         // Inference badge
         if ($isInference) {
             $html .= '<span class="inline-block ml-2 px-2 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800">'
                 . __('natan.use.inference_badge')
                 . '</span>';
         }
-        
+
         // Claim text with source links
         $html .= '<p class="mt-2 ' . $colorClasses['text'] . '">';
         $html .= $this->renderClaimTextWithLinks($text, $sourceRefs);
         $html .= '</p>';
-        
+
         // Source links section
         if (!empty($sourceRefs)) {
             $html .= $this->renderSourceLinks($sourceRefs);
@@ -82,12 +82,12 @@ class ClaimRenderer
                 . __('natan.use.no_sources')
                 . '</p>';
         }
-        
+
         // URS breakdown (optional, collapsible)
         if (isset($claim['urs_breakdown'])) {
             $html .= $this->renderUrsBreakdown($claim['urs_breakdown']);
         }
-        
+
         $html .= '</div>';
 
         return $html;
@@ -140,7 +140,7 @@ class ClaimRenderer
     protected function renderUrsBadge(string $label, float $score): string
     {
         $classes = $this->getColorClasses($label);
-        
+
         return sprintf(
             '<span class="inline-block px-3 py-1 text-sm font-bold rounded %s">
                 URS %s (%.2f)
@@ -162,7 +162,7 @@ class ClaimRenderer
     {
         // For now, return text as-is
         // TODO: Implement smart linking (match text to sources)
-        
+
         return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
     }
 
@@ -176,17 +176,17 @@ class ClaimRenderer
     {
         $html = '<div class="mt-3 space-y-1">';
         $html .= '<p class="text-xs font-semibold text-gray-600">' . __('natan.use.sources') . ':</p>';
-        
+
         foreach ($sourceRefs as $ref) {
             $url = $ref['url'] ?? '#';
             $title = $ref['title'] ?? __('natan.use.unknown_source');
             $page = $ref['page'] ?? null;
-            
+
             $linkText = $title;
             if ($page) {
                 $linkText .= ' ' . __('natan.use.source_page', ['page' => $page]);
             }
-            
+
             $html .= sprintf(
                 '<a href="%s" target="_blank" rel="noopener noreferrer" class="block text-xs text-blue-600 hover:underline">
                     → %s
@@ -195,9 +195,9 @@ class ClaimRenderer
                 htmlspecialchars($linkText, ENT_QUOTES, 'UTF-8')
             );
         }
-        
+
         $html .= '</div>';
-        
+
         return $html;
     }
 
@@ -212,12 +212,12 @@ class ClaimRenderer
         $html = '<details class="mt-2">';
         $html .= '<summary class="text-xs text-gray-600 cursor-pointer hover:text-gray-800">' . __('natan.use.urs_breakdown') . '</summary>';
         $html .= '<div class="mt-2 text-xs space-y-1">';
-        
+
         foreach ($breakdown as $component => $score) {
             if ($component === 'total') {
                 continue;
             }
-            
+
             $html .= sprintf(
                 '<div class="flex justify-between">
                     <span>%s:</span>
@@ -227,10 +227,10 @@ class ClaimRenderer
                 $score
             );
         }
-        
+
         $html .= '</div>';
         $html .= '</details>';
-        
+
         return $html;
     }
 
@@ -249,16 +249,15 @@ class ClaimRenderer
         $html = '<div class="use-blocked-claims mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">';
         $html .= '<p class="font-semibold text-red-800">' . __('natan.use.blocked_claims_title') . '</p>';
         $html .= '<p class="text-sm text-red-600 mt-1">' . __('natan.use.blocked_claims_explanation') . '</p>';
-        
+
         $html .= '<ul class="mt-2 space-y-1 text-sm text-red-700">';
         foreach ($blockedClaims as $claim) {
             $html .= '<li>• ' . htmlspecialchars($claim['text'] ?? '', ENT_QUOTES, 'UTF-8') . '</li>';
         }
         $html .= '</ul>';
-        
+
         $html .= '</div>';
 
         return $html;
     }
 }
-
