@@ -1,7 +1,7 @@
 // MongoDB initialization script
 // Creates collections and indexes for NATAN_LOC
 
-db = db.getSiblingDB('natan_ai_core');
+db = db.getSiblingDB("natan_ai_core");
 
 // Create collections (MongoDB creates automatically, but we define structure)
 // Collection: documents (main document storage)
@@ -35,5 +35,4 @@ db.ai_logs.createIndex({ tenant_id: 1, event: 1 });
 // Collection: analytics (aggregated metrics)
 db.analytics.createIndex({ tenant_id: 1, date: -1 }, { unique: true });
 
-print('MongoDB initialization completed: collections and indexes created');
-
+print("MongoDB initialization completed: collections and indexes created");
