@@ -2,7 +2,13 @@
 import os
 import httpx
 from typing import List, Dict, Any
+from pathlib import Path
+from dotenv import load_dotenv
 from .base import BaseChatAdapter, BaseEmbeddingAdapter
+
+# Load .env to ensure API keys are available
+env_path = Path(__file__).parent.parent.parent.parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
 class OpenAIChatAdapter(BaseChatAdapter):
     """OpenAI GPT chat adapter"""
@@ -81,5 +87,8 @@ class OpenAIEmbeddingAdapter(BaseEmbeddingAdapter):
                 "model": data["model"],
                 "tokens": data["usage"]["total_tokens"]
             }
+
+
+
 
 

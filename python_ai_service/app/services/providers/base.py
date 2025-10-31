@@ -37,3 +37,8 @@ class BaseEmbeddingAdapter(ABC):
         pass
 
 
+
+
+
+
+
