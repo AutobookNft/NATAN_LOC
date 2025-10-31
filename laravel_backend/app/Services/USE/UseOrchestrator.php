@@ -66,8 +66,8 @@ class UseOrchestrator
         ?array $queryEmbedding = null
     ): array {
         try {
-            // Sanitize question (GDPR)
-            $sanitizedQuestion = $this->sanitizer->sanitizeText($question);
+            // Note: Question text doesn't need sanitization (it's user input, not internal data)
+            // DataSanitizerService is for sanitizing internal data (acts, documents) before sending to AI
 
             // Check consent
             if (!$this->consentService->hasConsent($user, 'ai_processing')) {
@@ -78,7 +78,7 @@ class UseOrchestrator
             $this->logger->info('[UseOrchestrator] USE query start', [
                 'user_id' => $user->id,
                 'tenant_id' => $tenantId,
-                'question' => $sanitizedQuestion,
+                'question' => $question,
                 'persona' => $persona,
                 'log_category' => 'USE_QUERY_START'
             ]);
@@ -86,7 +86,7 @@ class UseOrchestrator
             // Call Python FastAPI USE endpoint
             $response = Http::timeout(120)
                 ->post("{$this->pythonApiUrl}/api/v1/use/query", [
-                    'question' => $sanitizedQuestion,
+                    'question' => $question,
                     'tenant_id' => $tenantId,
                     'persona' => $persona,
                     'model' => config('natan.default_model', 'anthropic.sonnet-3.5'),
@@ -103,10 +103,10 @@ class UseOrchestrator
             if (isset($result['answer_id']) && $result['status'] === 'success') {
                 try {
                     $this->useAuditService->saveUseResult(
-                        useResult: $result,
-                        user: $user,
-                        tenantId: $tenantId,
-                        answerId: $result['answer_id']
+                        $result,
+                        $user,
+                        $tenantId,
+                        $result['answer_id']
                     );
                 } catch (\Exception $e) {
                     // Non-blocking: log error but don't fail the request
@@ -125,7 +125,7 @@ class UseOrchestrator
                 user: $user,
                 action: 'use_query',
                 context: [
-                    'question' => $sanitizedQuestion,
+                    'question' => $question,
                     'status' => $result['status'] ?? 'unknown',
                     'avg_urs' => $result['avg_urs'] ?? null,
                     'verified_claims_count' => count($result['verified_claims'] ?? []),
