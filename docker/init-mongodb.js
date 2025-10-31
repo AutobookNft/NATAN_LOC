@@ -35,5 +35,13 @@ db.ai_logs.createIndex({ tenant_id: 1, event: 1 });
 // Collection: analytics (aggregated metrics)
 db.analytics.createIndex({ tenant_id: 1, date: -1 }, { unique: true });
 
-print("MongoDB initialization completed: collections and indexes created");
+// Collection: conversational_responses (learned conversational responses with embeddings)
+db.conversational_responses.createIndex(
+  { question_lower: 1 },
+  { unique: true }
+);
+db.conversational_responses.createIndex({ embedding: "2dsphere" }); // For vector search
+db.conversational_responses.createIndex({ usage_count: -1 });
+db.conversational_responses.createIndex({ learned_at: -1 });
 
+print("MongoDB initialization completed: collections and indexes created");

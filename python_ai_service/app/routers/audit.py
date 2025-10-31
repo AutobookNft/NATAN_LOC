@@ -205,3 +205,8 @@ async def get_claims_for_answer(answer_id: str, tenant_id: int):
         raise HTTPException(status_code=500, detail=f"Failed to get claims: {str(e)}")
 
 
+
+
+
+
+

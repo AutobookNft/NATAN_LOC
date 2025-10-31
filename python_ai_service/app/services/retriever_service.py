@@ -38,7 +38,15 @@ class RetrieverService:
         
         Returns:
             List of chunks with source_ref, metadata, similarity score
+            (Empty list if MongoDB unavailable)
         """
+        from app.services.mongodb_service import MongoDBService
+        
+        # Check if MongoDB is available
+        if not MongoDBService.is_connected():
+            # Return empty list - pipeline will work without retrieved chunks
+            return []
+        
         # Build query filter
         query_filter = {
             "tenant_id": tenant_id,
@@ -64,32 +72,62 @@ class RetrieverService:
         query_vector = np.array(query_embedding)
         
         for doc in candidates:
-            if "embedding" not in doc:
-                continue
+            # Check if document has chunks with embeddings (preferred) or document-level embedding
+            chunks = doc.get("content", {}).get("chunks", [])
+            doc_embedding = doc.get("embedding")
             
-            doc_vector = np.array(doc["embedding"])
-            
-            # Cosine similarity
-            similarity = self._cosine_similarity(query_vector, doc_vector)
-            
-            if similarity >= min_score:
-                # Get source reference
-                source_ref = self._build_source_ref(doc)
+            if chunks:
+                # Process chunks (each chunk has its own embedding)
+                for chunk in chunks:
+                    chunk_embedding = chunk.get("embedding")
+                    if not chunk_embedding:
+                        continue
+                    
+                    chunk_vector = np.array(chunk_embedding)
+                    similarity = float(np.dot(query_vector, chunk_vector) / (np.linalg.norm(query_vector) * np.linalg.norm(chunk_vector)))
+                    
+                    if similarity >= min_score:
+                        results.append({
+                            "document_id": doc.get("document_id"),
+                            "chunk_index": chunk.get("chunk_index"),
+                            "chunk_text": chunk.get("chunk_text", ""),
+                            "similarity": similarity,
+                            "source_ref": {
+                                "document_id": doc.get("document_id"),
+                                "title": doc.get("title"),
+                                "filename": doc.get("filename"),
+                                "relative_path": doc.get("relative_path"),
+                                "chunk_index": chunk.get("chunk_index"),
+                                "page_number": chunk.get("page_number"),  # If available
+                            },
+                            "metadata": {
+                                "document_type": doc.get("document_type"),
+                                "file_type": doc.get("file_type"),
+                                **chunk.get("metadata", {})
+                            }
+                        })
+            elif doc_embedding:
+                # Fallback to document-level embedding
+                doc_vector = np.array(doc_embedding)
                 
-                results.append({
-                    "chunk_id": str(doc["_id"]),
-                    "text": doc.get("content", {}).get("raw_text", ""),
-                    "source_ref": source_ref,
-                    "source_id": doc.get("source_id"),
-                    "document_id": doc.get("document_id"),
-                    "similarity_score": float(similarity),
-                    "metadata": doc.get("metadata", {}),
-                    "page_number": doc.get("content", {}).get("page_number"),
-                    "chunk_index": doc.get("chunk_index")
-                })
+                # Cosine similarity
+                similarity = self._cosine_similarity(query_vector, doc_vector)
+                
+                if similarity >= min_score:
+                    # Get source reference
+                    source_ref = self._build_source_ref(doc)
+                    
+                    results.append({
+                        "chunk_id": str(doc.get("_id", "")),
+                        "chunk_text": doc.get("content", {}).get("raw_text", ""),
+                        "document_id": doc.get("document_id"),
+                        "similarity": float(similarity),
+                        "source_ref": source_ref,
+                        "metadata": doc.get("metadata", {})
+                    })
         
         # Sort by similarity (descending)
-        results.sort(key=lambda x: x["similarity_score"], reverse=True)
+        results.sort(key=lambda x: x.get("similarity", x.get("similarity_score", 0)), reverse=True)
         
         # Limit results
         return results[:limit]
