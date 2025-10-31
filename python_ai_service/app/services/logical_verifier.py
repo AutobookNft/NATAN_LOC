@@ -95,7 +95,8 @@ class LogicalVerifier:
     def verify_single_claim(
         self,
         claim: Dict[str, Any],
-        chunks: List[Dict[str, Any]]
+        chunks: List[Dict[str, Any]],
+        tenant_id: int = 0
     ) -> Dict[str, Any]:
         """
         Verify a single claim
@@ -103,11 +104,12 @@ class LogicalVerifier:
         Args:
             claim: Claim dict
             chunks: Source chunks
+            tenant_id: Tenant ID (default: 0)
         
         Returns:
             Verified claim dict with URS
         """
-        result = self.verify_claims([claim], chunks, tenant_id=0)
+        result = self.verify_claims([claim], chunks, tenant_id=tenant_id)
         if result["verified_claims"]:
             return result["verified_claims"][0]
         elif result["blocked_claims"]:

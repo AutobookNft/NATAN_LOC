@@ -5,7 +5,7 @@ FastAPI microservice for AI operations (embeddings, chat, RAG)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, embeddings, chat, rag, use
+from app.routers import health, embeddings, chat, rag, use, audit
 
 app = FastAPI(
     title="NATAN AI Gateway",
@@ -28,4 +28,5 @@ app.include_router(embeddings.router, prefix="/api/v1", tags=["embeddings"])
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(rag.router, prefix="/api/v1", tags=["rag"])
 app.include_router(use.router, prefix="/api/v1", tags=["use"])
+app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 
