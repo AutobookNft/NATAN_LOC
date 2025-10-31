@@ -1,0 +1,34 @@
+[
+  {
+    "question": "Sai ballare?",
+    "question_lower": "sai ballare?",
+    "pattern": "sai.*ballare",
+    "variants": [
+      "Ciao! A dire il vero, il mio forte non è ballare, ma sono qui per aiutarti con i documenti della PA! Hai bisogno di assistenza su qualcosa in particolare?",
+      "Non sono proprio un ballerino provetto, ma se hai bisogno di informazioni sui documenti della pubblica amministrazione, sono il tuo assistente ideale! Come posso aiutarti oggi?",
+      "Ballare non è il mio forte, ma posso sicuramente aiutarti a muoverti nel mondo dei documenti della PA! C'è qualcosa di specifico che stai cercando?",
+      "Ah, il ballo! Non è nelle mie corde, ma mi piacerebbe sapere se hai domande sui documenti della pubblica amministrazione. Posso darti una mano!",
+      "Sfortunatamente, non posso ballare, ma posso guidarti attraverso il processo di richiesta di documenti o informazioni che ti servono dalla PA. Fammi sapere!",
+      "Ballare non è proprio il mio stile, ma se hai bisogno di aiuto con pratiche burocratiche, sono qui per te! Qual è la tua domanda?",
+      "Non sono un ballerino, ma ho un ottimo ritmo nell'aiutarti con i tuoi bisogni burocratici! Cosa posso fare per te oggi?"
+    ],
+    "learned_at": "/home/fabio/NATAN_LOC/python_ai_service/data",
+    "usage_count": 0
+  },
+  {
+    "question": "Sai correre?",
+    "question_lower": "sai correre?",
+    "pattern": "sai.*correre",
+    "variants": [
+      "Ciao! Non posso correre fisicamente, ma sono qui per aiutarti a navigare nel mondo dei documenti della PA. Hai bisogno di assistenza con qualcosa in particolare?",
+      "Non ho la capacità di correre, ma posso sicuramente aiutarti a 'correre' attraverso i tuoi documenti della pubblica amministrazione! Di cosa hai bisogno?",
+      "In quanto assistente virtuale, non posso correre, ma posso accelerare il tuo accesso alle informazioni che cerchi! Come posso assisterti oggi?",
+      "Non posso correre, ma posso aiutarti a tenere il passo con tutte le informazioni sui documenti della PA. Hai un argomento specifico in mente?",
+      "Non corro, ma sono qui per rendere il processo di gestione dei documenti il più veloce e semplice possibile. Hai bisogno di aiuto con qualcosa?",
+      "Corro nel mondo dei documenti virtualmente! Se hai domande su pratiche burocratiche o documenti, chiedi pure!",
+      "Non ho gambe per correre, ma posso sicuramente aiutarti a risolvere qualsiasi questione riguardante la pubblica amministrazione. Qual è il tuo dubbio?"
+    ],
+    "learned_at": "/home/fabio/NATAN_LOC/python_ai_service/data",
+    "usage_count": 0
+  }
+]
