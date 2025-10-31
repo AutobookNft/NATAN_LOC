@@ -2,6 +2,12 @@
 import os
 import yaml
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+# This ensures .env is loaded before any configuration is read
+env_path = Path(__file__).parent.parent.parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
 # Load AI policies
 POLICIES_PATH = Path(__file__).parent / "ai_policies.yaml"
@@ -21,7 +27,11 @@ MONGODB_DATABASE = os.getenv("MONGO_DB_DATABASE", "natan_ai_core")
 MONGODB_USERNAME = os.getenv("MONGO_DB_USERNAME", "natan_user")
 MONGODB_PASSWORD = os.getenv("MONGO_DB_PASSWORD", "")
 
-MONGODB_URI = f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DATABASE}?authSource=admin"
+# Build MongoDB URI - use simple format if no password, otherwise use auth
+if MONGODB_PASSWORD:
+    MONGODB_URI = f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DATABASE}?authSource=admin"
+else:
+    MONGODB_URI = f"mongodb://{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DATABASE}"
 
 # Provider API keys
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
