@@ -184,7 +184,7 @@ class ClaimRenderer
             
             $linkText = $title;
             if ($page) {
-                $linkText .= ' (p. ' . $page . ')';
+                $linkText .= ' ' . __('natan.use.source_page', ['page' => $page]);
             }
             
             $html .= sprintf(

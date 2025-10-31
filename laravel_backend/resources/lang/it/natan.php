@@ -223,4 +223,21 @@ return [
         'final_error' => 'Errore durante il recupero del risultato finale',
         'retry_button' => 'Riprova Analisi',
     ],
+
+    // === USE PIPELINE (Ultra Semantic Engine) ===
+    'use' => [
+        'no_claims' => 'Nessun claim verificato disponibile.',
+        'inference_badge' => '[Deduzione]',
+        'no_sources' => 'Nessuna fonte disponibile per questo claim.',
+        'sources' => 'Fonti',
+        'unknown_source' => 'Fonte sconosciuta',
+        'source_page' => '(p. :page)',
+        'urs_breakdown' => 'Dettagli URS',
+        'blocked_claims_title' => 'Claim Bloccati',
+        'blocked_claims_explanation' => 'I seguenti claim sono stati bloccati perché non soddisfano i requisiti di affidabilità minimi (URS < 0.5).',
+        'urs_label_a' => 'Affidabilità Alta',
+        'urs_label_b' => 'Affidabilità Media-Alta',
+        'urs_label_c' => 'Affidabilità Media',
+        'urs_label_x' => 'Affidabilità Bassa',
+    ],
 ];

@@ -123,4 +123,20 @@ return [
     'chunking.polling_error' => 'Error checking processing status',
     'chunking.final_error' => 'Error retrieving final result',
     'chunking.retry_button' => 'Retry Analysis',
+    // === USE PIPELINE (Ultra Semantic Engine) ===
+    'use' => [
+        'no_claims' => 'No verified claims available.',
+        'inference_badge' => '[Inference]',
+        'no_sources' => 'No sources available for this claim.',
+        'sources' => 'Sources',
+        'unknown_source' => 'Unknown source',
+        'source_page' => '(p. :page)',
+        'urs_breakdown' => 'URS Breakdown',
+        'blocked_claims_title' => 'Blocked Claims',
+        'blocked_claims_explanation' => 'The following claims have been blocked because they do not meet minimum reliability requirements (URS < 0.5).',
+        'urs_label_a' => 'High Reliability',
+        'urs_label_b' => 'Medium-High Reliability',
+        'urs_label_c' => 'Medium Reliability',
+        'urs_label_x' => 'Low Reliability',
+    ],
 ];

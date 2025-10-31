@@ -26,6 +26,7 @@ class UseOrchestrator
     protected DataSanitizerService $sanitizer;
     protected ConsentService $consentService;
     protected AuditLogService $auditService;
+    protected UseAuditService $useAuditService;
     protected UltraLogManager $logger;
     protected ErrorManagerInterface $errorManager;
     protected string $pythonApiUrl;
@@ -34,12 +35,14 @@ class UseOrchestrator
         DataSanitizerService $sanitizer,
         ConsentService $consentService,
         AuditLogService $auditService,
+        UseAuditService $useAuditService,
         UltraLogManager $logger,
         ErrorManagerInterface $errorManager
     ) {
         $this->sanitizer = $sanitizer;
         $this->consentService = $consentService;
         $this->auditService = $auditService;
+        $this->useAuditService = $useAuditService;
         $this->logger = $logger;
         $this->errorManager = $errorManager;
         $this->pythonApiUrl = config('services.python_ai.url', 'http://localhost:8000');
@@ -96,10 +99,31 @@ class UseOrchestrator
 
             $result = $response->json();
 
-            // Audit log
+            // Save USE result to MongoDB (non-blocking if fails)
+            if (isset($result['answer_id']) && $result['status'] === 'success') {
+                try {
+                    $this->useAuditService->saveUseResult(
+                        useResult: $result,
+                        user: $user,
+                        tenantId: $tenantId,
+                        answerId: $result['answer_id']
+                    );
+                } catch (\Exception $e) {
+                    // Non-blocking: log error but don't fail the request
+                    $this->logger->error('[UseOrchestrator] Failed to save USE result to MongoDB', [
+                        'user_id' => $user->id,
+                        'tenant_id' => $tenantId,
+                        'answer_id' => $result['answer_id'] ?? null,
+                        'error' => $e->getMessage(),
+                        'log_category' => 'USE_AUDIT_SAVE_ERROR'
+                    ]);
+                }
+            }
+
+            // Audit log (Laravel GDPR audit)
             $this->auditService->logUserAction(
                 user: $user,
-                action: 'USE_QUERY_EXECUTED',
+                action: 'use_query',
                 context: [
                     'question' => $sanitizedQuestion,
                     'status' => $result['status'] ?? 'unknown',
