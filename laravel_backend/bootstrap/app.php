@@ -11,7 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->alias([
+            'tenancy' => \App\Http\Middleware\InitializeTenancy::class,
+        ]);
+        
+        // Register tenancy middleware globally (or apply to specific routes)
+        // Per ora non globale, applicare manualmente alle route che ne hanno bisogno
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
