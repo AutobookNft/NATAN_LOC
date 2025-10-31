@@ -62,3 +62,4 @@ class AIRouter:
         else:
             raise ValueError(f"Unknown embedding model: {model}")
 
+

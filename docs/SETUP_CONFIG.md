@@ -109,3 +109,4 @@ MYSQL_PASSWORD=secret_password
 - **MongoDB**: `mongodb://natan_user:password@localhost:27017/natan_ai_core`
 - **Redis**: `redis://localhost:6379`
 
+

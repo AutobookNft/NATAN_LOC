@@ -883,3 +883,4 @@ Fatto? Procedo con setup o hai domande?
 **Location:** `/home/fabio/NATAN_LOC/NATAN_LOC_IMPLEMENTATION_HANDOVER.md`
 
 
+

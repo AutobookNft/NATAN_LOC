@@ -36,3 +36,4 @@ db.ai_logs.createIndex({ tenant_id: 1, event: 1 });
 db.analytics.createIndex({ tenant_id: 1, date: -1 }, { unique: true });
 
 print("MongoDB initialization completed: collections and indexes created");
+

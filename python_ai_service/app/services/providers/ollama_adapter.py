@@ -79,3 +79,4 @@ class OllamaEmbeddingAdapter(BaseEmbeddingAdapter):
                 "tokens": len(text.split())  # Approximate
             }
 
+

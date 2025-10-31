@@ -9,13 +9,12 @@ export default {
     extend: {
       colors: {
         // USE Pipeline URS colors
-        'urs-a': '#10b981',      // Green (High reliability)
-        'urs-b': '#3b82f6',      // Blue (Medium-high reliability)
-        'urs-c': '#f59e0b',      // Yellow (Medium reliability)
-        'urs-x': '#ef4444',      // Red (Low reliability / blocked)
+        "urs-a": "#10b981", // Green (High reliability)
+        "urs-b": "#3b82f6", // Blue (Medium-high reliability)
+        "urs-c": "#f59e0b", // Yellow (Medium reliability)
+        "urs-x": "#ef4444", // Red (Low reliability / blocked)
       },
     },
   },
   plugins: [],
 };
-

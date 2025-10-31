@@ -11,3 +11,4 @@ return [
     'devteam_email' => env('ULTRA_LOG_MANAGER_DEVTEAM_EMAIL', 'devteam@gmail.com'),
     'email_notifications' => env('ULTRA_LOG_MANAGER_EMAIL_NOTIFICATION', false),
 ];
+

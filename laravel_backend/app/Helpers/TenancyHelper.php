@@ -50,3 +50,4 @@ class TenancyHelper
         return self::getTenant() !== null;
     }
 }
+

@@ -75,3 +75,4 @@ class AnthropicChatAdapter(BaseChatAdapter):
                 "finish_reason": data.get("stop_reason", "stop")
             }
 
+

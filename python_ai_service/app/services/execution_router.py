@@ -121,3 +121,4 @@ class ExecutionRouter:
         # TODO: Implementare logica per query semplici (es. "quante delibere nel 2024?")
         return False
 
+

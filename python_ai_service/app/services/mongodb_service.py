@@ -96,3 +96,4 @@ class MongoDBService:
         result = collection.delete_many(filter)
         return result.deleted_count
 
+

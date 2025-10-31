@@ -7,3 +7,4 @@ return [
     'cache_enabled' => env('TRANSLATION_CACHE_ENABLED', true),
     'cache_prefix' => 'ultra_translations',
 ];
+

@@ -82,3 +82,4 @@ class OpenAIEmbeddingAdapter(BaseEmbeddingAdapter):
                 "tokens": data["usage"]["total_tokens"]
             }
 
+

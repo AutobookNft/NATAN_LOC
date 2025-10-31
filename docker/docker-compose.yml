@@ -74,3 +74,4 @@ networks:
   natan_network:
     driver: bridge
 
+
