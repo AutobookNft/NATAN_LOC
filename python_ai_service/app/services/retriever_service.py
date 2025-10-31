@@ -4,9 +4,8 @@ MongoDB vector similarity search
 """
 
 from typing import List, Dict, Any, Optional
-from pymongo import MongoClient
 import numpy as np
-from app.config import MONGO_URI, MONGO_DB_NAME
+from app.services.mongodb_service import MongoDBService
 
 
 class RetrieverService:
@@ -15,18 +14,9 @@ class RetrieverService:
     Usa MongoDB vector search per similarity
     """
     
-    def __init__(self, mongo_uri: str = MONGO_URI, db_name: str = MONGO_DB_NAME):
-        """
-        Initialize retriever
-        
-        Args:
-            mongo_uri: MongoDB connection URI
-            db_name: Database name
-        """
-        self.client = MongoClient(mongo_uri)
-        self.db = self.client[db_name]
-        self.documents_collection = self.db["documents"]
-        self.sources_collection = self.db["sources"]
+    def __init__(self):
+        """Initialize retriever"""
+        pass
     
     def retrieve(
         self,
@@ -66,8 +56,8 @@ class RetrieverService:
                 if "date_to" in filters:
                     query_filter["created_at"]["$lte"] = filters["date_to"]
         
-        # Get candidates
-        candidates = list(self.documents_collection.find(query_filter))
+        # Get candidates from MongoDB
+        candidates = MongoDBService.find_documents("documents", query_filter)
         
         # Calculate cosine similarity
         results = []
@@ -137,10 +127,11 @@ class RetrieverService:
         """
         source_id = doc.get("source_id")
         if source_id:
-            source = self.sources_collection.find_one({
+            sources = MongoDBService.find_documents("sources", {
                 "_id": source_id,
                 "tenant_id": doc.get("tenant_id")
             })
+            source = sources[0] if sources else None
             if source:
                 url = source.get("url", "")
                 page = doc.get("content", {}).get("page_number")
@@ -179,8 +170,9 @@ class RetrieverService:
         Returns:
             Source dict or None
         """
-        return self.sources_collection.find_one({
+        sources = MongoDBService.find_documents("sources", {
             "_id": source_id,
             "tenant_id": tenant_id
         })
+        return sources[0] if sources else None
 

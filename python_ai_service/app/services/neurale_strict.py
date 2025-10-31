@@ -6,6 +6,7 @@ Ogni frase = 1 claim, ogni claim deve avere source_ids
 from typing import List, Dict, Any, Optional
 import json
 from app.services.retriever_service import RetrieverService
+from app.services.ai_router import AIRouter
 
 
 class NeuraleStrict:
@@ -22,6 +23,7 @@ class NeuraleStrict:
             retriever: Optional RetrieverService instance
         """
         self.retriever = retriever or RetrieverService()
+        self.ai_router = AIRouter()
     
     async def generate_claims(
         self,
@@ -55,12 +57,13 @@ class NeuraleStrict:
         context = self._build_context(chunks)
         
         # Generate claims using LLM
-        # Placeholder - implementare con chiamata reale
-        claims = self._generate_claims_from_context(
+        claims = await self._generate_claims_from_context(
             question=question,
             context=context,
             persona=persona,
-            model=model
+            model=model,
+            tenant_id=tenant_id,
+            chunks=chunks
         )
         
         # Validate claims structure
@@ -75,8 +78,8 @@ class NeuraleStrict:
             "answer_id": answer_id,
             "model_used": model,
             "tokens_used": {
-                "input": 0,  # TODO: Get from LLM response
-                "output": 0
+                "input": sum(claim.get("tokens", 0) for claim in validated_claims),  # Approximate
+                "output": len(validated_claims) * 50  # Approximate
             },
             "persona": persona
         }
@@ -108,12 +111,14 @@ class NeuraleStrict:
         
         return "\n---\n".join(context_parts)
     
-    def _generate_claims_from_context(
+    async def _generate_claims_from_context(
         self,
         question: str,
         context: str,
         persona: str,
-        model: str
+        model: str,
+        tenant_id: int,
+        chunks: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """
         Generate claims using LLM
@@ -123,20 +128,117 @@ class NeuraleStrict:
             context: Context string from chunks
             persona: Persona name
             model: Model name
+            tenant_id: Tenant ID
+            chunks: Chunks with source_ids
         
         Returns:
             List of claim dicts
         """
-        # TODO: Implementare chiamata reale a LLM
-        # Prompt structure:
-        # - Question
-        # - Context with sources
-        # - Instruction: Generate atomic claims, each with source_ids
-        # - Format: JSON array of claims
+        # Build source_id mapping for chunks
+        chunk_source_map = {}
+        for i, chunk in enumerate(chunks):
+            chunk_id = chunk.get("chunk_id", f"chunk_{i}")
+            source_id = chunk.get("source_id")
+            document_id = chunk.get("document_id")
+            chunk_source_map[chunk_id] = {
+                "source_id": source_id,
+                "document_id": document_id,
+                "chunk_index": chunk.get("chunk_index")
+            }
         
-        # Placeholder: return empty claims
-        # In production, questo chiamerà OpenAI/Anthropic/Ollama
-        return []
+        # Build prompt for LLM
+        prompt = f"""You are an expert analyst answering questions based on provided sources.
+
+Question: {question}
+
+Context from sources:
+{context}
+
+Instructions:
+1. Answer the question using ONLY the provided sources
+2. Break your answer into atomic claims (one fact per claim)
+3. Each claim MUST reference source IDs from the context using [Source N] notation
+4. Return a JSON array of claims with this structure:
+   [
+     {{
+       "text": "claim text here",
+       "source_ids": ["chunk_id1", "chunk_id2"],
+       "basis_ids": []
+     }}
+   ]
+
+Generate the answer as atomic claims:"""
+        
+        # Prepare messages for LLM
+        messages = [
+            {"role": "system", "content": f"You are a {persona} assistant for Public Administration analysis."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        # Get chat adapter based on context
+        context_dict = {
+            "tenant_id": tenant_id,
+            "persona": persona,
+            "task_class": "USE"
+        }
+        adapter = self.ai_router.get_chat_adapter(context_dict)
+        
+        # Generate response
+        result = await adapter.generate(messages, temperature=0.3, max_tokens=2048)
+        response_text = result["content"]
+        
+        # Parse JSON from response (handle markdown code blocks)
+        claims = []
+        try:
+            # Try to extract JSON from markdown code block if present
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            elif "```" in response_text:
+                json_start = response_text.find("```") + 3
+                json_end = response_text.find("```", json_start)
+                json_text = response_text[json_start:json_end].strip()
+            else:
+                json_text = response_text.strip()
+            
+            # Try to find JSON array in text
+            array_start = json_text.find("[")
+            array_end = json_text.rfind("]") + 1
+            if array_start >= 0 and array_end > array_start:
+                json_text = json_text[array_start:array_end]
+            
+            parsed_claims = json.loads(json_text)
+            
+            # Map chunk_ids to source_ids
+            for claim in parsed_claims:
+                chunk_ids = claim.get("source_ids", [])
+                mapped_source_ids = []
+                for chunk_id in chunk_ids:
+                    if chunk_id in chunk_source_map:
+                        source_info = chunk_source_map[chunk_id]
+                        if source_info["source_id"]:
+                            mapped_source_ids.append(source_info["source_id"])
+                        elif source_info["document_id"]:
+                            mapped_source_ids.append(source_info["document_id"])
+                
+                claims.append({
+                    "text": claim.get("text", ""),
+                    "source_ids": mapped_source_ids,
+                    "basis_ids": claim.get("basis_ids", []),
+                    "tokens": len(claim.get("text", "").split())
+                })
+        
+        except (json.JSONDecodeError, KeyError) as e:
+            # If JSON parsing fails, create single claim from response
+            claims = [{
+                "text": response_text[:500],  # Limit length
+                "source_ids": [chunk.get("source_id") for chunk in chunks[:3] if chunk.get("source_id")],
+                "basis_ids": [],
+                "tokens": len(response_text.split())
+            }]
+        
+        return claims
     
     def _validate_claims(
         self,

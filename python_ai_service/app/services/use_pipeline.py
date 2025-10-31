@@ -85,13 +85,17 @@ class UsePipeline:
         
         elif action == RouterAction.RAG_STRICT.value:
             # Step 3: Retrieve chunks
+            # Generate embedding if not provided
             if not query_embedding:
-                # TODO: Generate embedding if not provided
-                # For now, return error
-                return {
-                    "status": "error",
-                    "message": "Query embedding required for RAG"
+                from app.services.ai_router import AIRouter
+                ai_router = AIRouter()
+                context = {
+                    "tenant_id": tenant_id,
+                    "task_class": "RAG"
                 }
+                adapter = ai_router.get_embedding_adapter(context)
+                embed_result = await adapter.embed(question)
+                query_embedding = embed_result["embedding"]
             
             chunks = self.retriever.retrieve(
                 query_embedding=query_embedding,
