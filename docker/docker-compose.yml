@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # MongoDB (Cognitivo - embeddings, chat, logs)
+  mongodb:
+    image: mongo:7
+    container_name: natan_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: natan_user
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-secret_password}
+      MONGO_INITDB_DATABASE: natan_ai_core
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
+    networks:
+      - natan_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MariaDB (Transazionale - users, tenants, acts)
+  mariadb:
+    image: mariadb:11
+    container_name: natan_mariadb
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-secret}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-natan_main}
+      MYSQL_USER: ${MYSQL_USER:-natan_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-secret_password}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - natan_network
+    healthcheck:
+      test: mysqladmin ping -h localhost -u root -p${MYSQL_ROOT_PASSWORD:-secret}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis (Cache + Queue)
+  redis:
+    image: redis:7-alpine
+    container_name: natan_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - natan_network
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongodb_data:
+    driver: local
+  mariadb_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  natan_network:
+    driver: bridge
+
