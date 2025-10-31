@@ -23,6 +23,7 @@ class ExecutionRouter:
     
     # Intent -> Action mapping
     INTENT_ACTION_MAP = {
+        QueryIntent.CONVERSATIONAL: RouterAction.DIRECT_QUERY,  # Conversational queries don't need RAG
         QueryIntent.FACT_CHECK: RouterAction.RAG_STRICT,
         QueryIntent.NUMERICAL: RouterAction.RAG_STRICT,
         QueryIntent.COMPARISON: RouterAction.RAG_STRICT,
@@ -30,7 +31,7 @@ class ExecutionRouter:
         QueryIntent.PROCEDURE: RouterAction.RAG_STRICT,
         QueryIntent.TEMPORAL: RouterAction.RAG_STRICT,
         QueryIntent.SPATIAL: RouterAction.RAG_STRICT,
-        QueryIntent.INTERPRETATION: RouterAction.BLOCK,
+        QueryIntent.INTERPRETATION: RouterAction.RAG_STRICT,  # Changed: interpretation with document request → RAG
         QueryIntent.BLOCKED: RouterAction.BLOCK,
     }
     
@@ -70,14 +71,28 @@ class ExecutionRouter:
                 "can_respond_directly": False
             }
         
+        # Check if this is a document request (override for INTERPRETATION)
+        question_lower = question.lower().strip()
+        document_request_keywords = [
+            "tokenomics", "documento", "documenti", "dati", "dato", "informazioni",
+            "estrai", "estrae", "estraggo", "estragga",
+            "cerca", "cercare", "trova", "trovare", "mostra", "mostrami", "mostrare",
+            "forniscimi", "fornisci", "fornire", "analizza", "analizzare", "analisi"
+        ]
+        has_document_request = any(doc_kw in question_lower for doc_kw in document_request_keywords)
+        
         # Get action from mapping
         action = ExecutionRouter.INTENT_ACTION_MAP.get(
             intent_enum,
             RouterAction.BLOCK
         )
         
-        # Low confidence -> block
-        if confidence < 0.5:
+        # Override: INTERPRETATION with document request → RAG_STRICT (not block)
+        if intent_enum == QueryIntent.INTERPRETATION and has_document_request:
+            action = RouterAction.RAG_STRICT
+        
+        # Low confidence -> block (but allow if document request)
+        if confidence < 0.5 and not has_document_request:
             action = RouterAction.BLOCK
             reason = f"Low classification confidence: {confidence}"
         else:
@@ -120,5 +135,8 @@ class ExecutionRouter:
         # Per ora: tutte le query richiedono AI
         # TODO: Implementare logica per query semplici (es. "quante delibere nel 2024?")
         return False
+
+
+
 
 

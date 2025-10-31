@@ -4,13 +4,13 @@
  */
 
 export class UrsBadge {
-    static render(label: 'A' | 'B' | 'C' | 'X', score?: number): string {
+    static render(label: 'A' | 'B' | 'C' | 'X' | string, score?: number | null): string {
         const badgeClass = `urs-badge-${label.toLowerCase()}`;
         const labelText = this.getLabelText(label);
 
         let html = `<span class="${badgeClass}" aria-label="${labelText}">`;
         html += `URS ${label}`;
-        if (score !== undefined) {
+        if (score !== undefined && score !== null && typeof score === 'number' && !isNaN(score)) {
             html += ` (${score.toFixed(2)})`;
         }
         html += '</span>';
@@ -28,4 +28,7 @@ export class UrsBadge {
         return labels[label] || 'Affidabilità Sconosciuta';
     }
 }
+
+
+
 

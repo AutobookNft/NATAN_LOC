@@ -12,9 +12,11 @@ class AnthropicChatAdapter(BaseChatAdapter):
         self.base_url = "https://api.anthropic.com/v1"
         
         # Map model names to Anthropic model IDs
+        # Updated to use correct Claude 3.5 Sonnet model ID
         self.model_map = {
-            "anthropic.sonnet-3.5": "claude-sonnet-3-20240229",
-            "anthropic.opus-3": "claude-opus-3-20240229",
+            "anthropic.sonnet-3.5": "claude-3-5-sonnet-20241022",
+            "anthropic.opus-3": "claude-3-opus-20240229",
+            "claude-sonnet-3-20240229": "claude-3-5-sonnet-20241022",  # Legacy mapping
         }
         self.model = self.model_map.get(model, model)
     
@@ -74,5 +76,8 @@ class AnthropicChatAdapter(BaseChatAdapter):
                 "model": data["model"],
                 "finish_reason": data.get("stop_reason", "stop")
             }
+
+
+
 
 

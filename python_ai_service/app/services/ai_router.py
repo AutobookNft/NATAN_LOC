@@ -54,12 +54,16 @@ class AIRouter:
     def _create_embedding_adapter(self, model: str) -> BaseEmbeddingAdapter:
         """Create embedding adapter instance for model"""
         if model.startswith("openai."):
-            model_name = model.replace("openai.", "text-embedding-3-")
+            # Remove prefix and use model name as-is (already includes text-embedding-3-small, etc.)
+            model_name = model.replace("openai.", "")
             return OpenAIEmbeddingAdapter(model=model_name)
         elif model.startswith("ollama."):
             model_name = model.replace("ollama.", "")
             return OllamaEmbeddingAdapter(model=model_name)
         else:
             raise ValueError(f"Unknown embedding model: {model}")
+
+
+
 
 
