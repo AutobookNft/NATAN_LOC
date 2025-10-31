@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "natan-ai-gateway"
+version = "1.0.0"
+description = "AI Gateway microservice for NATAN_LOC"
+authors = ["Fabio Cherici <fabio@florenceegi.com>"]
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.pylint]
+max-line-length = 100
+
