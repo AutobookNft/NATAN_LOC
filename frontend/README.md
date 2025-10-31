@@ -104,3 +104,8 @@ Crea un file `.env` nella root del frontend:
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
+
+
+
+
+

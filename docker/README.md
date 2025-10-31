@@ -65,3 +65,8 @@ docker exec -it natan_mariadb mysql -u natan_user -p natan_main
 ```
 
 
+
+
+
+
+
