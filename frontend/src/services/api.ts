@@ -20,9 +20,30 @@ export class ApiService {
         this.apiToken = token;
     }
 
+    /**
+     * Ensure all required services are running
+     */
+    private async ensureServices(): Promise<boolean> {
+        try {
+            // Try to call ensure-services endpoint (if backend is accessible)
+            const response = await fetch(`${this.baseUrl}/api/v1/system/ensure-services`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                signal: AbortSignal.timeout(30000), // 30s timeout
+            });
+            return response.ok;
+        } catch (error) {
+            console.warn('Could not ensure services via API:', error);
+            return false;
+        }
+    }
+
     private async fetchWithAuth(
         endpoint: string,
-        options: RequestInit = {}
+        options: RequestInit = {},
+        retryOnConnectionError: boolean = true
     ): Promise<Response> {
         const url = `${this.baseUrl}${endpoint}`;
         const headers: HeadersInit = {
@@ -55,6 +76,34 @@ export class ApiService {
             return response;
         } catch (error) {
             clearTimeout(timeoutId);
+
+            // If connection error and retry enabled, try to ensure services
+            if (retryOnConnectionError && error instanceof TypeError &&
+                (error.message.includes('Failed to fetch') ||
+                    error.message.includes('ERR_CONNECTION_REFUSED') ||
+                    error.name === 'TypeError')) {
+
+                console.log('🔧 Connection error detected, attempting to ensure services...');
+
+                try {
+                    const servicesEnsured = await this.ensureServices();
+
+                    if (servicesEnsured) {
+                        console.log('✅ Services ensured, waiting for startup...');
+                        // Wait for services to start (max 10 seconds)
+                        await new Promise(resolve => setTimeout(resolve, 5000));
+
+                        // Retry the request once (with retry disabled to avoid infinite loop)
+                        console.log('🔄 Retrying request...');
+                        return this.fetchWithAuth(endpoint, options, false);
+                    } else {
+                        console.warn('⚠️ Could not ensure services automatically');
+                    }
+                } catch (ensureError) {
+                    console.error('Error ensuring services:', ensureError);
+                }
+            }
+
             throw error;
         }
     }
@@ -126,5 +175,8 @@ export const apiService = new ApiService({
     baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
     timeout: 120000,
 });
+
+
+
 
 
