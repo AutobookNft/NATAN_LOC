@@ -26,7 +26,7 @@ return new class extends Migration
                 ->nullable() // Temporaneamente nullable per migrazione dati esistenti
                 ->constrained('pa_entities')
                 ->onDelete('cascade');
-            
+
             $table->index('tenant_id');
         });
     }

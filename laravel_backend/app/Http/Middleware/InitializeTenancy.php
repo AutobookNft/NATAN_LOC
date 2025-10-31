@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
  * @purpose Middleware per inizializzazione tenancy single-database
- * 
+ *
  * Rileva il tenant da:
  * 1. Subdomain (es: tenant1.natan.florenceegi.com)
  * 2. Header X-Tenant-ID
@@ -34,11 +34,11 @@ class InitializeTenancy
     public function handle(Request $request, Closure $next): Response
     {
         $tenant = $this->detectTenant($request);
-        
+
         if ($tenant) {
             TenancyHelper::setTenant($tenant);
         }
-        
+
         return $next($request);
     }
 
@@ -50,14 +50,14 @@ class InitializeTenancy
         // 1. Subdomain detection (es: tenant1.natan.florenceegi.com)
         $host = $request->getHost();
         $subdomain = explode('.', $host)[0] ?? null;
-        
+
         if ($subdomain && $subdomain !== 'www' && $subdomain !== 'natan' && $subdomain !== 'localhost' && $subdomain !== '127.0.0.1') {
             $tenant = PaEntity::where('slug', $subdomain)->first();
             if ($tenant) {
                 return $tenant;
             }
         }
-        
+
         // 2. Header X-Tenant-ID (API calls)
         $tenantId = $request->header('X-Tenant-ID');
         if ($tenantId) {
@@ -66,7 +66,7 @@ class InitializeTenancy
                 return $tenant;
             }
         }
-        
+
         // 3. User authenticated (tenant_id from user)
         if (Auth::check() && Auth::user()->tenant_id) {
             $tenant = PaEntity::find(Auth::user()->tenant_id);
@@ -74,7 +74,7 @@ class InitializeTenancy
                 return $tenant;
             }
         }
-        
+
         // 4. Query parameter (solo per sviluppo - rimuovere in produzione)
         if (app()->environment('local') || app()->environment('testing')) {
             $tenantId = $request->query('tenant_id');
@@ -85,7 +85,7 @@ class InitializeTenancy
                 }
             }
         }
-        
+
         return null;
     }
 }

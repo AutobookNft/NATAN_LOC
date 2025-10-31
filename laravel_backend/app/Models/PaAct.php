@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
  * @purpose Model per documenti PA (multi-tenant)
- * 
+ *
  * Rappresenta un documento caricato nel sistema NATAN_LOC.
  * Supporta vari tipi di documento (PA acts, contracts, reports, etc.)
  */

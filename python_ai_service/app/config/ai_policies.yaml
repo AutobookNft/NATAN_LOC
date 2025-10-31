@@ -1,0 +1,96 @@
+version: 1
+
+# Fallback chains: se un provider fallisce, prova il successivo
+fallbacks:
+  chat: ["anthropic.sonnet-3.5", "openai.gpt-4.1", "ollama.llama3-70b"]
+  embed: ["openai.text-embedding-3-small", "ollama.nomic-embed", "aisiru.embed-v1"]
+
+# Policy rules: match context → select provider
+policies:
+  # Default: Cloud mode (production)
+  - match:
+      persona: "strategic"
+      task_class: "RAG"
+    use:
+      chat: "anthropic.sonnet-3.5"
+      embed: "openai.text-embedding-3-large"
+  
+  # Local mode (on-premise PA - air-gapped)
+  - match:
+      tenant_id: 0
+      locality: "onprem"
+    use:
+      chat: "ollama.llama3-8b"
+      embed: "ollama.nomic-embed"
+  
+  # High-precision queries (USE pipeline)
+  - match:
+      task_class: "USE"
+      intent: "financial_analysis"
+    use:
+      chat: "anthropic.opus-3"
+      embed: "openai.text-embedding-3-large"
+  
+  # Fast responses (chat)
+  - match:
+      task_class: "chat"
+      priority: "speed"
+    use:
+      chat: "openai.gpt-4.1"
+      embed: "openai.text-embedding-3-small"
+  
+  # EU Enterprise (AISIRU)
+  - match:
+      tenant_id: [100, 101, 102]  # Esempi tenant EU
+      compliance: "gdpr_strict"
+    use:
+      chat: "aisiru.enterprise-v1"
+      embed: "aisiru.embed-v1"
+
+# Provider configurations
+providers:
+  anthropic:
+    api_key_env: "ANTHROPIC_API_KEY"
+    base_url: "https://api.anthropic.com/v1"
+    models:
+      sonnet-3.5:
+        max_tokens: 8192
+        temperature: 0.7
+      opus-3:
+        max_tokens: 4096
+        temperature: 0.5
+  
+  openai:
+    api_key_env: "OPENAI_API_KEY"
+    base_url: "https://api.openai.com/v1"
+    models:
+      gpt-4.1:
+        max_tokens: 4096
+        temperature: 0.7
+      text-embedding-3-large:
+        dimensions: 3072
+      text-embedding-3-small:
+        dimensions: 1536
+  
+  ollama:
+    base_url: "http://localhost:11434"  # Local Ollama instance
+    models:
+      llama3-70b:
+        temperature: 0.7
+        max_tokens: 2048
+      llama3-8b:
+        temperature: 0.7
+        max_tokens: 2048
+      nomic-embed:
+        dimensions: 768
+  
+  aisiru:
+    api_key_env: "AISIRU_API_KEY"
+    base_url: "https://api.aisiru.eu/v1"
+    models:
+      enterprise-v1:
+        max_tokens: 4096
+        temperature: 0.6
+      embed-v1:
+        dimensions: 1536
+

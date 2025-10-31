@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
  * @purpose Model per entità PA (tenants)
- * 
+ *
  * Rappresenta un tenant/ente PA nel sistema multi-tenant.
  */
 class PaEntity extends Model

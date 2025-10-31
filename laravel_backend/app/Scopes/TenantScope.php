@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Scope;
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
  * @purpose Global Scope per isolamento tenant (single-database multi-tenancy)
- * 
+ *
  * Questo scope applica automaticamente WHERE tenant_id = X a tutte le query
  * dei modelli che lo usano, garantendo isolamento completo tra tenant.
  */
@@ -29,10 +29,10 @@ class TenantScope implements Scope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $tenantId = \App\Helpers\TenancyHelper::getTenantId() 
+        $tenantId = \App\Helpers\TenancyHelper::getTenantId()
             ?? request()->header('X-Tenant-ID')
             ?? (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::user()?->tenant_id : null);
-        
+
         if ($tenantId) {
             $builder->where($model->getTable() . '.tenant_id', $tenantId);
         }
@@ -55,4 +55,3 @@ class TenantScope implements Scope
         });
     }
 }
-

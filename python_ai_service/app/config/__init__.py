@@ -1,24 +1,29 @@
-"""Configuration module for NATAN AI Gateway"""
-
+"""Configuration modules for NATAN AI Gateway"""
 import os
-from dotenv import load_dotenv
+import yaml
+from pathlib import Path
 
-load_dotenv()
+# Load AI policies
+POLICIES_PATH = Path(__file__).parent / "ai_policies.yaml"
 
-# MongoDB Configuration
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/natan_ai_core")
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "natan_ai_core")
+def load_policies():
+    """Load AI policies from YAML file"""
+    with open(POLICIES_PATH, 'r') as f:
+        return yaml.safe_load(f)
 
-# OpenAI Configuration
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_ORGANIZATION = os.getenv("OPENAI_ORGANIZATION")
+# Load policies on import
+POLICIES = load_policies()
 
-# Anthropic Configuration
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+# MongoDB configuration
+MONGODB_HOST = os.getenv("MONGO_DB_HOST", "localhost")
+MONGODB_PORT = int(os.getenv("MONGO_DB_PORT", "27017"))
+MONGODB_DATABASE = os.getenv("MONGO_DB_DATABASE", "natan_ai_core")
+MONGODB_USERNAME = os.getenv("MONGO_DB_USERNAME", "natan_user")
+MONGODB_PASSWORD = os.getenv("MONGO_DB_PASSWORD", "")
 
-# Ollama Configuration (Local Mode)
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+MONGODB_URI = f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}@{MONGODB_HOST}:{MONGODB_PORT}/{MONGODB_DATABASE}?authSource=admin"
 
-# AI Policy Configuration
-AI_POLICY_FILE = os.getenv("AI_POLICY_FILE", "config/ai_policies.yaml")
-
+# Provider API keys
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+AISIRU_API_KEY = os.getenv("AISIRU_API_KEY", "")

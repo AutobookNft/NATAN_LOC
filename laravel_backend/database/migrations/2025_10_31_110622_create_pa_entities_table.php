@@ -26,25 +26,25 @@ return new class extends Migration
             $table->string('slug')->unique(); // Slug per subdomain/route
             $table->string('code')->unique()->nullable(); // Codice identificativo univoco
             $table->enum('entity_type', ['pa', 'company', 'public_entity', 'other'])->default('pa');
-            
+
             // Contatti e info
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->text('address')->nullable();
             $table->string('vat_number')->nullable(); // P.IVA / CF
-            
+
             // Configurazione tenant
             $table->json('settings')->nullable(); // Configurazioni specifiche tenant (JSON)
             $table->boolean('is_active')->default(true);
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('subscription_ends_at')->nullable();
-            
+
             // Metadata
             $table->text('notes')->nullable();
-            
+
             $table->timestamps();
             $table->softDeletes();
-            
+
             // Indici
             $table->index('slug');
             $table->index('code');
