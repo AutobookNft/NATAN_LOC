@@ -8,6 +8,7 @@ use App\Helpers\TenancyHelper;
 use App\Models\PaEntity;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -67,8 +68,8 @@ class InitializeTenancy
         }
         
         // 3. User authenticated (tenant_id from user)
-        if (auth()->check() && auth()->user()->tenant_id) {
-            $tenant = PaEntity::find(auth()->user()->tenant_id);
+        if (Auth::check() && Auth::user()->tenant_id) {
+            $tenant = PaEntity::find(Auth::user()->tenant_id);
             if ($tenant) {
                 return $tenant;
             }

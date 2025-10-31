@@ -121,4 +121,3 @@ return [
         'gdpr_restriction_notification_error' => 'A problem occurred while sending the notification. Our team has been notified.',
     ],
 ];
-

@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'python_ai' => [
+        'url' => env('PYTHON_AI_URL', 'http://localhost:8000'),
+        'timeout' => env('PYTHON_AI_TIMEOUT', 120),
+    ],
+
 ];

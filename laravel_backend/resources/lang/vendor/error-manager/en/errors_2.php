@@ -73,4 +73,3 @@ return [
         'microservice_auto_start_failed' => 'Service temporarily unavailable. Our team has been alerted and will resolve the issue as soon as possible.',
     ],
 ];
-

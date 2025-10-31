@@ -31,7 +31,7 @@ class TenantScope implements Scope
     {
         $tenantId = \App\Helpers\TenancyHelper::getTenantId() 
             ?? request()->header('X-Tenant-ID')
-            ?? auth()->user()?->tenant_id;
+            ?? (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::user()?->tenant_id : null);
         
         if ($tenantId) {
             $builder->where($model->getTable() . '.tenant_id', $tenantId);
@@ -46,12 +46,12 @@ class TenantScope implements Scope
      */
     public function extend(Builder $builder): void
     {
-        $builder->macro('withoutTenantScope', function (Builder $builder) {
-            return $builder->withoutGlobalScope($this);
+        $builder->macro('withoutTenantScope', function (Builder $builder) use ($builder) {
+            return $builder->withoutGlobalScope(self::class);
         });
 
-        $builder->macro('withAllTenants', function (Builder $builder) {
-            return $builder->withoutGlobalScope($this);
+        $builder->macro('withAllTenants', function (Builder $builder) use ($builder) {
+            return $builder->withoutGlobalScope(self::class);
         });
     }
 }
