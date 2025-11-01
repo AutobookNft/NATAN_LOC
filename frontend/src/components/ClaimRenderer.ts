@@ -16,14 +16,10 @@ export class ClaimRenderer {
   }
 
   static renderClaim(claim: Claim): string {
-    // Get URS label - if not present, try to derive from score
-    let ursLabel: 'A' | 'B' | 'C' | 'X' = claim.ursLabel;
-    if (!ursLabel) {
-      const score = claim.urs ?? 0;
-      if (score >= 0.85) ursLabel = 'A';
-      else if (score >= 0.70) ursLabel = 'B';
-      else if (score >= 0.50) ursLabel = 'C';
-      else ursLabel = 'X';
+    // Get URS label - if not present, try to derive from score using UrsBadge helper
+    let ursLabel: 'A' | 'B' | 'C' | 'X' = claim.ursLabel as 'A' | 'B' | 'C' | 'X';
+    if (!ursLabel || ursLabel === 'UNKNOWN') {
+      ursLabel = UrsBadge.getLabelFromScore(claim.urs);
     }
     
     const containerClass = this.getContainerClass(ursLabel);
