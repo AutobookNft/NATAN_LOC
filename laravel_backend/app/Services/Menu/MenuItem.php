@@ -81,7 +81,13 @@ class MenuItem
             return '#';
         }
 
-        return route($this->route, $this->routeParams);
+        try {
+            return route($this->route, $this->routeParams);
+        } catch (\Illuminate\Routing\Exceptions\UrlGenerationException $e) {
+            // Route not defined yet - return placeholder
+            \Log::warning("Route not defined: {$this->route} for menu item: {$this->translationKey}");
+            return '#';
+        }
     }
 
     /**
