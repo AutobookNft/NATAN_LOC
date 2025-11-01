@@ -9,14 +9,14 @@ import { apiService } from '../services/api';
 import { MessageComponent } from './Message';
 
 export class ChatInterface {
-    private messagesContainer: HTMLElement;
-    private inputForm: HTMLFormElement;
-    private inputField: HTMLTextAreaElement;
-    private sendButton: HTMLButtonElement;
-    private welcomeMessage: HTMLElement | null;
-    private personaSelector: HTMLSelectElement | null;
-    private suggestionsToggle: HTMLElement | null;
-    private suggestionsContent: HTMLElement | null;
+    private messagesContainer!: HTMLElement;
+    private inputForm!: HTMLFormElement;
+    private inputField!: HTMLTextAreaElement;
+    private sendButton!: HTMLButtonElement;
+    private welcomeMessage: HTMLElement | null = null;
+    private personaSelector: HTMLSelectElement | null = null;
+    private suggestionsToggle: HTMLElement | null = null;
+    private suggestionsContent: HTMLElement | null = null;
     private messages: Message[] = [];
     private tenantId: number;
     private persona: string = 'auto';
@@ -27,6 +27,16 @@ export class ChatInterface {
         this.findDOMElements();
         this.attachEventListeners();
         this.initMobileComponents();
+    }
+
+    /**
+     * Auto-resize textarea to fit content (mobile-friendly)
+     */
+    private autoResizeTextarea(): void {
+        this.inputField.style.height = 'auto';
+        const maxHeight = 150; // max-height from CSS
+        const scrollHeight = this.inputField.scrollHeight;
+        this.inputField.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }
 
     /**
@@ -111,17 +121,19 @@ export class ChatInterface {
 
         // Suggestions toggle (mobile only)
         if (this.suggestionsToggle && this.suggestionsContent) {
-            this.suggestionsToggle.addEventListener('click', () => {
-                const isExpanded = this.suggestionsToggle?.getAttribute('aria-expanded') === 'true';
+            const toggle = this.suggestionsToggle;
+            const content = this.suggestionsContent;
+            toggle.addEventListener('click', () => {
+                const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
                 if (isExpanded) {
-                    this.suggestionsContent?.classList.add('hidden');
-                    this.suggestionsToggle.setAttribute('aria-expanded', 'false');
-                    const chevron = this.suggestionsToggle.querySelector('svg');
+                    content.classList.add('hidden');
+                    toggle.setAttribute('aria-expanded', 'false');
+                    const chevron = toggle.querySelector('svg');
                     if (chevron) chevron.classList.remove('rotate-180');
                 } else {
-                    this.suggestionsContent?.classList.remove('hidden');
-                    this.suggestionsToggle.setAttribute('aria-expanded', 'true');
-                    const chevron = this.suggestionsToggle.querySelector('svg');
+                    content.classList.remove('hidden');
+                    toggle.setAttribute('aria-expanded', 'true');
+                    const chevron = toggle.querySelector('svg');
                     if (chevron) chevron.classList.add('rotate-180');
                 }
             });
@@ -176,16 +188,6 @@ export class ChatInterface {
                 this.persona = (e.target as HTMLSelectElement).value;
             });
         }
-    }
-
-    /**
-     * Auto-resize textarea to fit content (mobile-friendly)
-     */
-    private autoResizeTextarea(): void {
-        this.inputField.style.height = 'auto';
-        const maxHeight = 150; // max-height from CSS
-        const scrollHeight = this.inputField.scrollHeight;
-        this.inputField.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }
 
     private async handleSubmit(e: Event): Promise<void> {
