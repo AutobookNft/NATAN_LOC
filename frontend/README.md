@@ -1,6 +1,6 @@
 # NATAN Frontend
 
-Frontend TypeScript puro per NATAN_LOC - Assistente AI per la Pubblica Amministrazione.
+Frontend TypeScript puro per NATAN_LOC - Cognitive Trust Layer per PA & Enterprises.
 
 ## Stack
 
