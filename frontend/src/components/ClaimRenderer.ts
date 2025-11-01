@@ -37,35 +37,68 @@ export class ClaimRenderer {
         <p class="${textClass}">${this.escapeHtml(claim.text)}</p>
     `;
 
-    // Source links
+    // Source links - Verified sources section
     if (claim.sourceRefs && claim.sourceRefs.length > 0) {
       html += `
-        <div class="mt-3 space-y-1">
-          <p class="text-xs font-semibold text-gray-600">Fonti:</p>
-          ${claim.sourceRefs.map(ref => {
-            // Handle internal document references (url starting with #)
-            const isInternal = ref.url && ref.url.startsWith('#');
-            const linkHref = isInternal ? 'javascript:void(0)' : this.escapeHtml(ref.url);
-            const linkClass = isInternal 
-              ? 'block text-xs text-blue-600 hover:underline cursor-pointer'
-              : 'block text-xs text-blue-600 hover:underline';
-            
-            return `
-            <a 
-              href="${linkHref}" 
-              ${!isInternal ? 'target="_blank" rel="noopener noreferrer"' : ''}
-              class="${linkClass}"
-              ${isInternal ? `title="Documento: ${this.escapeHtml(ref.title)}"` : ''}
-            >
-              → ${this.escapeHtml(ref.title)}${ref.page ? ` (p. ${ref.page})` : ''}${ref.chunk_index !== undefined ? ` [chunk ${ref.chunk_index}]` : ''}
-            </a>
+        <div class="mt-3 pt-2 border-t border-gray-200">
+          <p class="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
+            <svg class="w-3 h-3 text-natan-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Fonti Verificate
+          </p>
+          <ul class="space-y-1.5" role="list">
+            ${claim.sourceRefs.map((ref, index) => {
+              // Handle internal document references (url starting with #)
+              const isInternal = ref.url && ref.url.startsWith('#');
+              const linkHref = isInternal ? 'javascript:void(0)' : this.escapeHtml(ref.url || '');
+              
+              // Build display text
+              const titleText = this.escapeHtml(ref.title || 'Documento senza titolo');
+              const pageText = ref.page ? ` <span class="text-gray-500 font-mono">p. ${ref.page}</span>` : '';
+              const chunkText = ref.chunk_index !== undefined ? ` <span class="text-gray-400 font-mono text-[10px]">[chunk ${ref.chunk_index}]</span>` : '';
+              
+              // Icon for external/internal links
+              const linkIcon = isInternal 
+                ? '<svg class="w-3 h-3 inline-block mr-1 text-natan-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>'
+                : '<svg class="w-3 h-3 inline-block mr-1 text-natan-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
+              
+              const linkClass = isInternal 
+                ? 'inline-flex items-start gap-1 text-xs text-natan-blue hover:text-natan-blue-dark hover:underline cursor-pointer transition-colors'
+                : 'inline-flex items-start gap-1 text-xs text-natan-blue hover:text-natan-blue-dark hover:underline transition-colors';
+              
+              const ariaLabel = isInternal
+                ? `Fonte ${index + 1}: ${titleText}${ref.page ? `, pagina ${ref.page}` : ''} (Documento interno)`
+                : `Fonte ${index + 1}: ${titleText}${ref.page ? `, pagina ${ref.page}` : ''} (Link esterno)`;
+              
+              return `
+            <li>
+              <a 
+                href="${linkHref}" 
+                ${!isInternal ? 'target="_blank" rel="noopener noreferrer"' : ''}
+                class="${linkClass}"
+                aria-label="${ariaLabel}"
+                title="${isInternal ? 'Documento interno: ' : 'Link esterno: '}${titleText}${ref.page ? ` (pagina ${ref.page})` : ''}"
+              >
+                ${linkIcon}
+                <span>${titleText}${pageText}${chunkText}</span>
+              </a>
+            </li>
           `;
-          }).join('')}
+            }).join('')}
+          </ul>
         </div>
       `;
     } else {
       html += `
-        <p class="mt-2 text-xs text-red-600">Nessuna fonte disponibile per questo claim.</p>
+        <div class="mt-3 pt-2 border-t border-gray-200">
+          <p class="text-xs text-amber-600 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            Nessuna fonte disponibile per questo claim
+          </p>
+        </div>
       `;
     }
 
@@ -123,11 +156,12 @@ export class ClaimRenderer {
   }
 
   private static getTextClass(ursLabel: string): string {
+    // Use NATAN semantic colors for claim text
     const classes: Record<string, string> = {
-      'A': 'text-green-900',
-      'B': 'text-blue-900',
-      'C': 'text-yellow-900',
-      'X': 'text-red-900',
+      'A': 'text-emerald-900 font-medium',
+      'B': 'text-blue-900 font-medium',
+      'C': 'text-amber-900 font-medium',
+      'X': 'text-red-900 font-medium',
     };
     return classes[ursLabel] || 'text-gray-900';
   }
