@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* NATAN Base Styles - Mobile First */
+@layer base {
+  /* Typography defaults */
+  body {
+    @apply font-body text-natan-gray-700 bg-natan-gray-50;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-institutional font-bold text-natan-gray-900;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.2;
+    color: #0F1E36;
+  }
+
+  h2 {
+    font-size: 24px;
+    line-height: 1.3;
+    color: #2D3748;
+  }
+
+  h3 {
+    font-size: 20px;
+    line-height: 1.4;
+    color: #4A5568;
+  }
+
+  h4 {
+    font-size: 18px;
+    line-height: 1.5;
+    color: #4A5568;
+  }
+
+  code {
+    @apply font-mono text-sm;
+    color: #2D3748;
+  }
+
+  /* Accessibility improvements */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-natan-blue;
+  }
+
+  button:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+/* NATAN Components */
+@layer components {
+  /* URS Badges */
+  .urs-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-sm font-mono;
+  }
+
+  .urs-badge-a {
+    @apply urs-badge bg-urs-a text-white border-2 border-emerald-600;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+  }
+
+  .urs-badge-b {
+    @apply urs-badge bg-urs-b text-white border-2 border-blue-600;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  }
+
+  .urs-badge-c {
+    @apply urs-badge bg-urs-c text-white border-2 border-amber-600;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+  }
+
+  .urs-badge-x {
+    @apply urs-badge bg-urs-x text-white border-2 border-red-600;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  }
+
+  /* Claim Containers */
+  .claim-container {
+    @apply p-4 rounded-lg border-2 shadow-sm;
+  }
+
+  .claim-container-a {
+    @apply claim-container bg-emerald-50 border-emerald-200;
+  }
+
+  .claim-container-b {
+    @apply claim-container bg-blue-50 border-blue-200;
+  }
+
+  .claim-container-c {
+    @apply claim-container bg-amber-50 border-amber-200;
+  }
+
+  .claim-container-x {
+    @apply claim-container bg-red-50 border-red-200;
+  }
+
+  /* Trust Badges */
+  .trust-badge {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs;
+  }
+
+  .zero-leak-badge {
+    @apply trust-badge text-white;
+    background: linear-gradient(135deg, #0F4C75 0%, #1B365D 100%);
+    border: 2px solid #2D5016;
+  }
+
+  .multi-tenant-badge {
+    @apply trust-badge bg-natan-blue-extra-light text-natan-blue-dark border border-natan-blue;
+  }
+
+  .verified-badge {
+    @apply trust-badge bg-natan-green-extra-light text-natan-green border border-natan-green;
+  }
+
+  .blockchain-badge {
+    @apply trust-badge text-white;
+    background: linear-gradient(135deg, #2D5016 0%, #3D6B22 100%);
+    border: 2px solid #B89968;
+  }
+
+  /* Institutional Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-sm text-white bg-natan-blue transition-all;
+    min-height: 44px; /* Touch target */
+  }
+
+  .btn-primary:hover {
+    @apply bg-natan-blue-light;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(27, 54, 93, 0.2);
+  }
+
+  .btn-primary:disabled {
+    @apply bg-natan-disabled cursor-not-allowed opacity-60;
+    transform: none;
+  }
+
+  .btn-secondary {
+    @apply btn-primary bg-white text-natan-blue border border-natan-blue;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-natan-blue-extra-light;
+  }
+}
+
+
+
+
+
+
+

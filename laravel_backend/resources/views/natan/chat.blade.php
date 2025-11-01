@@ -17,7 +17,7 @@
         <x-natan.mobile-drawer :menus="$menus" :chatHistory="$chatHistory" />
         
         {{-- Chat Container (main content) --}}
-        <div class="flex-1 flex flex-col min-w-0">
+        <div class="flex flex-col flex-1 min-w-0">
             {{-- Chat Interface --}}
             <x-natan.chat-interface />
         </div>
