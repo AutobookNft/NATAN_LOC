@@ -4,7 +4,7 @@
 
 ### 1️⃣ Scarica MongoDB Compass
 Se non l'hai già fatto, scarica MongoDB Compass dal sito ufficiale:
-- **URL:** https://www.mongodb.com/try/download/compass
+- **URL:** image.png
 - **Versione:** Windows 64-bit (.exe o .msi)
 
 ### 2️⃣ Installa MongoDB Compass
