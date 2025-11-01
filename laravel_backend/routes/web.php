@@ -8,8 +8,8 @@ Route::get('/', function () {
 });
 
 // NATAN Chat Interface
+// Note: Auth gestita tramite EGI, quindi non usiamo middleware 'auth' qui
 Route::get('/natan/chat', [NatanChatController::class, 'index'])
-    ->middleware('auth')
     ->name('natan.chat');
 
 // NATAN Routes (placeholder - da implementare)
