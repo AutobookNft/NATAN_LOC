@@ -18,7 +18,7 @@ class MenuItem
     public string $name;
     public string $translationKey;
     public string $route;
-    public ?string $icon;
+    public ?string $icon; // Icon name (Heroicons) - will be rendered as SVG inline
     public ?string $permission;
     /** @var MenuItem[]|null */
     public ?array $children;

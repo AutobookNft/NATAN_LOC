@@ -24,13 +24,13 @@ class MenuGroup
      * Constructor with translation support
      *
      * @param string $translatedName Already translated menu group name
-     * @param string|null $iconKey Icon key for the group
+     * @param string|null $iconKey Icon name (Heroicons) - will be rendered as SVG inline via component
      * @param array $items Array of MenuItem objects
      */
     public function __construct(string $translatedName, ?string $iconKey = null, array $items = [])
     {
         $this->name = $translatedName;
-        $this->icon = $iconKey;
+        $this->icon = $iconKey; // Simple icon name, rendered via <x-natan.icon />
         $this->items = $items;
     }
 

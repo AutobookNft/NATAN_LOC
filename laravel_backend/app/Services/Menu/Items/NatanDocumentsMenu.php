@@ -20,7 +20,7 @@ class NatanDocumentsMenu extends MenuItem
         parent::__construct(
             translationKey: 'menu.natan_documents',
             route: 'natan.documents.index',
-            icon: 'document-text',
+            icon: 'document-text', // Rendered as Heroicons SVG inline
             permission: 'access_natan'
         );
     }

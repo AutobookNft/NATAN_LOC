@@ -46,7 +46,8 @@ class ContextMenus
             case 'natan.dashboard':
             default:
                 // Main NATAN menu with all features organized by sections
-                $mainMenu = new MenuGroup(__('menu.natan_management'), 'natan-icon', [
+                // Icon: 'chat-bubble-left-right' o null (NATAN è la chat stessa)
+                $mainMenu = new MenuGroup(__('menu.natan_management'), null, [
                     // Documents section
                     new NatanDocumentsMenu(),
                     
