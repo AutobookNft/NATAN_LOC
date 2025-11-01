@@ -1,9 +1,9 @@
 @php
     use App\Services\Menu\ContextMenus;
-    
+
     // Get menus for NATAN context
     $menus = ContextMenus::getMenusForContext('natan.chat');
-    
+
     // Chat history is passed from NatanChatController
     $chatHistory = $chatHistory ?? [];
 @endphp
@@ -12,18 +12,17 @@
     <div class="flex h-[calc(100vh-4rem)] overflow-hidden">
         {{-- Sidebar Desktop (hidden on mobile, opens via drawer) --}}
         <x-natan.sidebar :menus="$menus" :chatHistory="$chatHistory" />
-        
+
         {{-- Mobile Drawer (hidden by default) --}}
         <x-natan.mobile-drawer :menus="$menus" :chatHistory="$chatHistory" />
-        
+
         {{-- Chat Container (main content) --}}
         <div class="flex flex-col flex-1 min-w-0">
             {{-- Chat Interface --}}
             <x-natan.chat-interface />
         </div>
-        
+
         {{-- Right Panel (Desktop only) --}}
         <x-natan.right-panel />
     </div>
 </x-natan.layout>
-

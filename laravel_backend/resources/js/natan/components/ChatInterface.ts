@@ -502,35 +502,8 @@ export function initRightPanel(): void {
         });
     });
 
-    // Persona selection (consultants tab)
-    const personaButtons = document.querySelectorAll('#tab-content-consultants [data-persona]');
-    personaButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const persona = button.getAttribute('data-persona');
-            if (!persona) return;
-
-            // Update active persona button
-            personaButtons.forEach(btn => {
-                const icon = btn.querySelector('svg');
-                if (icon) icon.classList.add('hidden');
-                btn.classList.remove('border-natan-blue');
-                btn.classList.add('border-natan-gray-200');
-            });
-            
-            const activeIcon = button.querySelector('svg');
-            if (activeIcon) activeIcon.classList.remove('hidden');
-            button.classList.remove('border-natan-gray-200');
-            button.classList.add('border-natan-blue');
-
-            // TODO: Update persona in ChatInterface
-            console.log('Selected persona:', persona);
-            
-            // Dispatch custom event for ChatInterface to listen
-            document.dispatchEvent(new CustomEvent('persona-changed', { 
-                detail: { persona } 
-            }));
-        });
-    });
+    // Note: Persona selection is handled by the persona-selector component above chat input
+    // No need for duplicate persona selection in right panel
 }
 
 

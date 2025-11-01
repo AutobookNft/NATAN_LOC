@@ -21,10 +21,13 @@ return [
     'persona' => [
         'select_title' => 'Persona',
         'auto_mode' => 'Auto',
-        'strategic' => 'Strategico',
-        'technical' => 'Tecnico',
-        'legal' => 'Legale',
-        'financial' => 'Finanziario',
+        'strategic' => 'Consulente Strategico',
+        'technical' => 'Esperto Tecnico',
+        'legal' => 'Consulente Legale/Amministrativo',
+        'financial' => 'Analista Finanziario',
+        'urban_social' => 'Urbanista/Social Impact',
+        'communication' => 'Esperto Comunicazione',
+        'archivist' => 'Archivista/Documentalista',
     ],
     
     'panel' => [
@@ -34,7 +37,6 @@ return [
     'tabs' => [
         'questions' => 'Domande',
         'explanations' => 'Spiegazioni',
-        'consultants' => 'Consulenti',
     ],
     
     'explanations' => [

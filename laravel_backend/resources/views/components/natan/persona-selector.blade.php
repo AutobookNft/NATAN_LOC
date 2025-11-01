@@ -28,6 +28,15 @@
         <option value="financial" {{ $selected === 'financial' ? 'selected' : '' }}>
             {{ __('natan.persona.financial') }}
         </option>
+        <option value="urban_social" {{ $selected === 'urban_social' ? 'selected' : '' }}>
+            {{ __('natan.persona.urban_social') }}
+        </option>
+        <option value="communication" {{ $selected === 'communication' ? 'selected' : '' }}>
+            {{ __('natan.persona.communication') }}
+        </option>
+        <option value="archivist" {{ $selected === 'archivist' ? 'selected' : '' }}>
+            {{ __('natan.persona.archivist') }}
+        </option>
     </select>
 </div>
 

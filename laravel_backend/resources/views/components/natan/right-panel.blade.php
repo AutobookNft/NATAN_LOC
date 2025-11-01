@@ -44,14 +44,6 @@
         >
             {{ __('natan.tabs.explanations') }}
         </button>
-        <button
-            type="button"
-            data-tab="consultants"
-            class="flex-1 px-4 py-2 text-xs font-semibold text-natan-gray-500 hover:text-natan-blue-dark border-b-2 border-transparent hover:border-natan-gray-300 transition-colors"
-            aria-label="Consulenti"
-        >
-            {{ __('natan.tabs.consultants') }}
-        </button>
     </div>
     
     {{-- Panel Content --}}
@@ -108,93 +100,6 @@
                             {{ __('natan.explanations.claims.description') }}
                         </p>
                     </div>
-                </div>
-            </div>
-        </div>
-        
-        {{-- Tab: Consultants --}}
-        <div
-            id="tab-content-consultants"
-            class="hidden p-4 space-y-4 tab-content"
-            role="tabpanel"
-            aria-labelledby="tab-consultants"
-        >
-            <div>
-                <h4 class="text-xs font-institutional font-bold uppercase tracking-wider text-natan-gray-500 mb-3">
-                    {{ __('natan.consultants.title') }}
-                </h4>
-                <p class="text-xs text-natan-gray-600 mb-4">
-                    {{ __('natan.consultants.description') }}
-                </p>
-                <div class="space-y-2">
-                    <button
-                        type="button"
-                        class="w-full p-3 text-left bg-white rounded-lg border border-natan-gray-200 hover:border-natan-blue hover:bg-natan-blue-extra-light transition-colors"
-                        data-persona="strategic"
-                    >
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h5 class="text-sm font-semibold text-natan-blue-dark">
-                                    {{ __('natan.persona.strategic') }}
-                                </h5>
-                                <p class="text-xs text-natan-gray-600 mt-0.5">
-                                    {{ __('natan.consultants.strategic_desc') }}
-                                </p>
-                            </div>
-                            <x-natan.icon name="check-circle" class="w-5 h-5 text-natan-blue hidden" />
-                        </div>
-                    </button>
-                    <button
-                        type="button"
-                        class="w-full p-3 text-left bg-white rounded-lg border border-natan-gray-200 hover:border-natan-blue hover:bg-natan-blue-extra-light transition-colors"
-                        data-persona="technical"
-                    >
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h5 class="text-sm font-semibold text-natan-blue-dark">
-                                    {{ __('natan.persona.technical') }}
-                                </h5>
-                                <p class="text-xs text-natan-gray-600 mt-0.5">
-                                    {{ __('natan.consultants.technical_desc') }}
-                                </p>
-                            </div>
-                            <x-natan.icon name="check-circle" class="w-5 h-5 text-natan-blue hidden" />
-                        </div>
-                    </button>
-                    <button
-                        type="button"
-                        class="w-full p-3 text-left bg-white rounded-lg border border-natan-gray-200 hover:border-natan-blue hover:bg-natan-blue-extra-light transition-colors"
-                        data-persona="legal"
-                    >
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h5 class="text-sm font-semibold text-natan-blue-dark">
-                                    {{ __('natan.persona.legal') }}
-                                </h5>
-                                <p class="text-xs text-natan-gray-600 mt-0.5">
-                                    {{ __('natan.consultants.legal_desc') }}
-                                </p>
-                            </div>
-                            <x-natan.icon name="check-circle" class="w-5 h-5 text-natan-blue hidden" />
-                        </div>
-                    </button>
-                    <button
-                        type="button"
-                        class="w-full p-3 text-left bg-white rounded-lg border border-natan-gray-200 hover:border-natan-blue hover:bg-natan-blue-extra-light transition-colors"
-                        data-persona="financial"
-                    >
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h5 class="text-sm font-semibold text-natan-blue-dark">
-                                    {{ __('natan.persona.financial') }}
-                                </h5>
-                                <p class="text-xs text-natan-gray-600 mt-0.5">
-                                    {{ __('natan.consultants.financial_desc') }}
-                                </p>
-                            </div>
-                            <x-natan.icon name="check-circle" class="w-5 h-5 text-natan-blue hidden" />
-                        </div>
-                    </button>
                 </div>
             </div>
         </div>
