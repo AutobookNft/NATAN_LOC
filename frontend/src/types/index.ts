@@ -38,6 +38,8 @@ export interface SourceRef {
     title: string;
     type: string;
     page?: number;
+    chunk_index?: number;
+    document_id?: string;
     hash?: string;
 }
 
@@ -52,8 +54,9 @@ export interface Source {
 export interface UseQueryResponse {
     status: 'success' | 'error' | 'blocked' | 'no_results';
     question: string;
+    answer?: string;  // Main natural language answer (synthesized response)
     answer_id?: string;
-    verified_claims?: Claim[];
+    verified_claims?: Claim[];  // Verified claims with sources (proof)
     blocked_claims?: Claim[];
     avg_urs?: number;
     verification_status?: 'SAFE' | 'WARNING' | 'BLOCKED';

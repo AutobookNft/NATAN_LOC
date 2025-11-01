@@ -46,7 +46,7 @@ export class ApiService {
         retryOnConnectionError: boolean = true
     ): Promise<Response> {
         const url = `${this.baseUrl}${endpoint}`;
-        const headers: HeadersInit = {
+        const headers: Record<string, string> = {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             ...(options.headers || {}),

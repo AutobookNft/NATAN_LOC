@@ -16,7 +16,16 @@ export class ClaimRenderer {
   }
 
   static renderClaim(claim: Claim): string {
-    const ursLabel = claim.ursLabel || 'UNKNOWN';
+    // Get URS label - if not present, try to derive from score
+    let ursLabel: 'A' | 'B' | 'C' | 'X' = claim.ursLabel;
+    if (!ursLabel) {
+      const score = claim.urs ?? 0;
+      if (score >= 0.85) ursLabel = 'A';
+      else if (score >= 0.70) ursLabel = 'B';
+      else if (score >= 0.50) ursLabel = 'C';
+      else ursLabel = 'X';
+    }
+    
     const containerClass = this.getContainerClass(ursLabel);
     const textClass = this.getTextClass(ursLabel);
 
@@ -37,16 +46,25 @@ export class ClaimRenderer {
       html += `
         <div class="mt-3 space-y-1">
           <p class="text-xs font-semibold text-gray-600">Fonti:</p>
-          ${claim.sourceRefs.map(ref => `
+          ${claim.sourceRefs.map(ref => {
+            // Handle internal document references (url starting with #)
+            const isInternal = ref.url && ref.url.startsWith('#');
+            const linkHref = isInternal ? 'javascript:void(0)' : this.escapeHtml(ref.url);
+            const linkClass = isInternal 
+              ? 'block text-xs text-blue-600 hover:underline cursor-pointer'
+              : 'block text-xs text-blue-600 hover:underline';
+            
+            return `
             <a 
-              href="${this.escapeHtml(ref.url)}" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              class="block text-xs text-blue-600 hover:underline"
+              href="${linkHref}" 
+              ${!isInternal ? 'target="_blank" rel="noopener noreferrer"' : ''}
+              class="${linkClass}"
+              ${isInternal ? `title="Documento: ${this.escapeHtml(ref.title)}"` : ''}
             >
-              → ${this.escapeHtml(ref.title)}${ref.page ? ` (p. ${ref.page})` : ''}
+              → ${this.escapeHtml(ref.title)}${ref.page ? ` (p. ${ref.page})` : ''}${ref.chunk_index !== undefined ? ` [chunk ${ref.chunk_index}]` : ''}
             </a>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       `;
     } else {

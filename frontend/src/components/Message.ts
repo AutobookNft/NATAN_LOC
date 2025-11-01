@@ -5,6 +5,8 @@
 
 import type { Message } from '../types';
 import { ClaimRenderer } from './ClaimRenderer';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 export class MessageComponent {
   static render(message: Message): HTMLElement {
@@ -14,22 +16,42 @@ export class MessageComponent {
     messageDiv.setAttribute('role', 'article');
 
     const bubble = document.createElement('div');
-    bubble.className = `max-w-3xl rounded-lg px-4 py-3 ${message.role === 'user'
-      ? 'bg-blue-600 text-white'
-      : 'bg-gray-100 text-gray-900'
+    // Mobile-first: full width on mobile, max-w-3xl on desktop
+    bubble.className = `w-full sm:max-w-3xl rounded-xl px-3 sm:px-4 py-2 sm:py-3 ${message.role === 'user'
+      ? 'bg-natan-blue text-white ml-auto'
+      : 'bg-natan-gray-100 text-natan-gray-900 border border-natan-gray-300'
       }`;
 
-    // Message content
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
-    contentDiv.textContent = message.content;
-    bubble.appendChild(contentDiv);
+    // Message content (main natural language answer)
+    if (message.content) {
+      const contentDiv = document.createElement('div');
+      // Use Tailwind Typography (prose) for beautiful markdown rendering
+      contentDiv.className = 'message-content prose prose-sm prose-headings:font-bold prose-headings:text-gray-900 prose-headings:mt-6 prose-headings:mb-3 prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:text-gray-700 prose-p:mb-4 prose-strong:text-gray-900 prose-strong:font-semibold prose-ul:list-disc prose-ul:ml-6 prose-ol:list-decimal prose-ol:ml-6 prose-li:mb-2 prose-a:text-blue-600 prose-a:underline hover:prose-a:text-blue-800 max-w-none';
+      
+      // Render markdown to HTML and sanitize for XSS protection
+      const htmlContent = marked.parse(message.content, {
+        breaks: true, // Convert line breaks to <br>
+        gfm: true, // GitHub Flavored Markdown
+      }) as string;
+      
+      // Sanitize HTML to prevent XSS attacks
+      const sanitizedContent = DOMPurify.sanitize(htmlContent, {
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+      });
+      
+      contentDiv.innerHTML = sanitizedContent;
+      bubble.appendChild(contentDiv);
+    }
 
-    // Claims (only for assistant messages)
+    // Claims (verified with sources - shown as "proof" below answer)
     if (message.role === 'assistant' && message.claims?.length) {
       const claimsSection = document.createElement('div');
-      claimsSection.className = 'mt-4 space-y-3';
-      claimsSection.innerHTML = ClaimRenderer.renderClaims(message.claims);
+      claimsSection.className = 'mt-6 pt-4 border-t border-gray-300';
+      claimsSection.innerHTML = `
+        <p class="text-xs font-semibold text-gray-700 mb-3">Affermazioni verificate con fonti accreditate:</p>
+        ${ClaimRenderer.renderClaims(message.claims)}
+      `;
       bubble.appendChild(claimsSection);
     }
 
