@@ -30,5 +30,20 @@
     ],
     "learned_at": "/home/fabio/NATAN_LOC/python_ai_service/data",
     "usage_count": 0
-  }
-]
+  },
+  {
+    "question": "parlami di OS2 e OS3",
+    "question_lower": "parlami di os2 e os3",
+    "pattern": "parlami",
+    "variants": [
+      "Ciao! OS2 e OS3 sono due importanti sistemi operativi sviluppati da IBM. OS/2 fu lanciato negli anni '80 come alternativa a Windows, mentre OS/390 (OS3) era destinato ai mainframe. Tuttavia, nel contesto della Pubblica Amministrazione, potresti riferti a qualcos'altro? Se hai documenti specifici che menzionano OS2 e OS3, sarò felice di aiutarti ad analizzarli!",
+      "Mi fa piacere che tu mi chieda di OS2 e OS3! Storicamente, OS/2 è stato un sistema operativo IBM molto avanzato per il suo tempo, con multitasking e interfaccia grafica. Per quanto riguarda OS3, potrebbe riferirsi a OS/390 o ad altri sistemi. Nel mondo della PA italiana, questi termini potrebbero avere significati specifici - hai qualche documento particolare che li menziona?",
+      "Interessante domanda! OS2 e OS3 potrebbero riferirsi a diversi contesti. Nel mondo informatico, OS/2 è il famoso sistema operativo IBM degli anni '90. Tuttavia, nel contesto dei documenti della Pubblica Amministrazione che analizzo quotidianamente, questi codici potrebbero indicare classificazioni, procedure o sistemi specifici. Potresti fornirmi più contesto o mostrarmi il documento in cui li hai trovati?",
+      "Salve! I termini OS2 e OS3 possono avere diversi significati. Se parliamo di informatica generale, OS/2 è stato un sistema operativo IBM innovativo ma che non ebbe grande successo commerciale. OS3 potrebbe riferirsi a varie cose. Nel contesto PA, potrebbero essere codici di classificazione o sistemi interni. Ti serve aiuto con un documento specifico che li contiene?",
+      "Ciao! OS2 e OS3... dipende dal contesto! Nella storia dell'informatica, OS/2 è stato un tentativo ambizioso di IBM di creare un successore di DOS. Quanto a OS3, potrebbe indicare OS/390 per mainframe o altro. Ma dato che sono NATAN e mi occupo di documenti PA, sospetto che nel tuo caso si tratti di codici specifici dell'amministrazione pubblica. Hai un documento da analizzare insieme?",
+      "Ottima domanda! OS2 e OS3 nel mondo tech si riferiscono principalmente ai sistemi operativi IBM - OS/2 per PC e varie versioni per mainframe. Tuttavia, lavorando con documenti della Pubblica Amministrazione, so che spesso questi codici hanno significati molto specifici nel contesto amministrativo. Puoi condividere il documento o darmi più dettagli sul contesto in cui hai incontrato questi termini?",
+      "Ti aiuto volentieri con OS2 e OS3! Dal punto di vista informatico storico, OS/2 è stato un sistema operativo grafico molto avanzato di IBM, mentre OS3 potrebbe riferirsi a diversi sistemi. Ma nel mio lavoro con la documentazione PA, ho imparato che sigle come queste spesso hanno significati amministrativi specifici. In quale documento o contesto li hai trovati? Così posso darti informazioni più precise e utili!"
+    ],
+    "learned_at": "/home/fabio/NATAN_LOC/python_ai_service/data",
+    "usage_count": 0,
+    "_id": 

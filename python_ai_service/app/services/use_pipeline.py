@@ -139,6 +139,7 @@ class UsePipeline:
             )
             
             claims = generation_result["claims"]
+            answer_text = generation_result.get("answer", "")  # Natural language answer
             
             # Step 5: Verify claims
             verification = self.verifier.verify_claims(
@@ -151,8 +152,9 @@ class UsePipeline:
             return {
                 "status": "success",
                 "question": question,
+                "answer": answer_text,  # Main natural language answer
                 "answer_id": generation_result["answer_id"],
-                "verified_claims": verification["verified_claims"],
+                "verified_claims": verification["verified_claims"],  # Claims with sources (proof)
                 "blocked_claims": verification["blocked_claims"],
                 "avg_urs": verification["avg_urs"],
                 "verification_status": verification["status"],
