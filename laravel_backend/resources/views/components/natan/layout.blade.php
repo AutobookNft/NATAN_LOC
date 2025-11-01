@@ -23,7 +23,7 @@
     @stack('styles')
 </head>
 
-<body class="bg-natan-gray-50 font-body text-natan-gray-700 antialiased">
+<body class="bg-natan-gray-50 font-sans text-natan-gray-700 antialiased">
     <div class="flex min-h-screen flex-col">
         {{-- Header minimale mobile-first --}}
         <x-natan.header />
