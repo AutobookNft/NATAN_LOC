@@ -171,6 +171,7 @@ export class ApiService {
 }
 
 // Singleton instance
+// Python FastAPI service runs on port 9000
 export const apiService = new ApiService({
     baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000',
     timeout: 120000,
