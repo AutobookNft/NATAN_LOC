@@ -17,16 +17,16 @@ use Ultra\UltraLogManager\UltraLogManager;
 use Ultra\ErrorManager\Interfaces\ErrorManagerInterface;
 
 /**
- * N.A.T.A.N. Chat Service - AI-powered conversational interface for PA acts
+ * N.A.T.A.N. Chat Service - AI-powered conversational interface for documents (PA & Enterprises)
  *
  * VERSION: 4.1.0 - Adaptive Retry with Progressive Context Reduction
  *
  * This service implements RAG (Retrieval Augmented Generation) + Web Search to allow
- * PA officials to interact with their administrative acts + global knowledge using natural language.
+ * users (PA officials or enterprise users) to interact with their documents + global knowledge using natural language.
  *
  * FEATURES:
- * - Conversational AI: Ask questions about specific acts or general queries
- * - RAG: Retrieves relevant acts before generating response
+ * - Conversational AI: Ask questions about specific documents or general queries
+ * - RAG: Retrieves relevant documents (PA acts, contracts, reports, etc.) before generating response
  * - WEB SEARCH: Augments with global best practices, normatives, funding (NEW v3.0)
  * - Context-aware: Maintains conversation history
  * - Multi-query: "Summarize act X", "Which acts about Y?", "Suggest Z"
@@ -271,7 +271,7 @@ class NatanChatService {
                 $ragMethod = null;
                 if ($useRag) {
                     if ($projectId) {
-                        // ✨ NEW v4.0: Priority RAG with 3-tier search (Project Docs > Project Chat > PA Acts)
+                        // ✨ NEW v4.0: Priority RAG with 3-tier search (Project Docs > Project Chat > Tenant Documents)
                         // STEP 2.1: Load Project model
                         $project = \App\Models\Project::find($projectId);
 
@@ -913,7 +913,7 @@ class NatanChatService {
             return '';
         }
 
-        $summary = "## PROJECT CONTEXT (Documents + Chat History + PA Acts)\n\n";
+        $summary = "## PROJECT CONTEXT (Documents + Chat History + Tenant Documents)\n\n";
 
         $documentCount = 0;
         $chatCount = 0;
@@ -950,7 +950,7 @@ class NatanChatService {
                 $title = $result['title'] ?? 'Atto PA';
                 $text = $result['text'] ?? '';
 
-                $summary .= "### PA Act {$paActsCount} (Relevance: {$similarity}%)\n";
+                $summary .= "### Document {$paActsCount} (Relevance: {$similarity}%)\n";
                 $summary .= "**Title:** {$title}\n";
                 $summary .= "**Content:** {$text}\n\n";
             }
@@ -960,9 +960,9 @@ class NatanChatService {
         $summary .= "**INSTRUCTIONS:**\n";
         $summary .= "- Prioritize information from project documents (weight 1.0 - highest accuracy)\n";
         $summary .= "- Use chat history for context continuity (weight 0.8)\n";
-        $summary .= "- Use PA acts for general knowledge (weight 0.5)\n";
-        $summary .= "- Cite document/act sources when providing answers\n";
-        $summary .= "- Total sources: {$documentCount} documents, {$chatCount} chat messages, {$paActsCount} PA acts\n";
+        $summary .= "- Use tenant documents (PA acts, contracts, reports) for general knowledge (weight 0.5)\n";
+        $summary .= "- Cite document sources when providing answers\n";
+        $summary .= "- Total sources: {$documentCount} project documents, {$chatCount} chat messages, {$paActsCount} tenant documents\n";
 
         return $summary;
     }

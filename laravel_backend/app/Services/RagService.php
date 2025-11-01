@@ -105,7 +105,7 @@ class RagService {
                 'limit' => $limit,
             ]);
 
-            // 2. GDPR: Check consent BEFORE accessing user PA acts
+            // 2. GDPR: Check consent BEFORE accessing user documents
             if (!$this->consentService->hasConsent($user, 'allow-personal-data-processing')) {
                 $this->logger->warning('[RAG] Missing consent for data processing', [
                     'user_id' => $user->id,
@@ -335,7 +335,7 @@ class RagService {
             return null;
         }
 
-        // Get all PA acts with embeddings for this user
+        // Get all documents (PA acts, contracts, reports, etc.) with embeddings for this user
         $acts = Egi::query()
             ->where('user_id', $user->id)
             ->whereNotNull('pa_protocol_number')
