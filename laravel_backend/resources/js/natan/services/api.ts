@@ -172,7 +172,7 @@ export class ApiService {
 
 // Singleton instance
 export const apiService = new ApiService({
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000',
     timeout: 120000,
 });
 
