@@ -21,7 +21,7 @@ export class ClaimRenderer {
     if (!ursLabel || ursLabel === 'UNKNOWN') {
       ursLabel = UrsBadge.getLabelFromScore(claim.urs);
     }
-    
+
     const containerClass = this.getContainerClass(ursLabel);
     const textClass = this.getTextClass(ursLabel);
 
@@ -49,29 +49,29 @@ export class ClaimRenderer {
           </p>
           <ul class="space-y-1.5" role="list">
             ${claim.sourceRefs.map((ref, index) => {
-              // Handle internal document references (url starting with #)
-              const isInternal = ref.url && ref.url.startsWith('#');
-              const linkHref = isInternal ? 'javascript:void(0)' : this.escapeHtml(ref.url || '');
-              
-              // Build display text
-              const titleText = this.escapeHtml(ref.title || 'Documento senza titolo');
-              const pageText = ref.page ? ` <span class="text-gray-500 font-mono">p. ${ref.page}</span>` : '';
-              const chunkText = ref.chunk_index !== undefined ? ` <span class="text-gray-400 font-mono text-[10px]">[chunk ${ref.chunk_index}]</span>` : '';
-              
-              // Icon for external/internal links
-              const linkIcon = isInternal 
-                ? '<svg class="w-3 h-3 inline-block mr-1 text-natan-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>'
-                : '<svg class="w-3 h-3 inline-block mr-1 text-natan-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
-              
-              const linkClass = isInternal 
-                ? 'inline-flex items-start gap-1 text-xs text-natan-blue hover:text-natan-blue-dark hover:underline cursor-pointer transition-colors'
-                : 'inline-flex items-start gap-1 text-xs text-natan-blue hover:text-natan-blue-dark hover:underline transition-colors';
-              
-              const ariaLabel = isInternal
-                ? `Fonte ${index + 1}: ${titleText}${ref.page ? `, pagina ${ref.page}` : ''} (Documento interno)`
-                : `Fonte ${index + 1}: ${titleText}${ref.page ? `, pagina ${ref.page}` : ''} (Link esterno)`;
-              
-              return `
+        // Handle internal document references (url starting with #)
+        const isInternal = ref.url && ref.url.startsWith('#');
+        const linkHref = isInternal ? 'javascript:void(0)' : this.escapeHtml(ref.url || '');
+
+        // Build display text
+        const titleText = this.escapeHtml(ref.title || 'Documento senza titolo');
+        const pageText = ref.page ? ` <span class="text-gray-500 font-mono">p. ${ref.page}</span>` : '';
+        const chunkText = ref.chunk_index !== undefined ? ` <span class="text-gray-400 font-mono text-[10px]">[chunk ${ref.chunk_index}]</span>` : '';
+
+        // Icon for external/internal links
+        const linkIcon = isInternal
+          ? '<svg class="w-3 h-3 inline-block mr-1 text-natan-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>'
+          : '<svg class="w-3 h-3 inline-block mr-1 text-natan-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>';
+
+        const linkClass = isInternal
+          ? 'inline-flex items-start gap-1 text-xs text-natan-blue hover:text-natan-blue-dark hover:underline cursor-pointer transition-colors'
+          : 'inline-flex items-start gap-1 text-xs text-natan-blue hover:text-natan-blue-dark hover:underline transition-colors';
+
+        const ariaLabel = isInternal
+          ? `Fonte ${index + 1}: ${titleText}${ref.page ? `, pagina ${ref.page}` : ''} (Documento interno)`
+          : `Fonte ${index + 1}: ${titleText}${ref.page ? `, pagina ${ref.page}` : ''} (Link esterno)`;
+
+        return `
             <li>
               <a 
                 href="${linkHref}" 
@@ -85,7 +85,7 @@ export class ClaimRenderer {
               </a>
             </li>
           `;
-            }).join('')}
+      }).join('')}
           </ul>
         </div>
       `;
