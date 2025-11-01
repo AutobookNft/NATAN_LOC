@@ -31,9 +31,37 @@ return [
         'title' => 'Questions & Suggestions',
     ],
     
+    'tabs' => [
+        'questions' => 'Questions',
+        'explanations' => 'Explanations',
+        'consultants' => 'Consultants',
+    ],
+    
+    'explanations' => [
+        'title' => 'Explanations and Guides',
+        'description' => 'Learn how NATAN works and its features.',
+        'use' => [
+            'title' => 'Ultra Semantic Engine (USE)',
+            'description' => 'Anti-hallucination system that generates only verified responses with accredited sources. It doesn\'t imagine. It proves.',
+        ],
+        'urs' => [
+            'title' => 'Ultra Reliability Score (URS)',
+            'description' => 'Reliability score from A (maximum) to X (unverified) for each statement, based on sources and logical consistency.',
+        ],
+        'claims' => [
+            'title' => 'Verified Claims',
+            'description' => 'Each response is broken down into atomic statements, each verified with documentary sources and URS calculation.',
+        ],
+    ],
+    
     'consultants' => [
         'title' => 'Specialized Consultants',
+        'description' => 'Choose a NATAN persona for specialized responses in the selected domain.',
         'coming_soon' => 'Coming soon',
+        'strategic_desc' => 'Strategic analysis and business decisions',
+        'technical_desc' => 'Technical support and implementations',
+        'legal_desc' => 'Legal aspects and regulatory compliance',
+        'financial_desc' => 'Financial analysis and budgets',
     ],
     
     'trust' => [
