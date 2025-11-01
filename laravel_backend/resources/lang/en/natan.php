@@ -11,6 +11,7 @@ return [
         'title' => 'Chat History',
         'empty' => 'No previous conversations',
         'previous' => 'Previous (:count)',
+        'untitled' => 'Untitled conversation',
     ],
     
     'suggestions' => [

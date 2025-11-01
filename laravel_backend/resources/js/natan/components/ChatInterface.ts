@@ -27,6 +27,7 @@ export class ChatInterface {
         this.findDOMElements();
         this.attachEventListeners();
         this.initMobileComponents();
+        this.initChatHistoryListeners();
     }
 
     /**
@@ -294,6 +295,79 @@ export class ChatInterface {
             });
         }
         return sources;
+    }
+
+    /**
+     * Initialize chat history item click listeners
+     */
+    private initChatHistoryListeners(): void {
+        // Listen for clicks on chat history items
+        document.addEventListener('click', (e) => {
+            const button = (e.target as HTMLElement).closest('[data-chat-id]') as HTMLButtonElement | null;
+            if (button) {
+                const conversationId = button.getAttribute('data-chat-id');
+                if (conversationId) {
+                    this.loadConversation(conversationId);
+                }
+            }
+        });
+
+        // Close mobile drawer when loading a conversation
+        const mobileDrawer = document.querySelector('#mobile-drawer');
+        const mobileDrawerOverlay = document.querySelector('#mobile-drawer-overlay');
+        if (mobileDrawer && mobileDrawerOverlay) {
+            document.addEventListener('click', (e) => {
+                const button = (e.target as HTMLElement).closest('[data-chat-id]') as HTMLButtonElement | null;
+                if (button && mobileDrawer.classList.contains('-translate-x-full') === false) {
+                    mobileDrawer.classList.add('-translate-x-full');
+                    mobileDrawerOverlay.classList.add('hidden');
+                    mobileDrawer.setAttribute('aria-hidden', 'true');
+                }
+            });
+        }
+    }
+
+    /**
+     * Load conversation by conversation_id
+     * TODO: Implement API endpoint to fetch conversation messages
+     */
+    private async loadConversation(conversationId: string): Promise<void> {
+        console.log('Loading conversation:', conversationId);
+        
+        // Clear current messages
+        this.messages = [];
+        this.messagesContainer.innerHTML = '';
+
+        // Show loading state
+        this.setLoading(true);
+
+        try {
+            // TODO: Implement API endpoint to fetch conversation messages
+            // For now, just show a placeholder message
+            const placeholderMessage: Message = {
+                id: this.generateId(),
+                role: 'assistant',
+                content: `Caricamento conversazione ${conversationId}...\n\n*Funzionalità in fase di implementazione*`,
+                timestamp: new Date(),
+            };
+            this.addMessage(placeholderMessage);
+
+            // Hide welcome message
+            if (this.welcomeMessage) {
+                this.welcomeMessage.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            const errorMessage: Message = {
+                id: this.generateId(),
+                role: 'assistant',
+                content: `Errore nel caricamento della conversazione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`,
+                timestamp: new Date(),
+            };
+            this.addMessage(errorMessage);
+        } finally {
+            this.setLoading(false);
+        }
     }
 
     private scrollToBottom(): void {

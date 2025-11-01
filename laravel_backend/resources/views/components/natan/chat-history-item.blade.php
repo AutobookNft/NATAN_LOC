@@ -4,8 +4,14 @@
 ])
 
 @php
-    $title = $chat['title'] ?? 'Conversazione senza titolo';
+    $title = $chat['title'] ?? __('natan.history.untitled');
     $date = $chat['date'] ?? now();
+    // Handle both Carbon instances and strings
+    if (is_string($date)) {
+        $date = \Carbon\Carbon::parse($date);
+    } elseif (!$date instanceof \Carbon\Carbon) {
+        $date = now();
+    }
     $messageCount = $chat['message_count'] ?? 0;
     $id = $chat['id'] ?? uniqid();
 @endphp

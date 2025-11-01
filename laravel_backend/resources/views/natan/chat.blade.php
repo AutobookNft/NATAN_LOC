@@ -4,8 +4,8 @@
     // Get menus for NATAN context
     $menus = ContextMenus::getMenusForContext('natan.chat');
     
-    // Get chat history (placeholder - da implementare)
-    $chatHistory = []; // TODO: Recuperare cronologia chat
+    // Chat history is passed from NatanChatController
+    $chatHistory = $chatHistory ?? [];
 @endphp
 
 <x-natan.layout title="NATAN - Chat">

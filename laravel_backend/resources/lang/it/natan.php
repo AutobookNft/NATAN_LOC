@@ -11,6 +11,7 @@ return [
         'title' => 'Cronologia Chat',
         'empty' => 'Nessuna conversazione precedente',
         'previous' => 'Precedenti (:count)',
+        'untitled' => 'Conversazione senza titolo',
     ],
     
     'suggestions' => [

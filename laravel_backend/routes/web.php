@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\NatanChatController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -7,9 +8,9 @@ Route::get('/', function () {
 });
 
 // NATAN Chat Interface
-Route::get('/natan/chat', function () {
-    return view('natan.chat');
-})->name('natan.chat');
+Route::get('/natan/chat', [NatanChatController::class, 'index'])
+    ->middleware('auth')
+    ->name('natan.chat');
 
 // NATAN Routes (placeholder - da implementare)
 Route::prefix('natan')->name('natan.')->group(function () {
