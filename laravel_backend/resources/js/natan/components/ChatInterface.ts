@@ -416,6 +416,121 @@ export class ChatInterface {
     private generateId(): string {
         return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
+
+    /**
+     * Get current conversation ID (if loaded)
+     */
+    public getCurrentConversationId(): string | null {
+        // TODO: Track current conversation ID when loading
+        return null;
+    }
+
+    /**
+     * Clear all messages and reset chat interface
+     */
+    public clearMessages(): void {
+        this.messages = [];
+        if (this.messagesContainer) {
+            this.messagesContainer.innerHTML = '';
+        }
+        if (this.welcomeMessage) {
+            this.welcomeMessage.classList.remove('hidden');
+        }
+    }
+}
+
+/**
+ * Initialize right panel functionality (tabs, collapse, persona selection)
+ */
+export function initRightPanel(): void {
+    // Panel collapse toggle
+    const panelToggle = document.querySelector('#right-panel-toggle');
+    const rightPanel = document.querySelector('#right-panel');
+    const panelContent = document.querySelector('#right-panel-content');
+    const panelTabs = document.querySelector('#right-panel-tabs');
+    const chevron = document.querySelector('#right-panel-chevron');
+
+    if (panelToggle && rightPanel && panelContent && panelTabs && chevron) {
+        panelToggle.addEventListener('click', () => {
+            const isCollapsed = rightPanel.getAttribute('data-collapsed') === 'true';
+            
+            if (isCollapsed) {
+                // Expand
+                rightPanel.setAttribute('data-collapsed', 'false');
+                panelToggle.setAttribute('aria-expanded', 'true');
+                rightPanel.classList.remove('xl:w-0', 'xl:overflow-hidden');
+                rightPanel.classList.add('xl:w-80');
+                chevron.classList.remove('rotate-180');
+            } else {
+                // Collapse
+                rightPanel.setAttribute('data-collapsed', 'true');
+                panelToggle.setAttribute('aria-expanded', 'false');
+                rightPanel.classList.remove('xl:w-80');
+                rightPanel.classList.add('xl:w-0', 'xl:overflow-hidden');
+                chevron.classList.add('rotate-180');
+            }
+        });
+    }
+
+    // Tab switching
+    const tabButtons = document.querySelectorAll('#right-panel-tabs [data-tab]');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabName = button.getAttribute('data-tab');
+            if (!tabName) return;
+
+            // Update active tab button
+            tabButtons.forEach(btn => {
+                btn.classList.remove('text-natan-blue-dark', 'border-natan-blue-dark', 'tab-active');
+                btn.classList.add('text-natan-gray-500', 'border-transparent');
+            });
+            button.classList.remove('text-natan-gray-500', 'border-transparent');
+            button.classList.add('text-natan-blue-dark', 'border-natan-blue-dark', 'tab-active');
+
+            // Show corresponding tab content
+            const allTabContents = document.querySelectorAll('.tab-content');
+            allTabContents.forEach(content => {
+                content.classList.add('hidden');
+                content.classList.remove('active');
+            });
+            
+            const activeTabContent = document.querySelector(`#tab-content-${tabName}`);
+            if (activeTabContent) {
+                activeTabContent.classList.remove('hidden');
+                activeTabContent.classList.add('active');
+            }
+        });
+    });
+
+    // Persona selection (consultants tab)
+    const personaButtons = document.querySelectorAll('#tab-content-consultants [data-persona]');
+    personaButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const persona = button.getAttribute('data-persona');
+            if (!persona) return;
+
+            // Update active persona button
+            personaButtons.forEach(btn => {
+                const icon = btn.querySelector('svg');
+                if (icon) icon.classList.add('hidden');
+                btn.classList.remove('border-natan-blue');
+                btn.classList.add('border-natan-gray-200');
+            });
+            
+            const activeIcon = button.querySelector('svg');
+            if (activeIcon) activeIcon.classList.remove('hidden');
+            button.classList.remove('border-natan-gray-200');
+            button.classList.add('border-natan-blue');
+
+            // TODO: Update persona in ChatInterface
+            console.log('Selected persona:', persona);
+            
+            // Dispatch custom event for ChatInterface to listen
+            document.dispatchEvent(new CustomEvent('persona-changed', { 
+                detail: { persona } 
+            }));
+        });
+    });
 }
 
 
