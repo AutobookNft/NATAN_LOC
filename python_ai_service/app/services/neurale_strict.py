@@ -56,7 +56,16 @@ class NeuraleStrict:
         # Build context from chunks
         context = self._build_context(chunks)
         
-        # Generate claims using LLM
+        # Step 1: Generate natural language answer first (synthesized response)
+        answer_text = await self._generate_natural_answer(
+            question=question,
+            context=context,
+            persona=persona,
+            model=model,
+            tenant_id=tenant_id
+        )
+        
+        # Step 2: Generate atomic claims from the answer (for verification)
         claims = await self._generate_claims_from_context(
             question=question,
             context=context,
@@ -74,12 +83,13 @@ class NeuraleStrict:
         answer_id = f"ans_{uuid.uuid4().hex[:8]}"
         
         return {
-            "claims": validated_claims,
+            "answer": answer_text,  # Natural language answer (main response)
+            "claims": validated_claims,  # Verified claims with sources (proof)
             "answer_id": answer_id,
             "model_used": model,
             "tokens_used": {
                 "input": sum(claim.get("tokens", 0) for claim in validated_claims),  # Approximate
-                "output": len(validated_claims) * 50  # Approximate
+                "output": len(answer_text.split()) + len(validated_claims) * 50  # Answer + claims
             },
             "persona": persona
         }
@@ -98,18 +108,83 @@ class NeuraleStrict:
         for i, chunk in enumerate(chunks, 1):
             source_ref = chunk.get("source_ref", {})
             url = source_ref.get("url", "")
-            page = source_ref.get("page")
+            page = source_ref.get("page_number") or source_ref.get("page")
+            title = source_ref.get("title", "")
+            
+            # Get chunk text - retriever uses 'chunk_text', but also check 'text' for compatibility
+            chunk_text = chunk.get("chunk_text") or chunk.get("text", "")
             
             context_part = f"[Source {i}]"
+            if title:
+                context_part += f" {title}"
             if url:
-                context_part += f" {url}"
+                context_part += f" ({url})"
             if page:
-                context_part += f" (page {page})"
-            context_part += f"\n{chunk.get('text', '')}\n"
+                context_part += f" - page {page}"
+            context_part += f"\n{chunk_text}\n"
             
             context_parts.append(context_part)
         
         return "\n---\n".join(context_parts)
+    
+    async def _generate_natural_answer(
+        self,
+        question: str,
+        context: str,
+        persona: str,
+        model: str,
+        tenant_id: int
+    ) -> str:
+        """
+        Generate natural language answer from context (synthesized response)
+        
+        Args:
+            question: User question
+            context: Context string from chunks
+            persona: Persona name
+            model: Model name
+            tenant_id: Tenant ID
+        
+        Returns:
+            Natural language answer text
+        """
+        # Build prompt for natural language synthesis
+        prompt = f"""You are an expert assistant answering questions for Public Administration.
+
+Question: {question}
+
+Relevant information from sources:
+{context}
+
+Instructions:
+1. Provide a comprehensive, natural language answer to the question
+2. Synthesize information from the sources into a coherent response
+3. Use clear, professional language appropriate for PA context
+4. Structure the answer logically (introduction, main points, conclusion if needed)
+5. Do NOT cite sources in the answer text itself (sources will be shown separately)
+6. Focus on providing a complete, human-like response
+
+Provide your answer:"""
+        
+        # Prepare messages for LLM
+        messages = [
+            {"role": "system", "content": f"You are a {persona} assistant for Public Administration analysis. Provide clear, comprehensive answers based on the provided sources."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        # Get chat adapter based on context
+        context_dict = {
+            "tenant_id": tenant_id,
+            "persona": persona,
+            "task_class": "USE"
+        }
+        adapter = self.ai_router.get_chat_adapter(context_dict)
+        
+        # Generate response
+        result = await adapter.generate(messages, temperature=0.5, max_tokens=2048)
+        answer_text = result["content"].strip()
+        
+        return answer_text
     
     async def _generate_claims_from_context(
         self,
@@ -135,15 +210,18 @@ class NeuraleStrict:
             List of claim dicts
         """
         # Build source_id mapping for chunks
+        # Use index-based IDs matching the [Source N] notation in context
         chunk_source_map = {}
-        for i, chunk in enumerate(chunks):
-            chunk_id = chunk.get("chunk_id", f"chunk_{i}")
-            source_id = chunk.get("source_id")
+        for i, chunk in enumerate(chunks, 1):
+            # Source ID matches [Source N] notation in context (1-based index)
+            source_id = f"chunk_{i}"
+            chunk_id = chunk.get("chunk_id") or source_id
             document_id = chunk.get("document_id")
-            chunk_source_map[chunk_id] = {
+            chunk_source_map[source_id] = {
                 "source_id": source_id,
                 "document_id": document_id,
-                "chunk_index": chunk.get("chunk_index")
+                "chunk_index": chunk.get("chunk_index"),
+                "chunk_id": chunk_id
             }
         
         # Build prompt for LLM
@@ -157,12 +235,12 @@ Context from sources:
 Instructions:
 1. Answer the question using ONLY the provided sources
 2. Break your answer into atomic claims (one fact per claim)
-3. Each claim MUST reference source IDs from the context using [Source N] notation
+3. Each claim MUST reference source IDs from the context using chunk_N format (e.g., chunk_1, chunk_2) matching [Source N]
 4. Return a JSON array of claims with this structure:
    [
      {{
        "text": "claim text here",
-       "source_ids": ["chunk_id1", "chunk_id2"],
+       "source_ids": ["chunk_1", "chunk_2"],
        "basis_ids": []
      }}
    ]
@@ -210,17 +288,15 @@ Generate the answer as atomic claims:"""
             
             parsed_claims = json.loads(json_text)
             
-            # Map chunk_ids to source_ids
+            # Map chunk_ids to source_ids (chunk_source_map already has correct mapping)
             for claim in parsed_claims:
                 chunk_ids = claim.get("source_ids", [])
-                mapped_source_ids = []
-                for chunk_id in chunk_ids:
-                    if chunk_id in chunk_source_map:
-                        source_info = chunk_source_map[chunk_id]
-                        if source_info["source_id"]:
-                            mapped_source_ids.append(source_info["source_id"])
-                        elif source_info["document_id"]:
-                            mapped_source_ids.append(source_info["document_id"])
+                # Keep source_ids as-is (chunk_1, chunk_2, etc.) - they match the context notation
+                # The validation will check these against valid source IDs
+                mapped_source_ids = [
+                    chunk_id for chunk_id in chunk_ids
+                    if chunk_id in chunk_source_map or chunk_id.startswith("chunk_")
+                ]
                 
                 claims.append({
                     "text": claim.get("text", ""),
@@ -256,11 +332,14 @@ Generate the answer as atomic claims:"""
             Validated claims with proper structure
         """
         validated = []
-        chunk_source_map = {chunk.get("source_id"): chunk for chunk in chunks}
+        
+        # Build mapping: chunk_N -> chunk index (0-based) for validation
+        # Source IDs use format chunk_1, chunk_2, etc. (1-based index)
+        valid_source_ids_set = {f"chunk_{i+1}" for i in range(len(chunks))}
         
         for claim in claims:
             # Ensure required fields
-            if "text" not in claim:
+            if "text" not in claim or not claim.get("text"):
                 continue
             
             # Ensure source_ids exists and is list
@@ -268,10 +347,10 @@ Generate the answer as atomic claims:"""
             if not isinstance(source_ids, list):
                 source_ids = []
             
-            # Filter source_ids to only include valid ones
+            # Filter source_ids to only include valid ones (chunk_1, chunk_2, etc.)
             valid_source_ids = [
                 sid for sid in source_ids
-                if sid in chunk_source_map
+                if sid in valid_source_ids_set
             ]
             
             # Mark as inference if no sources

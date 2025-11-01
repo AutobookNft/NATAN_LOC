@@ -42,10 +42,13 @@ class RetrieverService:
         """
         from app.services.mongodb_service import MongoDBService
         
-        # Check if MongoDB is available
+        # Check if MongoDB is available - force connection attempt
         if not MongoDBService.is_connected():
-            # Return empty list - pipeline will work without retrieved chunks
-            return []
+            # Try to force connection
+            MongoDBService.get_client()
+            if not MongoDBService.is_connected():
+                # Return empty list - pipeline will work without retrieved chunks
+                return []
         
         # Build query filter
         query_filter = {
@@ -64,8 +67,19 @@ class RetrieverService:
                 if "date_to" in filters:
                     query_filter["created_at"]["$lte"] = filters["date_to"]
         
-        # Get candidates from MongoDB
-        candidates = MongoDBService.find_documents("documents", query_filter)
+        # Get candidates from MongoDB - ensure connection first
+        try:
+            candidates = MongoDBService.find_documents("documents", query_filter)
+            if not candidates:
+                # Log warning but don't fail - might be empty database
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(f"No documents found with filter: {query_filter}")
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Error retrieving documents: {e}")
+            return []
         
         # Calculate cosine similarity
         results = []
@@ -76,7 +90,7 @@ class RetrieverService:
             chunks = doc.get("content", {}).get("chunks", [])
             doc_embedding = doc.get("embedding")
             
-            if chunks:
+            if chunks and len(chunks) > 0:
                 # Process chunks (each chunk has its own embedding)
                 for chunk in chunks:
                     chunk_embedding = chunk.get("embedding")
@@ -94,9 +108,10 @@ class RetrieverService:
                             "similarity": similarity,
                             "source_ref": {
                                 "document_id": doc.get("document_id"),
-                                "title": doc.get("title"),
+                                "title": doc.get("title", doc.get("filename", "Documento")),
                                 "filename": doc.get("filename"),
                                 "relative_path": doc.get("relative_path"),
+                                "url": f"#doc-{doc.get('document_id')}",  # Internal document reference
                                 "chunk_index": chunk.get("chunk_index"),
                                 "page_number": chunk.get("page_number"),  # If available
                             },
@@ -107,7 +122,7 @@ class RetrieverService:
                             }
                         })
             elif doc_embedding:
-                # Fallback to document-level embedding
+                # Fallback to document-level embedding (when no chunks available)
                 doc_vector = np.array(doc_embedding)
                 
                 # Cosine similarity
@@ -117,13 +132,30 @@ class RetrieverService:
                     # Get source reference
                     source_ref = self._build_source_ref(doc)
                     
+                    # Try to get full_text from content dict, fallback to raw_text
+                    content = doc.get("content", {})
+                    chunk_text = ""
+                    if isinstance(content, dict):
+                        chunk_text = content.get("full_text", content.get("raw_text", ""))
+                    elif isinstance(content, str):
+                        chunk_text = content
+                    
+                    # Limit chunk_text to first 2000 chars for display
+                    if len(chunk_text) > 2000:
+                        chunk_text = chunk_text[:2000] + "..."
+                    
                     results.append({
                         "chunk_id": str(doc.get("_id", "")),
-                        "chunk_text": doc.get("content", {}).get("raw_text", ""),
+                        "chunk_index": 0,  # Document-level, no chunk index
+                        "chunk_text": chunk_text,
                         "document_id": doc.get("document_id"),
                         "similarity": float(similarity),
                         "source_ref": source_ref,
-                        "metadata": doc.get("metadata", {})
+                        "metadata": {
+                            "document_type": doc.get("document_type"),
+                            "file_type": doc.get("file_type"),
+                            **doc.get("metadata", {})
+                        }
                     })
         
         # Sort by similarity (descending)

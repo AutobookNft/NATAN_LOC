@@ -47,20 +47,43 @@ class LogicalVerifier:
         blocked_claims = []
         total_urs = 0.0
         
-        # Build chunk map for quick lookup
-        chunk_map = {chunk.get("chunk_id"): chunk for chunk in chunks}
+        # Build chunk map: chunk_N (1-based index) -> chunk with source_ref
+        # Source IDs use format chunk_1, chunk_2, etc. matching the context notation
+        chunk_map = {}
+        for i, chunk in enumerate(chunks, 1):
+            chunk_id = f"chunk_{i}"  # 1-based index to match source_ids
+            chunk_map[chunk_id] = chunk
         
         for claim in claims:
             # Calculate URS
             urs_score = self.urs_calculator.calculate_from_claim(claim)
             
-            # Add URS to claim
+            # Map source_ids to sourceRefs from chunks
+            source_ids = claim.get("source_ids", [])
+            sourceRefs = []
+            for source_id in source_ids:
+                if source_id in chunk_map:
+                    chunk = chunk_map[source_id]
+                    source_ref = chunk.get("source_ref", {})
+                    if source_ref:
+                        # Build sourceRef object for frontend (camelCase)
+                        sourceRefs.append({
+                            "title": source_ref.get("title", "Documento"),
+                            "url": source_ref.get("url", ""),
+                            "page": source_ref.get("page_number") or source_ref.get("page"),
+                            "type": chunk.get("metadata", {}).get("document_type", "internal"),
+                            "chunk_index": source_ref.get("chunk_index"),
+                            "document_id": source_ref.get("document_id")
+                        })
+            
+            # Add URS to claim (use camelCase for frontend compatibility)
             claim_with_urs = {
                 **claim,
                 "urs": urs_score.score,
-                "urs_label": urs_score.label,
+                "ursLabel": urs_score.label,  # camelCase for frontend
                 "urs_reason": urs_score.reason,
-                "urs_breakdown": urs_score.breakdown
+                "ursBreakdown": urs_score.breakdown,  # camelCase for frontend
+                "sourceRefs": sourceRefs  # Add mapped source references
             }
             
             # Block if URS < 0.5

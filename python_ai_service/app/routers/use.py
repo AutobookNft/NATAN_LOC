@@ -17,6 +17,7 @@ class UseQueryRequest(BaseModel):
 class UseQueryResponse(BaseModel):
     status: str
     question: Optional[str] = None
+    answer: Optional[str] = None  # Natural language answer (main semantic response)
     answer_id: Optional[str] = None
     verified_claims: Optional[List[dict]] = None
     blocked_claims: Optional[List[dict]] = None
