@@ -15,10 +15,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
- * @purpose Model per documenti PA (multi-tenant)
+ * @purpose Model per documenti (multi-tenant, PA & Enterprises)
  *
  * Rappresenta un documento caricato nel sistema NATAN_LOC.
- * Supporta vari tipi di documento (PA acts, contracts, reports, etc.)
+ * Supporta vari tipi di documento: PA acts (delibere, determine, atti),
+ * contratti aziendali, report, documenti legali, scansioni, etc.
+ * Utilizzabile sia da enti PA che da aziende private.
  */
 class PaAct extends Model
 {

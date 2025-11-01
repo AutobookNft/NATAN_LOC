@@ -11,7 +11,11 @@ use Illuminate\Support\Facades\Schema;
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
- * @purpose Creazione tabella pa_acts (documenti PA multi-tenant)
+ * @purpose Creazione tabella pa_acts (documenti multi-tenant, PA & Enterprises)
+ * 
+ * Tabella per documenti caricati nel sistema. Supporta:
+ * - Documenti PA: delibere, determine, atti amministrativi
+ * - Documenti aziendali: contratti, report, documenti legali, etc.
  */
 return new class extends Migration
 {
@@ -38,11 +42,11 @@ return new class extends Migration
             $table->text('description')->nullable(); // Descrizione
             $table->enum('document_type', ['pa_act', 'contract', 'report', 'image_scan', 'other'])->default('pa_act');
 
-            // Info PA (se documento PA)
-            $table->string('issuer')->nullable(); // Ente emittente (es: "Comune di Firenze")
-            $table->string('department')->nullable(); // Ufficio/Dipartimento
-            $table->string('responsible')->nullable(); // Responsabile
-            $table->string('act_category')->nullable(); // Categoria (es: "urbanistica", "finanziaria")
+            // Info ente/azienda (per documenti PA: ente emittente; per aziende: dipartimento/responsabile)
+            $table->string('issuer')->nullable(); // Ente emittente / Azienda (es: "Comune di Firenze" o "Acme Corp")
+            $table->string('department')->nullable(); // Ufficio/Dipartimento/Settore
+            $table->string('responsible')->nullable(); // Responsabile / Referente
+            $table->string('act_category')->nullable(); // Categoria (es: "urbanistica", "finanziaria", "contratti", "legale")
 
             // File e hash
             $table->string('file_path')->nullable(); // Percorso file salvato

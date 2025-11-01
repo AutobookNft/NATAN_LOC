@@ -13,9 +13,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
- * @purpose Model per entità PA (tenants)
+ * @purpose Model per tenant (PA o Enterprise)
  *
- * Rappresenta un tenant/ente PA nel sistema multi-tenant.
+ * Rappresenta un tenant (ente PA o azienda) nel sistema multi-tenant.
+ * NATAN supporta sia Pubblica Amministrazione che Aziende Private.
  */
 class PaEntity extends Model
 {
@@ -55,7 +56,7 @@ class PaEntity extends Model
     }
 
     /**
-     * Get PA acts for this tenant
+     * Get documents (PA acts, contracts, reports, etc.) for this tenant
      */
     public function paActs()
     {

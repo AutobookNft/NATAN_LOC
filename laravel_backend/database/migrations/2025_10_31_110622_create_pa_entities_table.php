@@ -11,7 +11,10 @@ use Illuminate\Support\Facades\Schema;
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
- * @purpose Creazione tabella pa_entities (tenants)
+ * @purpose Creazione tabella pa_entities (tenants - PA & Enterprises)
+ * 
+ * Tabella per tenant multi-tenant. Supporta sia enti PA che aziende private.
+ * Il campo entity_type distingue tra: 'pa', 'company', 'public_entity', 'other'
  */
 return new class extends Migration
 {
@@ -22,7 +25,7 @@ return new class extends Migration
     {
         Schema::create('pa_entities', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // Nome dell'entità (es: "Comune di Firenze")
+            $table->string('name'); // Nome dell'entità (es: "Comune di Firenze" o "Acme Corporation S.r.l.")
             $table->string('slug')->unique(); // Slug per subdomain/route
             $table->string('code')->unique()->nullable(); // Codice identificativo univoco
             $table->enum('entity_type', ['pa', 'company', 'public_entity', 'other'])->default('pa');
