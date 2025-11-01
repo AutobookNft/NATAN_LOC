@@ -120,9 +120,9 @@ export class ChatInterface {
         }
 
         // Suggestions toggle (mobile only)
-        if (this.suggestionsToggle && this.suggestionsContent) {
-            const toggle = this.suggestionsToggle;
-            const content = this.suggestionsContent;
+        const toggle = this.suggestionsToggle;
+        const content = this.suggestionsContent;
+        if (toggle && content) {
             toggle.addEventListener('click', () => {
                 const isExpanded = toggle.getAttribute('aria-expanded') === 'true';
                 if (isExpanded) {
