@@ -18,11 +18,13 @@ export class ChatInterface {
     private suggestionsToggle: HTMLElement | null = null;
     private suggestionsContent: HTMLElement | null = null;
     private messages: Message[] = [];
-    private tenantId: number;
+    private tenantId: number | null;
     private persona: string = 'auto';
     private isLoading: boolean = false;
 
-    constructor(tenantId: number = 1) {
+    constructor(tenantId: number | null = null) {
+        // tenantId viene passato da /api/session o risolto dal backend
+        // Se null, il backend risolverà automaticamente usando TenantResolver
         this.tenantId = tenantId;
         this.findDOMElements();
         this.attachEventListeners();
@@ -141,6 +143,7 @@ export class ChatInterface {
         }
 
         // Suggestion buttons (pre-fill input)
+        // Listen for suggestion clicks (from suggestions panel)
         document.querySelectorAll('[data-suggestion]').forEach((button) => {
             button.addEventListener('click', (e) => {
                 const suggestion = (e.currentTarget as HTMLElement).dataset.suggestion;
@@ -163,6 +166,21 @@ export class ChatInterface {
                 }
             });
         });
+        
+        // Listen for question clicks (from right panel desktop and mobile drawer)
+        document.querySelectorAll('[data-question]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const question = button.getAttribute('data-question');
+                if (question) {
+                    this.sendMessage(question);
+                }
+            });
+        });
+        
+        // Listen for suggestion-clicked event (from mobile drawer)
+        document.addEventListener('suggestion-clicked', ((e: CustomEvent<{ question: string }>) => {
+            this.sendMessage(e.detail.question);
+        }) as EventListener);
     }
 
     /**
@@ -220,24 +238,35 @@ export class ChatInterface {
 
         try {
             // Send USE query
+            // Se tenantId è null, usa 1 come fallback temporaneo
+            // Il backend risolverà il tenant_id corretto usando TenantResolver
             const response: UseQueryResponse = await apiService.sendUseQuery(
                 question,
-                this.tenantId,
+                this.tenantId ?? 1,
                 this.persona
             );
 
             // Add assistant message with natural language answer and verified claims
+            // CRITICAL: NEVER expose blocked_claims to user - they contain invented/false data
+            // Even if backend sends them, we filter them out for security
             const assistantMessage: Message = {
                 id: this.generateId(),
                 role: 'assistant',
                 content: response.answer || this.formatResponse(response),  // Use natural language answer if available
                 timestamp: new Date(),
-                claims: response.verified_claims || [],  // Verified claims with sources (shown as proof below)
-                blockedClaims: response.blocked_claims || [],
+                claims: response.verified_claims || [],  // ONLY verified claims with sources (shown as proof below)
+                blockedClaims: [],  // NEVER expose blocked claims - they contain invented data (security risk)
                 sources: this.extractSources(response),
                 avgUrs: response.avg_urs,
                 verificationStatus: response.verification_status,
+                tokensUsed: response.tokens_used || null,  // Store tokens for cost calculation
+                modelUsed: response.model_used || null,  // Store model for cost calculation
             };
+            
+            // Log blocked claims count for internal monitoring (never show to user)
+            if (response.blocked_claims && response.blocked_claims.length > 0) {
+                console.warn(`[NATAN SECURITY] ${response.blocked_claims.length} claims were blocked (not shown to user for safety)`);
+            }
 
             this.addMessage(assistantMessage);
         } catch (error) {
@@ -254,11 +283,115 @@ export class ChatInterface {
         }
     }
 
+    /**
+     * Send a message programmatically (used by question clicks)
+     */
+    public sendMessage(content: string): void {
+        if (!content.trim() || this.isLoading) {
+            return;
+        }
+        
+        // Set input value and trigger submit
+        this.inputField.value = content;
+        this.autoResizeTextarea();
+        this.inputForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+
     private addMessage(message: Message): void {
         this.messages.push(message);
         const messageElement = MessageComponent.render(message);
         this.messagesContainer.appendChild(messageElement);
         this.scrollToBottom();
+        
+        // Save conversation after each message (user or assistant)
+        // This ensures conversations are saved even if assistant fails to respond
+        this.saveMessageToConversation(message);
+    }
+    
+    /**
+     * Save message to conversation (create or update conversation in natan_chat_messages)
+     * Called after each message (user or assistant) to ensure conversations are always saved
+     */
+    private async saveMessageToConversation(message: Message): Promise<void> {
+        try {
+            // Get current conversation ID or generate new one
+            let conversationId = this.getCurrentConversationId();
+            
+            // Prepare all messages for saving (include tokens and model for cost calculation)
+            const messagesToSave = this.messages.map(msg => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString(),
+                // Include tokens_used and model_used for cost calculation (only for assistant messages)
+                ...(msg.role === 'assistant' && msg.tokensUsed ? {
+                    tokens_used: msg.tokensUsed,
+                    model_used: msg.modelUsed ?? null,
+                } : {}),
+            }));
+
+            // Generate title from first user message if new conversation
+            let title: string | undefined = undefined;
+            if (!conversationId) {
+                const firstUserMessage = this.messages.find(m => m.role === 'user');
+                if (firstUserMessage) {
+                    title = firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '');
+                }
+            }
+
+            // Save conversation
+            console.log('💾 Saving conversation:', {
+                conversationId: conversationId ?? 'new',
+                messageCount: messagesToSave.length,
+                lastMessageRole: message.role,
+                hasTokens: messagesToSave.some(m => m.tokens_used),
+            });
+            
+            const result = await apiService.saveConversation({
+                conversation_id: conversationId ?? undefined,
+                title,
+                persona: this.persona,
+                messages: messagesToSave,
+            });
+
+            console.log('✅ Conversation save result:', result);
+
+            // Update conversation ID if it was created
+            if (result.success && result.conversation) {
+                const savedConversationId = result.conversation.id || result.conversation.session_id;
+                
+                if (!conversationId) {
+                    // Store conversation ID for future saves
+                    this.setCurrentConversationId(savedConversationId);
+                    // Update memory badge count only on new conversation
+                    this.updateMemoryCount();
+                    console.log('📝 New conversation created:', savedConversationId);
+                } else {
+                    console.log('📝 Conversation updated:', conversationId);
+                }
+            } else {
+                console.warn('⚠️ Conversation save returned success=false:', result);
+            }
+        } catch (error) {
+            console.error('❌ Error saving message to conversation:', error);
+            // Don't throw - save failure shouldn't block chat functionality
+            // But log it for debugging
+        }
+    }
+
+    /**
+     * Update memory badge count
+     */
+    private async updateMemoryCount(): Promise<void> {
+        const memoryBadge = document.getElementById('memory-badge');
+        const memoryCount = document.getElementById('memory-count');
+        
+        if (memoryCount) {
+            // TODO: Fetch actual count from API
+            // For now, increment if conversation was saved
+            const currentCount = parseInt(memoryCount.textContent || '0', 10);
+            memoryCount.textContent = (currentCount + 1).toString();
+        }
     }
 
     private formatResponse(response: UseQueryResponse): string {
@@ -329,10 +462,9 @@ export class ChatInterface {
 
     /**
      * Load conversation by conversation_id
-     * TODO: Implement API endpoint to fetch conversation messages
      */
     private async loadConversation(conversationId: string): Promise<void> {
-        console.log('Loading conversation:', conversationId);
+        console.log('📂 Loading conversation:', conversationId);
         
         // Clear current messages
         this.messages = [];
@@ -341,23 +473,70 @@ export class ChatInterface {
         // Show loading state
         this.setLoading(true);
 
-        try {
-            // TODO: Implement API endpoint to fetch conversation messages
-            // For now, just show a placeholder message
-            const placeholderMessage: Message = {
-                id: this.generateId(),
-                role: 'assistant',
-                content: `Caricamento conversazione ${conversationId}...\n\n*Funzionalità in fase di implementazione*`,
-                timestamp: new Date(),
-            };
-            this.addMessage(placeholderMessage);
+        // Hide welcome message
+        if (this.welcomeMessage) {
+            this.welcomeMessage.classList.add('hidden');
+        }
 
-            // Hide welcome message
-            if (this.welcomeMessage) {
-                this.welcomeMessage.classList.add('hidden');
+        try {
+            // Fetch conversation from API
+            const result = await apiService.getConversation(conversationId);
+
+            if (!result.success || !result.conversation) {
+                throw new Error(result.message || 'Conversazione non trovata');
             }
+
+            const conversation = result.conversation;
+            console.log('✅ Conversation loaded:', {
+                id: conversation.id,
+                messageCount: conversation.messages?.length || 0,
+            });
+
+            // Set current conversation ID
+            this.setCurrentConversationId(conversationId);
+
+            // Load messages
+            if (conversation.messages && conversation.messages.length > 0) {
+                // Clear messages array before adding loaded ones
+                this.messages = [];
+
+                // Add each message to the chat
+                for (const msg of conversation.messages) {
+                    const message: Message = {
+                        id: msg.id || this.generateId(),
+                        role: msg.role,
+                        content: msg.content,
+                        timestamp: new Date(msg.timestamp),
+                        tokensUsed: msg.tokens_used ? {
+                            input: msg.tokens_used.input || 0,
+                            output: msg.tokens_used.output || 0,
+                        } : null,
+                        modelUsed: msg.model_used || null,
+                        // Claims and sources are not stored in DB, so they won't be restored
+                        // This is expected behavior - only the conversation text is preserved
+                    };
+
+                    this.messages.push(message);
+                    const messageElement = MessageComponent.render(message);
+                    this.messagesContainer.appendChild(messageElement);
+                }
+
+                // Scroll to bottom after loading all messages
+                this.scrollToBottom();
+
+                console.log(`✅ Loaded ${conversation.messages.length} messages`);
+            } else {
+                console.warn('⚠️ Conversation has no messages');
+            }
+
+            // Update persona if available
+            if (conversation.persona && this.personaSelector) {
+                this.personaSelector.value = conversation.persona;
+                this.persona = conversation.persona;
+            }
+
         } catch (error) {
-            console.error('Error loading conversation:', error);
+            console.error('❌ Error loading conversation:', error);
             const errorMessage: Message = {
                 id: this.generateId(),
                 role: 'assistant',
@@ -417,12 +596,20 @@ export class ChatInterface {
         return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
+    private currentConversationId: string | null = null;
+
     /**
      * Get current conversation ID (if loaded)
      */
     public getCurrentConversationId(): string | null {
-        // TODO: Track current conversation ID when loading
-        return null;
+        return this.currentConversationId;
+    }
+
+    /**
+     * Set current conversation ID
+     */
+    public setCurrentConversationId(conversationId: string | null): void {
+        this.currentConversationId = conversationId;
     }
 
     /**
