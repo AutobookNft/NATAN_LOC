@@ -1,15 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @package App\Models
+ * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
+ * @version 1.0.0 (NATAN_LOC)
+ * @date 2025-11-02
+ * @purpose Model per memorie utente NATAN con isolamento multi-tenant
+ */
 class NatanUserMemory extends Model {
-    use HasFactory;
+    use HasFactory, TenantScoped;
 
     protected $fillable = [
+        'tenant_id',
         'user_id',
         'memory_content',
         'memory_type',
