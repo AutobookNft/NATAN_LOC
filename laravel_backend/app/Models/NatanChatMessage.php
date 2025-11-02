@@ -1,47 +1,37 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * NatanChatMessage Model
- * 
- * Stores N.A.T.A.N. chat conversation history with multi-persona support
- * 
- * @property int $id
- * @property int $user_id
- * @property string $session_id
- * @property string $role
- * @property string $content
- * @property string|null $persona_id
- * @property string|null $persona_name
- * @property float|null $persona_confidence
- * @property string|null $persona_selection_method
- * @property string|null $persona_reasoning
- * @property array|null $persona_alternatives
- * @property array|null $rag_sources
- * @property int $rag_acts_count
- * @property string|null $rag_method
- * @property string|null $ai_model
- * @property int|null $tokens_input
- * @property int|null $tokens_output
- * @property int|null $response_time_ms
- * @property bool|null $was_helpful
- * @property string|null $user_feedback
- * @property \Carbon\Carbon $created_at
- * @property \Carbon\Carbon $updated_at
+ * @package App\Models
+ * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
+ * @version 1.0.0 (NATAN_LOC)
+ * @date 2025-11-01
+ * @purpose Model per messaggi chat NATAN (usa tabella esistente natan_chat_messages da EGI)
  */
-class NatanChatMessage extends Model {
+class NatanChatMessage extends Model
+{
+    use TenantScoped;
+
     protected $table = 'natan_chat_messages';
 
+    // CRITICAL: Use existing FlorenceEGI MySQL database
+    protected $connection = 'mysql';
+
     protected $fillable = [
+        'tenant_id',
         'user_id',
+        'project_id',
         'session_id',
         'role',
         'content',
-        'reference_message_id', // Track elaborations/iterations
+        'reference_message_id',
         'persona_id',
         'persona_name',
         'persona_confidence',
@@ -51,11 +41,11 @@ class NatanChatMessage extends Model {
         'rag_sources',
         'rag_acts_count',
         'rag_method',
-        'web_search_enabled', // NEW v3.0
-        'web_search_provider', // NEW v3.0
-        'web_search_results', // NEW v3.0
-        'web_search_count', // NEW v3.0
-        'web_search_from_cache', // NEW v3.0
+        'web_search_enabled',
+        'web_search_provider',
+        'web_search_results',
+        'web_search_count',
+        'web_search_from_cache',
         'ai_model',
         'tokens_input',
         'tokens_output',
@@ -69,10 +59,10 @@ class NatanChatMessage extends Model {
         'persona_alternatives' => 'array',
         'rag_sources' => 'array',
         'rag_acts_count' => 'integer',
-        'web_search_enabled' => 'boolean', // NEW v3.0
-        'web_search_results' => 'array', // NEW v3.0
-        'web_search_count' => 'integer', // NEW v3.0
-        'web_search_from_cache' => 'boolean', // NEW v3.0
+        'web_search_enabled' => 'boolean',
+        'web_search_results' => 'array',
+        'web_search_count' => 'integer',
+        'web_search_from_cache' => 'boolean',
         'tokens_input' => 'integer',
         'tokens_output' => 'integer',
         'response_time_ms' => 'integer',
@@ -84,126 +74,60 @@ class NatanChatMessage extends Model {
     /**
      * Get the user who sent/received this message
      */
-    public function user(): BelongsTo {
+    public function user(): BelongsTo
+    {
         return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Get the original message this is elaborating on (if any)
-     */
-    public function referenceMessage(): BelongsTo {
-        return $this->belongsTo(NatanChatMessage::class, 'reference_message_id');
-    }
-
-    /**
-     * Get all elaborations of this message
-     */
-    public function elaborations() {
-        return $this->hasMany(NatanChatMessage::class, 'reference_message_id');
     }
 
     /**
      * Scope to get messages from a specific session
      */
-    public function scopeForSession($query, string $sessionId) {
+    public function scopeForSession($query, string $sessionId)
+    {
         return $query->where('session_id', $sessionId);
     }
 
     /**
      * Scope to get messages for a specific user
      */
-    public function scopeForUser($query, int $userId) {
+    public function scopeForUser($query, int $userId)
+    {
         return $query->where('user_id', $userId);
     }
 
     /**
-     * Scope to get only user messages
+     * Calculate total tokens for a session
      */
-    public function scopeUserMessages($query) {
-        return $query->where('role', 'user');
+    public static function getTotalTokensForSession(string $sessionId): int
+    {
+        return static::where('session_id', $sessionId)
+            ->where('role', 'assistant')
+            ->get()
+            ->sum(function ($msg) {
+                return ($msg->tokens_input ?? 0) + ($msg->tokens_output ?? 0);
+            });
     }
 
     /**
-     * Scope to get only assistant messages
+     * Get total cost for a session (calculate from tokens)
      */
-    public function scopeAssistantMessages($query) {
-        return $query->where('role', 'assistant');
-    }
+    public static function getTotalCostForSession(string $sessionId, ?string $model = null): float
+    {
+        $messages = static::where('session_id', $sessionId)
+            ->where('role', 'assistant')
+            ->get();
 
-    /**
-     * Scope to get messages by persona
-     */
-    public function scopeByPersona($query, string $personaId) {
-        return $query->where('persona_id', $personaId);
-    }
-
-    /**
-     * Scope to get recent messages (last N hours)
-     */
-    public function scopeRecent($query, int $hours = 24) {
-        return $query->where('created_at', '>=', now()->subHours($hours));
-    }
-
-    /**
-     * Check if this is an assistant message
-     */
-    public function isAssistant(): bool {
-        return $this->role === 'assistant';
-    }
-
-    /**
-     * Check if this is a user message
-     */
-    public function isUser(): bool {
-        return $this->role === 'user';
-    }
-
-    /**
-     * Get persona display info
-     */
-    public function getPersonaInfo(): ?array {
-        if (!$this->persona_id) {
-            return null;
+        $totalCost = 0.0;
+        foreach ($messages as $msg) {
+            if ($msg->tokens_input || $msg->tokens_output) {
+                $cost = \App\Services\CostCalculator::calculateCost([
+                    'input' => $msg->tokens_input ?? 0,
+                    'output' => $msg->tokens_output ?? 0,
+                ], $msg->ai_model ?? $model);
+                $totalCost += $cost;
+            }
         }
 
-        return [
-            'id' => $this->persona_id,
-            'name' => $this->persona_name,
-            'confidence' => $this->persona_confidence,
-            'method' => $this->persona_selection_method,
-            'reasoning' => $this->persona_reasoning,
-            'alternatives' => $this->persona_alternatives,
-        ];
-    }
-
-    /**
-     * Get RAG info
-     */
-    public function getRagInfo(): ?array {
-        if ($this->rag_acts_count === 0) {
-            return null;
-        }
-
-        return [
-            'method' => $this->rag_method,
-            'acts_count' => $this->rag_acts_count,
-            'sources' => $this->rag_sources,
-        ];
-    }
-
-    /**
-     * Get API usage stats
-     */
-    public function getApiStats(): ?array {
-        if (!$this->ai_model) {
-            return null;
-        }
-
-        return [
-            'model' => $this->ai_model,
-            'tokens_input' => $this->tokens_input,
-            'tokens_output' => $this->tokens_output,
-            'response_time_ms' => $this->response_time_ms,
-        ];
+        return $totalCost;
     }
 }
