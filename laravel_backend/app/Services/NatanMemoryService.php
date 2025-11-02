@@ -36,12 +36,26 @@ class NatanMemoryService {
 
     /**
      * Salva una nuova memoria per l'utente
+     * 
+     * @param int $userId ID utente
+     * @param string $content Contenuto da memorizzare
+     * @param string $type Tipo memoria (default: 'general')
+     * @param int|null $tenantId ID tenant (opzionale, viene risolto automaticamente se null)
+     * @return NatanUserMemory
      */
-    public function storeMemory(int $userId, string $content, string $type = 'general'): NatanUserMemory {
+    public function storeMemory(int $userId, string $content, string $type = 'general', ?int $tenantId = null): NatanUserMemory {
         // Estrai keywords
         $keywords = $this->extractKeywords($content);
+        
+        // Risolvi tenant_id se non fornito (tramite TenantScoped trait)
+        if ($tenantId === null) {
+            $tenantId = app()->bound('currentTenantId') 
+                ? app('currentTenantId') 
+                : \App\Resolvers\TenantResolver::resolve();
+        }
 
         return NatanUserMemory::create([
+            'tenant_id' => $tenantId,
             'user_id' => $userId,
             'memory_content' => $content,
             'memory_type' => $type,
