@@ -6,7 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\NatanChatMessage;
 use App\Models\NatanUserMemory;
-use App\Models\PaEntity;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Resolvers\TenantResolver;
 use App\Providers\TenantServiceProvider;
@@ -34,8 +34,8 @@ class TenantIsolationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private PaEntity $tenant1;
-    private PaEntity $tenant2;
+    private Tenant $tenant1;
+    private Tenant $tenant2;
     private User $user1;
     private User $user2;
 
@@ -47,17 +47,17 @@ class TenantIsolationTest extends TestCase
         parent::setUp();
 
         // Crea tenant di test
-        $this->tenant1 = PaEntity::create([
+        $this->tenant1 = Tenant::create([
             'name' => 'Comune Test 1',
             'slug' => 'test1',
-            'domain' => 'test1.natan.loc',
+            'entity_type' => 'pa',
             'is_active' => true,
         ]);
 
-        $this->tenant2 = PaEntity::create([
-            'name' => 'Comune Test 2',
+        $this->tenant2 = Tenant::create([
+            'name' => 'Azienda Test 2',
             'slug' => 'test2',
-            'domain' => 'test2.natan.loc',
+            'entity_type' => 'company',
             'is_active' => true,
         ]);
 
