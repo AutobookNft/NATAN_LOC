@@ -11,27 +11,20 @@ use App\Services\Menu\MenuItem;
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
  * @version 1.0.0 (NATAN_LOC)
  * @date 2025-10-31
- * @purpose Menu item for AI Costs monitoring dashboard
+ * @purpose Menu item for Chat interface (Main NATAN feature)
  */
-class NatanAiCostsMenu extends MenuItem
+class NatanChatMenu extends MenuItem
 {
     public function __construct()
     {
         parent::__construct(
-            translationKey: 'menu.natan_ai_costs',
-            route: 'natan.ai-costs.dashboard',
-            icon: 'currency-dollar',
-            permission: null // Accessible to all NATAN users
+            translationKey: 'menu.natan_chat',
+            route: 'natan.chat',
+            icon: 'chat-bubble-left-right',
+            permission: 'access_natan'
         );
     }
 }
-
-
-
-
-
-
-
 
 
 

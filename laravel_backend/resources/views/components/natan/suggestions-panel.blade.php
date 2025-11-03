@@ -15,37 +15,15 @@
 @endphp
 
 <div class="w-full max-w-2xl">
-    @if($collapsible)
-        {{-- Mobile: Collapsible header --}}
-        <button
-            id="suggestions-toggle"
-            type="button"
-            class="sm:hidden mb-2 flex w-full items-center justify-between rounded-lg bg-natan-gray-100 p-2 transition-colors hover:bg-natan-gray-200"
-            aria-expanded="false"
-            aria-controls="suggestions-content"
-        >
-            <div class="flex items-center gap-2">
-                <x-natan.icon name="chat-bubble-left-right" class="w-4 h-4 text-natan-green" />
-                <span class="text-xs font-medium text-natan-gray-700">
-                    {{ __('natan.suggestions.title') }}
-                </span>
-            </div>
-            <x-natan.icon name="chevron-down" class="w-4 h-4 text-natan-gray-500 transition-transform" />
-        </button>
-        
-        {{-- Desktop: Always visible header --}}
-        <div class="hidden sm:flex sm:items-center sm:justify-between sm:mb-3">
-            <p class="text-sm font-medium text-natan-gray-700">
-                {{ __('natan.suggestions.title') }}:
-            </p>
-        </div>
-    @endif
+    {{-- MOBILE-FIRST: Header sempre visibile --}}
+    <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-medium text-natan-gray-700">
+            {{ __('natan.suggestions.title') }}:
+        </p>
+    </div>
     
-    {{-- Suggestions Content (hidden on mobile by default if collapsible) --}}
-    <div
-        id="suggestions-content"
-        class="{{ $collapsible ? 'hidden sm:block' : 'block' }}"
-    >
+    {{-- MOBILE-FIRST: Suggestions Content SEMPRE VISIBILE --}}
+    <div class="block">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
             @foreach($suggestions as $suggestion)
                 <button
@@ -62,4 +40,5 @@
         </div>
     </div>
 </div>
+
 

@@ -1,6 +1,9 @@
 @props([
     'showSuggestions' => true,
     'showConsultants' => true,
+    'suggestedQuestions' => [],
+    'strategicQuestionsLibrary' => [],
+    'totalConversations' => 0,
 ])
 
 <div class="flex-1 flex flex-col bg-white overflow-hidden">
@@ -22,21 +25,27 @@
             </div>
             
             <div class="flex items-center gap-2">
-                {{-- Trust Badges (mobile: collapsed, desktop: expanded) --}}
-                <div class="hidden sm:flex items-center gap-2">
-                    <x-natan.trust-badge type="zero-leak" size="mini" />
-                    <x-natan.trust-badge type="multi-tenant" size="mini" />
-                </div>
-                
-                {{-- Mobile: solo icona trust --}}
+                {{-- Icona Domande Strategiche (mobile-first: visibile sempre) --}}
                 <button
                     type="button"
-                    class="sm:hidden p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                    aria-label="Sicurezza dati"
-                    title="Zero-Leak Perimetrale"
+                    id="questions-toggle-btn"
+                    class="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                    aria-label="Domande strategiche"
+                    aria-expanded="false"
                 >
-                    <x-natan.icon name="lock-closed" class="w-4 h-4 text-white" />
+                    <x-natan.icon name="light-bulb" class="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </button>
+                
+                {{-- Trust Badges + Memory Badge: VISIBILI SU MOBILE (mobile-first!) --}}
+                <div class="flex items-center gap-1 sm:gap-2">
+                    {{-- Memory Badge (lampadina) --}}
+                    <x-natan.memory-badge :count="$totalConversations" size="mini" />
+                    
+                    {{-- Trust Badges --}}
+                    <x-natan.trust-badge type="zero-leak" size="mini" />
+                    <x-natan.trust-badge type="multi-tenant" size="mini" />
+                    <x-natan.trust-badge type="blockchain" size="mini" />
+                </div>
             </div>
         </div>
     </div>
@@ -64,9 +73,9 @@
                     Posso aiutarti ad analizzare i tuoi documenti. Prova a chiedermi qualcosa!
                 </p>
                 
-                {{-- Suggested Questions (collapsible on mobile) --}}
-                @if($showSuggestions)
-                    <x-natan.suggestions-panel />
+                {{-- Chat pulita: solo suggerimenti base (max 3-4) --}}
+                @if($showSuggestions && !empty($suggestedQuestions))
+                    <x-natan.suggestions-panel :suggestions="array_slice($suggestedQuestions, 0, 4)" :collapsible="true" />
                 @endif
             </div>
         </div>
@@ -77,4 +86,10 @@
     {{-- Input Area (fixed bottom) --}}
     <x-natan.chat-input />
 </div>
+
+{{-- Modal/Drawer per Domande Strategiche (si apre con icona header [🧠]) - MOBILE ONLY --}}
+<x-natan.questions-modal 
+    :suggestedQuestions="$suggestedQuestions ?? []" 
+    :strategicQuestionsLibrary="$strategicQuestionsLibrary ?? []" 
+/>
 

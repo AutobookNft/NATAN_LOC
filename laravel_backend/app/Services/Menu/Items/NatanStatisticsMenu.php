@@ -26,3 +26,15 @@ class NatanStatisticsMenu extends MenuItem
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
