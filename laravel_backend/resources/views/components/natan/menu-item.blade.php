@@ -8,8 +8,21 @@
     $href = $item->getHref();
     $attributes = $item->getHtmlAttributes();
     $iconName = $item->icon;
+    
+    // Verifica permission se specificata
+    $hasPermission = true;
+    if ($item->permission && auth()->check()) {
+        // Verifica ruolo: admin, superadmin o pa_entity_admin
+        if ($item->permission === 'admin') {
+            $hasPermission = auth()->user()->hasAnyRole(['admin', 'superadmin', 'pa_entity_admin']);
+        } else {
+            // Altri permessi (access_natan, etc.)
+            $hasPermission = auth()->user()->hasPermissionTo($item->permission);
+        }
+    }
 @endphp
 
+@if($hasPermission)
 <a
     href="{{ $href }}"
     @foreach($attributes as $key => $value)
@@ -25,4 +38,17 @@
     @endif
     <span>{{ $item->name }}</span>
 </a>
+@endif
+
+
+
+
+
+
+
+
+
+
+
+
 
