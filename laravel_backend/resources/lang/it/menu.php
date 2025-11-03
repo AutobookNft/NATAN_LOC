@@ -9,6 +9,9 @@
  */
 
 return [
+    // === Chat Section (Main Feature) ===
+    'natan_chat' => 'Chat',
+    
     // === NATAN Management Group ===
     'natan_management' => 'Gestione NATAN',
 
@@ -28,5 +31,18 @@ return [
     
     // === Costs Section ===
     'natan_ai_costs' => 'Costi AI',
+    
+    // === Tenants Section ===
+    'natan_tenants' => 'Tenant (PA & Aziende)',
+    
+    // === Superadmin Section ===
+    'superadmin' => 'Superadmin',
+    
+    // === Admin Section ===
+    'admin' => 'Admin',
+    'users' => 'Utenti',
+    'admin_config' => 'Configurazioni Tenant',
 ];
+
+
 
