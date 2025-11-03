@@ -15,8 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenancy' => \App\Http\Middleware\InitializeTenancy::class,
         ]);
 
-        // Register tenancy middleware globally (or apply to specific routes)
-        // Per ora non globale, applicare manualmente alle route che ne hanno bisogno
+        // Registra il middleware tenancy nel gruppo web per inizializzare il tenant
+        // Viene eseguito dopo l'autenticazione, quindi Auth::user() è disponibile
+        // Usiamo 'web' group invece di append globale per avere più controllo sull'ordine
+        $middleware->web(append: [
+            \App\Http\Middleware\InitializeTenancy::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
