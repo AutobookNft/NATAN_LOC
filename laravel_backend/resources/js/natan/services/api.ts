@@ -168,12 +168,78 @@ export class ApiService {
             return false;
         }
     }
+
+    /**
+     * Save conversation to Laravel backend
+     */
+    async saveConversation(data: {
+        conversation_id?: string;
+        title?: string;
+        persona?: string;
+        messages: Array<{
+            id: string;
+            role: 'user' | 'assistant';
+            content: string;
+            timestamp: string | Date;
+        }>;
+    }): Promise<any> {
+        // Call Laravel backend (not Python FastAPI)
+        const laravelUrl = window.location.origin;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        // Usa /natan/conversations/save invece di /api/natan/ per evitare problemi nginx
+        const response = await fetch(`${laravelUrl}/natan/conversations/save`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            },
+            body: JSON.stringify({
+                ...data,
+                messages: data.messages.map(msg => ({
+                    ...msg,
+                    timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : msg.timestamp,
+                })),
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(error.message || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Get conversation from Laravel backend
+     */
+    async getConversation(conversationId: string): Promise<any> {
+        const laravelUrl = window.location.origin;
+
+        // Usa /natan/conversations/ invece di /api/natan/ per evitare problemi nginx
+        const response = await fetch(`${laravelUrl}/natan/conversations/${conversationId}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(error.message || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
 }
 
 // Singleton instance
-// Python FastAPI service runs on port 9000
+// Python FastAPI service runs on port 8001
+// Can be overridden via VITE_API_BASE_URL env variable
 export const apiService = new ApiService({
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:9000',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001',
     timeout: 120000,
 });
 

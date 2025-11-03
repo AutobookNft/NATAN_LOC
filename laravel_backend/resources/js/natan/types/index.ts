@@ -12,6 +12,14 @@ export interface Message {
     sources?: Source[];
     avgUrs?: number;
     verificationStatus?: 'SAFE' | 'WARNING' | 'BLOCKED';
+    tokensUsed?: {
+        input: number;
+        output: number;
+        total?: number;
+        prompt?: number;
+        completion?: number;
+    } | null;
+    modelUsed?: string | null;
 }
 
 export interface Claim {

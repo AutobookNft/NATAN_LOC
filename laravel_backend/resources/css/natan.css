@@ -2,17 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile Questions Drawer - Details Chevron Animation */
+@layer utilities {
+  details[open] .details-chevron {
+    transform: rotate(180deg);
+  }
+  
+  /* CRITICAL: Ensure mobile drawer is NEVER visible on desktop (xl breakpoint) */
+  @media (min-width: 1280px) {
+    #mobile-questions-drawer,
+    #mobile-questions-overlay,
+    #mobile-questions-toggle {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+      z-index: -1 !important;
+    }
+  }
+  
+  /* Force drawer closed by default on ALL screen sizes - NEVER visible unless explicitly opened */
+  #mobile-questions-drawer {
+    transform: translateX(100%) !important;
+    display: none !important;
+  }
+  
+  /* Only show drawer on mobile when explicitly opened (not translate-x-full class) */
+  @media (max-width: 1279px) {
+    #mobile-questions-drawer.translate-x-full {
+      transform: translateX(100%) !important;
+      display: flex !important; /* Need flex for layout but still off-screen */
+    }
+    
+    #mobile-questions-drawer:not(.translate-x-full):not(.hidden) {
+      transform: translateX(0) !important;
+      display: flex !important;
+    }
+  }
+}
+
 /* NATAN Base Styles - Mobile First */
 @layer base {
   /* Typography defaults */
   body {
-    @apply font-sans text-natan-gray-700 bg-natan-gray-50;
+    @apply font-sans text-gray-700 bg-gray-50;
     font-size: 14px;
     line-height: 1.6;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-institutional font-bold text-natan-gray-900;
+    @apply font-institutional font-bold text-gray-900;
   }
 
   h1 {

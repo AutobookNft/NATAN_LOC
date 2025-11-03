@@ -21,10 +21,57 @@ export class MessageComponent {
     const bubble = document.createElement('div');
     // Mobile-first: full width on mobile, max-w-3xl on desktop
     // Animazione subtle su mobile per feedback visivo
-    bubble.className = `w-full sm:max-w-3xl rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm transition-shadow ${message.role === 'user'
+    bubble.className = `w-full sm:max-w-3xl rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm transition-shadow relative ${message.role === 'user'
       ? 'bg-natan-blue text-white ml-auto hover:shadow-md'
       : 'bg-white text-natan-gray-900 border border-natan-gray-300 hover:shadow-md'
       }`;
+
+    // Copy button (only for assistant messages)
+    if (message.role === 'assistant' && message.content) {
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-natan-gray-100 hover:bg-natan-gray-200 text-natan-gray-600 hover:text-natan-blue-dark transition-colors opacity-0 group-hover:opacity-100';
+      copyButton.setAttribute('aria-label', 'Copia risposta');
+      copyButton.setAttribute('title', 'Copia risposta');
+      
+      // Use SVG icon for clipboard
+      copyButton.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+        </svg>
+      `;
+      
+      copyButton.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(message.content || '');
+          // Visual feedback
+          const originalHTML = copyButton.innerHTML;
+          copyButton.innerHTML = `
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          `;
+          copyButton.classList.add('text-green-600');
+          setTimeout(() => {
+            copyButton.innerHTML = originalHTML;
+            copyButton.classList.remove('text-green-600');
+          }, 2000);
+        } catch (err) {
+          console.error('Failed to copy:', err);
+          // Fallback: select text
+          const textArea = document.createElement('textarea');
+          textArea.value = message.content || '';
+          document.body.appendChild(textArea);
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+      });
+      
+      bubble.appendChild(copyButton);
+      bubble.classList.add('group'); // Add group class for hover effect
+    }
 
     // Message content (main natural language answer)
     if (message.content) {
@@ -71,34 +118,11 @@ export class MessageComponent {
       bubble.appendChild(claimsSection);
     }
 
-    // Blocked claims (mobile-first styling)
-    if (message.role === 'assistant' && message.blockedClaims?.length) {
-      const blockedSection = document.createElement('div');
-      blockedSection.className = 'mt-3 sm:mt-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg';
-      blockedSection.setAttribute('role', 'alert');
-      blockedSection.setAttribute('aria-label', 'Claim bloccati');
-      
-      const header = document.createElement('p');
-      header.className = 'font-institutional font-semibold text-red-800 text-sm sm:text-base';
-      header.textContent = 'Claim Bloccati';
-      blockedSection.appendChild(header);
-      
-      const description = document.createElement('p');
-      description.className = 'text-xs sm:text-sm text-red-600 mt-1.5 sm:mt-2 leading-relaxed';
-      description.textContent = 'I seguenti claim sono stati bloccati perché non soddisfano i requisiti di affidabilità minimi (URS < 0.5).';
-      blockedSection.appendChild(description);
-      
-      const list = document.createElement('ul');
-      list.className = 'mt-2 sm:mt-3 space-y-1.5 text-xs sm:text-sm text-red-700 list-disc list-inside';
-      message.blockedClaims.forEach(claim => {
-        const li = document.createElement('li');
-        li.textContent = this.escapeHtml(claim.text || '');
-        list.appendChild(li);
-      });
-      blockedSection.appendChild(list);
-      
-      bubble.appendChild(blockedSection);
-    }
+    // CRITICAL: NON mostrare claim bloccati all'utente
+    // Anche se bloccati, contengono dati potenzialmente inventati che potrebbero essere interpretati come veri
+    // Questo è un rischio legale/pericolo per la PA - meglio non esporre informazioni non verificate
+    // I claim bloccati vengono loggati internamente ma NON mostrati all'utente
+    // Se ci sono solo claim bloccati, la risposta viene già bloccata dal backend
 
     // Sources (mobile-first with better link styling)
     if (message.role === 'assistant' && message.sources?.length) {
