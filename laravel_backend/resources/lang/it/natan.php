@@ -7,6 +7,10 @@ return [
         'send_aria' => 'Invia messaggio',
     ],
     
+    'sidebar' => [
+        'chat' => 'Chat',
+    ],
+    
     'history' => [
         'title' => 'Cronologia Chat',
         'empty' => 'Nessuna conversazione precedente',
@@ -37,6 +41,33 @@ return [
     'tabs' => [
         'questions' => 'Domande',
         'explanations' => 'Spiegazioni',
+    ],
+    
+    'questions' => [
+        'title' => 'Domande Strategiche',
+        'close' => 'Chiudi',
+        'suggested' => 'Suggerite',
+        'all' => 'Tutte',
+        'all_categories' => 'Tutte le categorie',
+        'no_suggestions' => 'Nessuna domanda suggerita disponibile',
+        'no_questions' => 'Nessuna domanda disponibile',
+    ],
+    
+    'categories' => [
+        'strategic' => 'Strategia',
+        'technical' => 'Tecnico',
+        'financial' => 'Finanziario',
+        'legal' => 'Legale',
+        'urban_social' => 'Urban & Social',
+        'communication' => 'Comunicazione',
+        'search_classification' => 'Ricerca & Classificazione',
+        'temporal_analysis' => 'Analisi Temporale',
+        'compliance_normativa' => 'Compliance & Normativa',
+        'anomalies_control' => 'Anomalie & Controllo',
+        'synthesis_reporting' => 'Sintesi & Reporting',
+        'relationships_links' => 'Relazioni & Collegamenti',
+        'decision_support' => 'Supporto Decisionale',
+        'power_questions' => 'Power Questions',
     ],
     
     'explanations' => [
@@ -75,5 +106,62 @@ return [
     
     'gdpr' => [
         'data_info' => 'I tuoi dati sono protetti e isolati',
+    ],
+    
+    'scrapers' => [
+        'title' => 'Web Scrapers Python',
+        'description' => 'Configura e gestisci l\'acquisizione automatica di atti pubblici da fonti web esterne con import MongoDB.',
+        'stats' => [
+            'total_scrapers' => 'Scraper Disponibili',
+            'available' => 'Scraper Disponibili',
+            'total_documents' => 'Documenti in MongoDB',
+        ],
+        'actions' => [
+            'view' => 'Visualizza',
+            'execute' => 'Esegui',
+            'preview' => 'Anteprima',
+        ],
+        'empty' => [
+            'title' => 'Nessun Scraper Configurato',
+            'description' => 'Nessuno scraper Python disponibile al momento.',
+        ],
+        'gdpr' => [
+            'title' => 'GDPR Compliance',
+            'description' => 'Tutti gli scraper operano esclusivamente su dati pubblici resi disponibili dalle PA ai sensi del D.Lgs 33/2013 (Trasparenza Amministrativa). I campi PII vengono automaticamente sanitizzati prima del salvataggio.',
+        ],
+        'import' => [
+            'title' => 'Import MongoDB',
+            'description' => 'Configura ed esegui lo scraper Python con opzioni di dry-run, import MongoDB, download PDF e tracking costi.',
+            'year_single' => 'Anno Singolo',
+            'year_range' => 'Range Anni (es: 2023-2024)',
+            'year_placeholder' => 'Es: 2024',
+        ],
+        'options' => [
+            'dry_run' => 'Dry Run',
+            'dry_run_desc' => 'Simula senza salvare',
+            'mongodb_import' => 'Import MongoDB',
+            'mongodb_import_desc' => 'Importa in MongoDB',
+            'download_pdfs' => 'Download PDFs',
+            'download_pdfs_desc' => 'Scarica file PDF',
+            'tenant_id' => 'Tenant ID',
+        ],
+        'results' => [
+            'title' => 'Risultati Esecuzione',
+        ],
+        'loading' => 'Esecuzione in corso...',
+        'error' => [
+            'title' => 'Errore',
+        ],
+        'info' => [
+            'configuration' => 'Configurazione',
+            'source' => 'Fonte',
+            'description' => 'Descrizione',
+            'base_url' => 'URL Base',
+            'script' => 'Script Python',
+            'gdpr' => 'Conformità GDPR',
+            'legal_basis' => 'Base Legale',
+            'data_type' => 'Tipo Dati',
+            'public_data' => 'Dati Pubblici',
+        ],
     ],
 ];

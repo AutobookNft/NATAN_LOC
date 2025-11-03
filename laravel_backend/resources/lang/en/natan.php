@@ -7,6 +7,10 @@ return [
         'send_aria' => 'Send message',
     ],
     
+    'sidebar' => [
+        'chat' => 'Chat',
+    ],
+    
     'history' => [
         'title' => 'Chat History',
         'empty' => 'No previous conversations',
@@ -37,6 +41,33 @@ return [
     'tabs' => [
         'questions' => 'Questions',
         'explanations' => 'Explanations',
+    ],
+    
+    'questions' => [
+        'title' => 'Strategic Questions',
+        'close' => 'Close',
+        'suggested' => 'Suggested',
+        'all' => 'All',
+        'all_categories' => 'All Categories',
+        'no_suggestions' => 'No suggested questions available',
+        'no_questions' => 'No questions available',
+    ],
+    
+    'categories' => [
+        'strategic' => 'Strategic',
+        'technical' => 'Technical',
+        'financial' => 'Financial',
+        'legal' => 'Legal',
+        'urban_social' => 'Urban & Social',
+        'communication' => 'Communication',
+        'search_classification' => 'Search & Classification',
+        'temporal_analysis' => 'Temporal Analysis',
+        'compliance_normativa' => 'Compliance & Regulatory',
+        'anomalies_control' => 'Anomalies & Control',
+        'synthesis_reporting' => 'Synthesis & Reporting',
+        'relationships_links' => 'Relationships & Links',
+        'decision_support' => 'Decision Support',
+        'power_questions' => 'Power Questions',
     ],
     
     'explanations' => [

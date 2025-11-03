@@ -16,13 +16,20 @@
         {{-- Mobile Drawer (hidden by default) --}}
         <x-natan.mobile-drawer :menus="$menus" :chatHistory="$chatHistory" />
 
-        {{-- Chat Container (main content) --}}
+        {{-- Chat Container (main content) - MOBILE-FIRST: contiene TUTTO su mobile --}}
         <div class="flex flex-col flex-1 min-w-0">
-            {{-- Chat Interface --}}
-            <x-natan.chat-interface />
+            {{-- Chat Interface - MOBILE-FIRST: domande, suggerimenti, trust badges sempre visibili --}}
+            <x-natan.chat-interface 
+                :suggestedQuestions="$suggestedQuestions ?? []" 
+                :strategicQuestionsLibrary="$strategicQuestionsLibrary ?? []" 
+                :totalConversations="$totalConversations ?? 0" 
+            />
         </div>
 
+        {{-- Mobile: Questions & Explanations Drawer --}}
+        <x-natan.questions-explainer-mobile :suggestedQuestions="$suggestedQuestions ?? []" :strategicQuestionsLibrary="$strategicQuestionsLibrary ?? []" />
+
         {{-- Right Panel (Desktop only) --}}
-        <x-natan.right-panel />
+        <x-natan.right-panel :suggestedQuestions="$suggestedQuestions ?? []" :strategicQuestionsLibrary="$strategicQuestionsLibrary ?? []" />
     </div>
 </x-natan.layout>
