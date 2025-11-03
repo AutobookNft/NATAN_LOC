@@ -15,6 +15,11 @@ class CreateTenantsTable extends Migration
      */
     public function up(): void
     {
+        // Skip if tenants already exists OR if pa_entities exists (will be renamed to tenants later)
+        if (Schema::hasTable('tenants') || Schema::hasTable('pa_entities')) {
+            return;
+        }
+        
         Schema::create('tenants', function (Blueprint $table) {
             $table->string('id')->primary();
 
