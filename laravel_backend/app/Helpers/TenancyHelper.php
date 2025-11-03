@@ -4,34 +4,47 @@ declare(strict_types=1);
 
 namespace App\Helpers;
 
-use App\Models\PaEntity;
+use App\Models\Tenant;
 
 /**
  * @package App\Helpers
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
  * @version 1.0.0 (NATAN_LOC)
- * @date 2025-10-31
+ * @date 2025-11-02
  * @purpose Helper per gestione tenancy single-database
  */
 class TenancyHelper
 {
-    private static ?PaEntity $currentTenant = null;
+    private static ?Tenant $currentTenant = null;
 
     /**
      * Imposta il tenant corrente
      */
-    public static function setTenant(?PaEntity $tenant): void
+    public static function setTenant(?Tenant $tenant): void
     {
         self::$currentTenant = $tenant;
-        app()->instance('current_tenant', $tenant);
+        if ($tenant) {
+            app()->instance('currentTenantId', $tenant->id);
+        }
     }
 
     /**
      * Ottiene il tenant corrente
      */
-    public static function getTenant(): ?PaEntity
+    public static function getTenant(): ?Tenant
     {
-        return self::$currentTenant ?? app('current_tenant');
+        if (self::$currentTenant !== null) {
+            return self::$currentTenant;
+        }
+        
+        // Prova a caricare il tenant dall'ID se disponibile
+        $tenantId = app()->bound('currentTenantId') ? app('currentTenantId') : null;
+        if ($tenantId) {
+            self::$currentTenant = Tenant::find($tenantId);
+            return self::$currentTenant;
+        }
+        
+        return null;
     }
 
     /**
@@ -50,6 +63,11 @@ class TenancyHelper
         return self::getTenant() !== null;
     }
 }
+
+
+
+
+
 
 
 

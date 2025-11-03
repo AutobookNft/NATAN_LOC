@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Helpers\TenancyHelper;
-use App\Models\PaEntity;
+use App\Models\Tenant;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
  * @package App\Http\Middleware
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
  * @version 1.0.0 (NATAN_LOC)
- * @date 2025-10-31
+ * @date 2025-11-02
  * @purpose Middleware per inizializzazione tenancy single-database
  *
  * Rileva il tenant da:
@@ -37,6 +37,41 @@ class InitializeTenancy
 
         if ($tenant) {
             TenancyHelper::setTenant($tenant);
+            // Inietta anche direttamente nel container per compatibilità con Global Scopes
+            app()->instance('currentTenantId', $tenant->id);
+            
+            // Debug log (solo in development)
+            if (config('app.debug')) {
+                \Log::debug('[InitializeTenancy] Tenant rilevato e iniettato', [
+                    'tenant_id' => $tenant->id,
+                    'tenant_name' => $tenant->name,
+                    'host' => $request->getHost(),
+                ]);
+            }
+        } else {
+            // Prova a risolvere il tenant usando TenantResolver come fallback
+            $tenantId = \App\Resolvers\TenantResolver::resolve();
+            if ($tenantId) {
+                app()->instance('currentTenantId', $tenantId);
+                
+                if (config('app.debug')) {
+                    \Log::debug('[InitializeTenancy] Tenant risolto tramite TenantResolver', [
+                        'tenant_id' => $tenantId,
+                        'host' => $request->getHost(),
+                    ]);
+                }
+            } else {
+                // Assicurati che currentTenantId sia null se non risolto
+                app()->instance('currentTenantId', null);
+                
+                if (config('app.debug')) {
+                    \Log::debug('[InitializeTenancy] Nessun tenant rilevato', [
+                        'host' => $request->getHost(),
+                        'auth_check' => Auth::check(),
+                        'user_id' => Auth::id(),
+                    ]);
+                }
+            }
         }
 
         return $next($request);
@@ -45,14 +80,14 @@ class InitializeTenancy
     /**
      * Detect tenant from request
      */
-    private function detectTenant(Request $request): ?PaEntity
+    private function detectTenant(Request $request): ?Tenant
     {
         // 1. Subdomain detection (es: tenant1.natan.florenceegi.com)
         $host = $request->getHost();
         $subdomain = explode('.', $host)[0] ?? null;
 
         if ($subdomain && $subdomain !== 'www' && $subdomain !== 'natan' && $subdomain !== 'localhost' && $subdomain !== '127.0.0.1') {
-            $tenant = PaEntity::where('slug', $subdomain)->first();
+            $tenant = Tenant::where('slug', $subdomain)->first();
             if ($tenant) {
                 return $tenant;
             }
@@ -61,7 +96,7 @@ class InitializeTenancy
         // 2. Header X-Tenant-ID (API calls)
         $tenantId = $request->header('X-Tenant-ID');
         if ($tenantId) {
-            $tenant = PaEntity::find($tenantId);
+            $tenant = Tenant::find($tenantId);
             if ($tenant) {
                 return $tenant;
             }
@@ -69,7 +104,7 @@ class InitializeTenancy
 
         // 3. User authenticated (tenant_id from user)
         if (Auth::check() && Auth::user()->tenant_id) {
-            $tenant = PaEntity::find(Auth::user()->tenant_id);
+            $tenant = Tenant::find(Auth::user()->tenant_id);
             if ($tenant) {
                 return $tenant;
             }
@@ -79,7 +114,7 @@ class InitializeTenancy
         if (app()->environment('local') || app()->environment('testing')) {
             $tenantId = $request->query('tenant_id');
             if ($tenantId) {
-                $tenant = PaEntity::find($tenantId);
+                $tenant = Tenant::find($tenantId);
                 if ($tenant) {
                     return $tenant;
                 }

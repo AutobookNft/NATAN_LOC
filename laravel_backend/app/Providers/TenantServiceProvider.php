@@ -51,8 +51,12 @@ class TenantServiceProvider extends ServiceProvider
         }
         
         // Prova a risolvere il tenant solo se request() è disponibile
+        // NOTA: In register(), Auth::user() potrebbe non essere ancora disponibile
+        // Il middleware InitializeTenancy aggiornerà questo valore dopo l'autenticazione
         try {
             if (app()->bound('request') && request() !== null) {
+                // Tenta di risolvere, ma non fare affidamento su Auth::user() qui
+                // perché il middleware di autenticazione non è ancora stato eseguito
                 $tenantId = TenantResolver::resolve();
             }
         } catch (\Exception $e) {
@@ -61,6 +65,7 @@ class TenantServiceProvider extends ServiceProvider
         }
         
         // Registra nel container come singleton per essere accessibile ovunque
+        // Sarà aggiornato dal middleware InitializeTenancy dopo l'autenticazione
         $this->app->instance('currentTenantId', $tenantId);
         
         // Facilita l'accesso via helper se necessario

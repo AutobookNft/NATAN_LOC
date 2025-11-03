@@ -46,12 +46,12 @@ class TenantScope implements Scope
      */
     public function extend(Builder $builder): void
     {
-        $builder->macro('withoutTenantScope', function (Builder $builder) use ($builder) {
-            return $builder->withoutGlobalScope(self::class);
+        $builder->macro('withoutTenantScope', function (Builder $query) {
+            return $query->withoutGlobalScope(self::class);
         });
 
-        $builder->macro('withAllTenants', function (Builder $builder) use ($builder) {
-            return $builder->withoutGlobalScope(self::class);
+        $builder->macro('withAllTenants', function (Builder $query) {
+            return $query->withoutGlobalScope(self::class);
         });
     }
 }
