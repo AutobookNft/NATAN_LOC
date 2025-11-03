@@ -71,7 +71,7 @@ class User extends Authenticatable
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(PaEntity::class, 'tenant_id');
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**

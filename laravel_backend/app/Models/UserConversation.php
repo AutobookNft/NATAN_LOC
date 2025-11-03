@@ -22,6 +22,12 @@ class UserConversation extends Model
     use HasFactory, SoftDeletes;
 
     protected $table = 'user_conversations';
+    
+    // CRITICAL: Use existing FlorenceEGI MariaDB database
+    // According to hybrid_database_implementation.md: MySQL/MariaDB for relational data (shared with EGI)
+    // The database name is "EGI" (as configured in EGI/.env: DB_DATABASE=EGI)
+    // MongoDB is used for documents/acts/cognitive layer (natan_ai_core)
+    protected $connection = 'mysql'; // Use 'mysql' connection pointing to existing EGI database
 
     protected $fillable = [
         'tenant_id',
@@ -62,7 +68,7 @@ class UserConversation extends Model
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(PaEntity::class, 'tenant_id');
+        return $this->belongsTo(Tenant::class, 'tenant_id');
     }
 
     /**
