@@ -25,9 +25,14 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Determina quale tabella usare per la foreign key (pa_entities se esiste, altrimenti tenants)
+        $connection = Schema::getConnection();
+        $database = $connection->getDatabaseName();
+        $tenantTableName = Schema::hasTable('pa_entities') ? 'pa_entities' : 'tenants';
+        
         // Se la tabella esiste già, verifica se ha tenant_id e aggiungilo se manca
         if (Schema::hasTable('natan_user_memories')) {
-            Schema::table('natan_user_memories', function (Blueprint $table) {
+            Schema::table('natan_user_memories', function (Blueprint $table) use ($tenantTableName) {
                 // Controlla se tenant_id esiste già
                 if (!Schema::hasColumn('natan_user_memories', 'tenant_id')) {
                     // Aggiungi tenant_id dopo id
@@ -36,10 +41,10 @@ return new class extends Migration
                         ->nullable(false)
                         ->index();
                     
-                    // Foreign key su pa_entities
+                    // Foreign key su pa_entities o tenants (sarà aggiornata dalla migration rename)
                     $table->foreign('tenant_id')
                         ->references('id')
-                        ->on('pa_entities')
+                        ->on($tenantTableName)
                         ->onDelete('cascade');
                     
                     // Aggiungi indici compositi se non esistono
@@ -53,7 +58,7 @@ return new class extends Migration
             });
         } else {
             // Crea tabella se non esiste
-            Schema::create('natan_user_memories', function (Blueprint $table) {
+            Schema::create('natan_user_memories', function (Blueprint $table) use ($tenantTableName) {
                 $table->id();
                 
                 // Tenant isolation - required per isolamento dati
@@ -61,10 +66,10 @@ return new class extends Migration
                     ->nullable(false)
                     ->index();
                 
-                // Foreign key su pa_entities
+                // Foreign key su pa_entities o tenants (sarà aggiornata dalla migration rename)
                 $table->foreign('tenant_id')
                     ->references('id')
-                    ->on('pa_entities')
+                    ->on($tenantTableName)
                     ->onDelete('cascade');
                 
                 // User reference
