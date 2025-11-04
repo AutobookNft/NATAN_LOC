@@ -107,4 +107,14 @@ return [
     'gdpr' => [
         'data_info' => 'Your data is protected and isolated',
     ],
+    
+    'use' => [
+        'no_claims' => 'No verified claims available',
+        'sources' => 'Sources',
+        'unknown_source' => 'Unknown source',
+        'page_number' => '(p. :page)',
+        'source_link_format' => ':title',
+        'no_sources' => 'No sources available for this claim',
+        'inference_badge' => '[Inference]',
+    ],
 ];

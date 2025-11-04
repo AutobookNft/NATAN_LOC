@@ -246,13 +246,16 @@ class UseAuditService
      * @param int|null $limit Limit results (null = all, STATISTICS RULE)
      * @return array Audit records
      */
-    public function getAuditHistory(User $user, int $tenantId, ?int $limit = 50): array
+    public function getAuditHistory(User $user, int $tenantId, ?int $limit = null): array
     {
         try {
+            // STATISTICS RULE: If limit is null, request all records (Python will handle max safety limit)
+            $apiLimit = $limit ?? 10000; // Max safety limit for API, but explicit in parameter
+            
             $response = Http::timeout(10)->get("{$this->pythonApiUrl}/api/v1/audit/history", [
                 'tenant_id' => $tenantId,
                 'user_id' => $user->id,
-                'limit' => $limit ?? 1000  // Max limit for API call
+                'limit' => $apiLimit
             ]);
 
             if ($response->successful()) {

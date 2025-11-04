@@ -164,4 +164,14 @@ return [
             'public_data' => 'Dati Pubblici',
         ],
     ],
+    
+    'use' => [
+        'no_claims' => 'Nessun claim verificato disponibile',
+        'sources' => 'Fonti',
+        'unknown_source' => 'Fonte sconosciuta',
+        'page_number' => '(p. :page)',
+        'source_link_format' => ':title',
+        'no_sources' => 'Nessuna fonte disponibile per questo claim',
+        'inference_badge' => '[Deduzione]',
+    ],
 ];

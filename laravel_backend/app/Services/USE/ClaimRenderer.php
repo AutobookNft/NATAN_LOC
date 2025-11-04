@@ -182,9 +182,10 @@ class ClaimRenderer
             $title = $ref['title'] ?? __('natan.use.unknown_source');
             $page = $ref['page'] ?? null;
 
+            // I18N: Build link text using translation keys (no hardcoded text)
             $linkText = $title;
             if ($page) {
-                $linkText .= ' ' . __('natan.use.source_page', ['page' => $page]);
+                $linkText .= ' ' . __('natan.use.page_number', ['page' => $page]);
             }
 
             $html .= sprintf(

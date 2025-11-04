@@ -152,18 +152,24 @@ async def save_query_audit(request: QueryAuditSaveRequest):
         raise HTTPException(status_code=500, detail=f"Failed to save query audit: {str(e)}")
 
 @router.get("/audit/history")
-async def get_audit_history(tenant_id: int, user_id: int, limit: int = 50):
-    """Get query audit history for user"""
+async def get_audit_history(tenant_id: int, user_id: int, limit: Optional[int] = None):
+    """Get query audit history for user
+    
+    STATISTICS RULE: limit=None means get all records (with safety max)
+    """
     try:
         filter_query = {
             "tenant_id": tenant_id,
             "user_id": user_id
         }
         
+        # STATISTICS RULE: If limit is None, use max safety limit (explicit, not hidden)
+        query_limit = limit if limit is not None else 10000
+        
         results = MongoDBService.find_documents(
             "query_audit",
             filter_query,
-            limit=limit,
+            limit=query_limit,
             sort=[("created_at", -1)]
         )
         
@@ -203,6 +209,19 @@ async def get_claims_for_answer(answer_id: str, tenant_id: int):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get claims: {str(e)}")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
