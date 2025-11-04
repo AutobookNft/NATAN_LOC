@@ -38,7 +38,8 @@ class UsePipeline:
         tenant_id: int,
         persona: str = "strategic",
         model: str = "anthropic.sonnet-3.5",
-        query_embedding: Optional[list] = None
+        query_embedding: Optional[list] = None,
+        limit: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Process a query through complete USE pipeline
@@ -49,6 +50,7 @@ class UsePipeline:
             persona: Persona name
             model: LLM model
             query_embedding: Optional pre-computed query embedding
+            limit: Optional limit for retrieval (None = all, STATISTICS RULE)
         
         Returns:
             Complete USE pipeline result
@@ -114,20 +116,94 @@ class UsePipeline:
                 embed_result = await adapter.embed(question)
                 query_embedding = embed_result["embedding"]
             
+            # STATISTICS RULE: Pass explicit limit (None = all results, no hidden limits)
             chunks = self.retriever.retrieve(
                 query_embedding=query_embedding,
                 tenant_id=tenant_id,
-                limit=10,
+                limit=limit,  # Explicit parameter, no hardcoded value
                 filters=constraints
             )
             
+            # CRITICAL: Check if chunks are actually relevant
             if not chunks:
+                no_data_message = (
+                    "Non ho informazioni sufficienti nei documenti disponibili per rispondere a questa domanda. "
+                    "I documenti presenti nell'archivio non contengono dati pertinenti per questa richiesta.\n\n"
+                    "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
+                    "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
+                )
                 return {
                     "status": "no_results",
-                    "message": "No relevant chunks found",
+                    "message": no_data_message,
+                    "answer": no_data_message,
+                    "verified_claims": [],
+                    "blocked_claims": [],
+                    "avg_urs": 0.0,
+                    "verification_status": "NO_DATA",
                     "classification": classification,
                     "routing": routing
                 }
+            
+            # CRITICAL: Validate chunk relevance - check if any chunk has meaningful text
+            relevant_chunks = []
+            for chunk in chunks:
+                chunk_text = chunk.get("chunk_text") or chunk.get("text", "")
+                if not chunk_text:
+                    continue
+                
+                chunk_text_stripped = chunk_text.strip()
+                
+                # Minimum meaningful content check
+                if len(chunk_text_stripped) < 50:
+                    continue
+                
+                # CRITICAL: Check for placeholder/error indicators in chunk text
+                # If chunk contains error messages, skip it
+                error_indicators = [
+                    "nessun documento", "no document", "documento non trovato", "not found",
+                    "empty database", "database vuoto", "no data available", "nessun dato disponibile",
+                    "placeholder", "example", "test data", "dummy data"
+                ]
+                chunk_lower = chunk_text_stripped.lower()
+                if any(indicator in chunk_lower for indicator in error_indicators):
+                    # Chunk is a placeholder/error message, skip it
+                    continue
+                
+                # CRITICAL: NON filtrare per relevance_score - potrebbe escludere chunk validi
+                # Il retriever ha già fatto una selezione, non scartiamo chunk con score basso
+                # Solo verifichiamo che non siano placeholder/errori
+                
+                relevant_chunks.append(chunk)
+            
+            if not relevant_chunks:
+                # CRITICAL: No relevant chunks found - return immediately without calling LLM
+                # REGOLA ZERO: Se non abbiamo documenti pertinenti, NON chiamiamo l'LLM
+                # L'LLM potrebbe inventare dati anche con prompt anti-hallucination
+                no_data_message = (
+                    "Non ho informazioni sufficienti nei documenti disponibili per rispondere a questa domanda. "
+                    "I documenti presenti nell'archivio non contengono dati pertinenti per questa richiesta.\n\n"
+                    "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
+                    "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
+                )
+                return {
+                    "status": "no_results",
+                    "message": "I documenti recuperati non contengono informazioni sufficienti o rilevanti per rispondere a questa domanda.",
+                    "answer": no_data_message,
+                    "verified_claims": [],
+                    "blocked_claims": [],
+                    "avg_urs": 0.0,
+                    "verification_status": "NO_DATA",
+                    "classification": classification,
+                    "routing": routing,
+                    "_internal_note": "Chunks filtered out - no relevant content found. LLM not called to prevent hallucination."
+                }
+            
+            # Use only relevant chunks
+            chunks = relevant_chunks
+            
+            # CRITICAL: Additional pre-generation check
+            # If we have chunks but they seem too generic/not relevant to the question, 
+            # we still pass them but the LLM will be instructed to return [] if not relevant
             
             # Step 4: Generate claims with Neurale Strict
             generation_result = await self.neurale.generate_claims(
@@ -141,6 +217,37 @@ class UsePipeline:
             claims = generation_result["claims"]
             answer_text = generation_result.get("answer", "")  # Natural language answer
             
+            # CRITICAL: Check if answer text indicates "no data" - BUT if we have verified claims, 
+            # the answer is WRONG and we should use claims instead (claims take precedence)
+            answer_lower = answer_text.lower() if answer_text else ""
+            no_data_indicators = [
+                "non ho informazioni sufficienti",
+                "i documenti presenti nell'archivio non contengono dati pertinenti",
+                "non ho informazioni nei documenti disponibili"
+            ]
+            
+            answer_says_no_data = any(indicator in answer_lower for indicator in no_data_indicators)
+            
+            # CRITICAL: If no claims generated, return no_results
+            if not claims or len(claims) == 0:
+                no_data_message = (
+                    "Non ho informazioni sufficienti nei documenti disponibili per rispondere a questa domanda. "
+                    "I documenti presenti nell'archivio non contengono dati pertinenti per questa richiesta.\n\n"
+                    "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
+                    "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
+                )
+                return {
+                    "status": "no_results",
+                    "message": "I documenti recuperati non contengono informazioni sufficienti per rispondere a questa domanda.",
+                    "answer": no_data_message,
+                    "verified_claims": [],
+                    "blocked_claims": [],  # Mai esporre claim bloccati - rischio legale
+                    "avg_urs": 0.0,
+                    "verification_status": "NO_DATA",
+                    "classification": classification,
+                    "routing": routing
+                }
+            
             # Step 5: Verify claims
             verification = self.verifier.verify_claims(
                 claims=claims,
@@ -148,22 +255,99 @@ class UsePipeline:
                 tenant_id=tenant_id
             )
             
-            # Build final result
+            # CRITICAL: If answer says "no data" BUT we have verified claims, this is a BUG
+            # This should NOT happen anymore after the root cause fix in neurale_strict.py
+            # But we keep this check as a safety fallback and log a warning
+            if answer_says_no_data and len(verification["verified_claims"]) > 0:
+                # This is unexpected - LLM should not say "no data" when chunks are provided
+                # Reconstruct answer from verified claims as fallback
+                verified_texts = [claim.get("text", "") for claim in verification["verified_claims"] if claim.get("text")]
+                if verified_texts:
+                    # Build answer from verified claims (fallback)
+                    answer_text = "Basandomi sui documenti disponibili:\n\n" + "\n\n".join(f"• {text}" for text in verified_texts)
+                    # Force verification_status to SAFE since we have verified claims
+                    if verification["status"] != "SAFE":
+                        verification["status"] = "SAFE"
+                    logger.error(f"⚠️ BUG DETECTED: LLM said 'no data' but {len(verification['verified_claims'])} verified claims exist. This should not happen after root cause fix. Reconstructing answer from claims.")
+                    logger.warning(f"This indicates the prompt fix may not be working correctly - verify neurale_strict.py prompt")
+            
+            # CRITICAL: If all claims were blocked (hallucinations), return no_results
+            if len(verification["verified_claims"]) == 0 and len(verification["blocked_claims"]) > 0:
+                # CRITICAL: NON esporre claim bloccati all'utente - contengono dati inventati che potrebbero essere interpretati come veri
+                # Questo è un rischio legale/pericolo per la PA - non mostrare informazioni non verificate
+                no_data_message = (
+                    "Non ho informazioni sufficienti nei documenti disponibili per rispondere a questa domanda. "
+                    "I documenti presenti nell'archivio non contengono dati pertinenti per questa richiesta.\n\n"
+                    "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
+                    "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
+                )
+                return {
+                    "status": "no_results",
+                    "message": "I documenti recuperati non supportano alcuna affermazione verificabile per rispondere a questa domanda.",
+                    "answer": no_data_message,
+                    "verified_claims": [],
+                    "blocked_claims": [],  # NON esporre - troppo pericoloso mostrare dati inventati all'utente
+                    "avg_urs": 0.0,
+                    "verification_status": "ALL_CLAIMS_BLOCKED",
+                    "classification": classification,
+                    "routing": routing,
+                    "_internal_blocked_count": len(verification["blocked_claims"])  # Solo per log/debug interno
+                }
+            
+            # STEP 6: VERIFICA POSTUMA OBBLIGATORIA - Garantisce che ogni affermazione sia tracciabile
+            from app.services.post_verification_service import PostVerificationService
+            post_verifier = PostVerificationService()
+            should_block, block_reason = post_verifier.should_block_response(
+                answer_text,
+                verification["verified_claims"],
+                chunks,
+                question
+            )
+            
+            if should_block:
+                # CRITICAL: NON esporre claim bloccati - contengono dati potenzialmente inventati
+                # Mostrare solo messaggio generico per evitare che l'utente veda informazioni false
+                no_data_message = (
+                    "Non ho informazioni sufficienti nei documenti disponibili per rispondere a questa domanda. "
+                    "I documenti presenti nell'archivio non contengono dati pertinenti per questa richiesta.\n\n"
+                    "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
+                    "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
+                )
+                return {
+                    "status": "no_results",
+                    "message": block_reason,
+                    "answer": no_data_message,
+                    "verified_claims": [],  # Blocca tutto se verifica postuma fallisce
+                    "blocked_claims": [],  # NON esporre claim bloccati - troppo pericoloso (contengono dati inventati)
+                    "avg_urs": 0.0,
+                    "verification_status": "POST_VERIFICATION_FAILED",
+                    "verification_reason": block_reason,
+                    "classification": classification,
+                    "routing": routing,
+                    "_internal_blocked_count": len(verification["blocked_claims"]) + len(verification["verified_claims"])  # Solo per log interno
+                }
+            
+            # Build final result - solo se verifica postuma passa
+            # CRITICAL: Non esporre blocked_claims anche in caso di successo
+            # Solo claims verificati con sourceRefs vengono esposti all'utente
+            # I blocked_claims contengono dati inventati - mai esporli per sicurezza legale
             return {
                 "status": "success",
                 "question": question,
-                "answer": answer_text,  # Main natural language answer
+                "answer": answer_text,  # Main natural language answer (verificata postuma)
                 "answer_id": generation_result["answer_id"],
-                "verified_claims": verification["verified_claims"],  # Claims with sources (proof)
-                "blocked_claims": verification["blocked_claims"],
+                "verified_claims": verification["verified_claims"],  # Claims with sources (proof) - ONLY these are shown
+                "blocked_claims": [],  # NEVER expose blocked claims - security risk (invented data)
                 "avg_urs": verification["avg_urs"],
                 "verification_status": verification["status"],
+                "post_verification": "PASSED",  # Indica che verifica postuma è passata
                 "chunks_used": chunks,
                 "classification": classification,
                 "routing": routing,
                 "model_used": generation_result["model_used"],
                 "tokens_used": generation_result["tokens_used"],
-                "persona": persona
+                "persona": persona,
+                "_internal_blocked_count": len(verification["blocked_claims"])  # Solo per log interno, mai esposto
             }
         
         else:

@@ -22,7 +22,7 @@ class RetrieverService:
         self,
         query_embedding: List[float],
         tenant_id: int,
-        limit: int = 10,
+        limit: Optional[int] = None,
         min_score: float = 0.3,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
@@ -32,7 +32,7 @@ class RetrieverService:
         Args:
             query_embedding: Query embedding vector
             tenant_id: Tenant ID for isolation
-            limit: Max results to return
+            limit: Max results to return (None = all results, STATISTICS RULE)
             min_score: Minimum similarity score
             filters: Optional filters (date_range, document_type, etc.)
         
@@ -71,19 +71,21 @@ class RetrieverService:
         try:
             candidates = MongoDBService.find_documents("documents", query_filter)
             if not candidates:
-                # Log warning but don't fail - might be empty database
+                # CRITICAL: Empty database = no documents to retrieve
                 import logging
                 logger = logging.getLogger(__name__)
-                logger.debug(f"No documents found with filter: {query_filter}")
+                logger.warning(f"⚠️ CRITICAL: No documents found in MongoDB with filter: {query_filter}. Database may be empty.")
+                return []  # Return empty - verifica postuma bloccherà risposta
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"Error retrieving documents: {e}")
-            return []
+            logger.error(f"❌ CRITICAL: Error retrieving documents from MongoDB: {e}")
+            return []  # Return empty on error
         
-        # Calculate cosine similarity
+        # Calculate cosine similarity with minimum threshold
         results = []
         query_vector = np.array(query_embedding)
+        MIN_SIMILARITY_THRESHOLD = 0.3  # CRITICAL: Minimum similarity to consider chunk relevant
         
         for doc in candidates:
             # Check if document has chunks with embeddings (preferred) or document-level embedding
@@ -100,7 +102,9 @@ class RetrieverService:
                     chunk_vector = np.array(chunk_embedding)
                     similarity = float(np.dot(query_vector, chunk_vector) / (np.linalg.norm(query_vector) * np.linalg.norm(chunk_vector)))
                     
-                    if similarity >= min_score:
+                    # CRITICAL: Use higher threshold to avoid irrelevant chunks
+                    effective_threshold = max(min_score, MIN_SIMILARITY_THRESHOLD)
+                    if similarity >= effective_threshold:
                         results.append({
                             "document_id": doc.get("document_id"),
                             "chunk_index": chunk.get("chunk_index"),
@@ -128,7 +132,9 @@ class RetrieverService:
                 # Cosine similarity
                 similarity = self._cosine_similarity(query_vector, doc_vector)
                 
-                if similarity >= min_score:
+                # CRITICAL: Use higher threshold to avoid irrelevant chunks
+                effective_threshold = max(min_score, MIN_SIMILARITY_THRESHOLD)
+                if similarity >= effective_threshold:
                     # Get source reference
                     source_ref = self._build_source_ref(doc)
                     
@@ -161,8 +167,11 @@ class RetrieverService:
         # Sort by similarity (descending)
         results.sort(key=lambda x: x.get("similarity", x.get("similarity_score", 0)), reverse=True)
         
-        # Limit results
-        return results[:limit]
+        # STATISTICS RULE: If limit is None, return all results (explicit, not hidden)
+        # If limit is set, apply it
+        if limit is not None:
+            return results[:limit]
+        return results
     
     @staticmethod
     def _cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
