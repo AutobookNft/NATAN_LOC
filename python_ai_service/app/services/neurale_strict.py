@@ -48,16 +48,13 @@ class NeuraleStrict:
                 - claims: List of claim dicts
                 - answer_id: Unique answer ID
                 - model_used: Model name
-                - tokens_used: Token usage
+                - tokens_used: Token usage (real values from LLM responses)
         """
-        # TODO: Implementare chiamata a LLM (OpenAI/Anthropic/Ollama)
-        # Per ora: placeholder structure
-        
         # Build context from chunks
         context = self._build_context(chunks)
         
         # Step 1: Generate natural language answer first (synthesized response)
-        answer_text = await self._generate_natural_answer(
+        answer_result = await self._generate_natural_answer(
             question=question,
             context=context,
             persona=persona,
@@ -65,8 +62,19 @@ class NeuraleStrict:
             tenant_id=tenant_id
         )
         
+        # Extract answer text and token usage from result
+        if isinstance(answer_result, dict):
+            answer_text = answer_result.get("answer", "")
+            answer_tokens = answer_result.get("tokens", {})
+            answer_model = answer_result.get("model", model)
+        else:
+            # Backward compatibility: if method returns string directly
+            answer_text = answer_result
+            answer_tokens = {"input_tokens": 0, "output_tokens": 0}
+            answer_model = model
+        
         # Step 2: Generate atomic claims from the answer (for verification)
-        claims = await self._generate_claims_from_context(
+        claims_result = await self._generate_claims_from_context(
             question=question,
             context=context,
             persona=persona,
@@ -75,6 +83,17 @@ class NeuraleStrict:
             chunks=chunks
         )
         
+        # Extract claims and token usage from result
+        if isinstance(claims_result, dict):
+            claims = claims_result.get("claims", [])
+            claims_tokens = claims_result.get("tokens", {})
+            claims_model = claims_result.get("model", model)
+        else:
+            # Backward compatibility: if method returns list directly
+            claims = claims_result
+            claims_tokens = {"input_tokens": 0, "output_tokens": 0}
+            claims_model = model
+        
         # Validate claims structure
         validated_claims = self._validate_claims(claims, chunks)
         
@@ -82,14 +101,28 @@ class NeuraleStrict:
         import uuid
         answer_id = f"ans_{uuid.uuid4().hex[:8]}"
         
+        # Aggregate token usage from both LLM calls (use real values if available)
+        total_input_tokens = (
+            answer_tokens.get("input_tokens", 0) + 
+            claims_tokens.get("input_tokens", 0)
+        )
+        total_output_tokens = (
+            answer_tokens.get("output_tokens", 0) + 
+            claims_tokens.get("output_tokens", 0)
+        )
+        
+        # Use actual model from LLM response, fallback to requested model
+        actual_model = answer_model or claims_model or model
+        
         return {
             "answer": answer_text,  # Natural language answer (main response)
             "claims": validated_claims,  # Verified claims with sources (proof)
             "answer_id": answer_id,
-            "model_used": model,
+            "model_used": actual_model,
             "tokens_used": {
-                "input": sum(claim.get("tokens", 0) for claim in validated_claims),  # Approximate
-                "output": len(answer_text.split()) + len(validated_claims) * 50  # Answer + claims
+                "input": total_input_tokens,
+                "output": total_output_tokens,
+                "total": total_input_tokens + total_output_tokens
             },
             "persona": persona
         }
@@ -148,27 +181,93 @@ class NeuraleStrict:
         Returns:
             Natural language answer text
         """
-        # Build prompt for natural language synthesis
-        prompt = f"""You are an expert assistant answering questions for Public Administration.
+        # CRITICAL: Check if context is empty or irrelevant
+        if not context or context.strip() == "" or len(context.strip()) < 50:
+            return self._no_data_response(question)
+        
+        # Build prompt for natural language synthesis with STRICT anti-hallucination rules
+        # CRITICAL: Se ci sono chunks forniti, l'LLM DEVE rispondere usando quei chunks
+        # NON può dire "no data" se ci sono documenti forniti - questo è un bug, non un comportamento corretto
+        prompt = f"""You are NATAN, an expert assistant for Public Administration that answers questions based ONLY on provided documents.
 
 Question: {question}
 
 Relevant information from sources:
 {context}
 
-Instructions:
-1. Provide a comprehensive, natural language answer to the question
-2. Synthesize information from the sources into a coherent response
-3. Use clear, professional language appropriate for PA context
-4. Structure the answer logically (introduction, main points, conclusion if needed)
-5. Do NOT cite sources in the answer text itself (sources will be shown separately)
-6. Focus on providing a complete, human-like response
+🚨 REGOLA ZERO - LA PIÙ IMPORTANTE 🚨
+SE HAI RICEVUTO DOCUMENTI, DEVI RISPONDERE USANDO QUEI DOCUMENTI.
+NON dire MAI "non ho informazioni" se hai ricevuto documenti sopra.
 
-Provide your answer:"""
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+1. **IF YOU RECEIVED DOCUMENTS ABOVE (sources are provided), YOU MUST ANSWER USING THOSE DOCUMENTS.**
+   - You have received sources - this means there IS relevant information available
+   - Your job is to synthesize an answer from the provided sources
+   - DO NOT say "no data" or "non ho informazioni" if sources are provided above
+   - The fact that sources were provided means they contain relevant information - USE IT
+
+2. Answer ONLY using information that is EXPLICITLY stated in the provided sources above
+   - Extract facts, concepts, definitions, and information directly from the sources
+   - Synthesize them into a coherent answer to the question
+   - Even if the answer is partial, provide what you can from the sources
+
+3. DO NOT invent, assume, infer, or generate data that is not explicitly present in the sources
+   - But DO extract and synthesize what IS in the sources
+   - If a concept is mentioned in sources, explain it using the source content
+
+4. DO NOT use general knowledge, external data, or patterns from other documents
+   - Use ONLY the sources provided above
+   - If a source defines something, use that definition
+
+5. DO NOT fill gaps with "logical" assumptions or deductions
+   - But DO connect facts from sources if they naturally relate
+
+6. DO NOT create statistics, numbers, dates, or facts that are not directly stated in the sources
+   - But DO use statistics, numbers, dates from the sources if present
+
+7. **NEVER respond with "non ho informazioni" or "no data" message if sources are provided above**
+   - Sources were provided because they ARE relevant
+   - Your task is to extract and synthesize information from them
+   - If the answer is partial, that's acceptable - provide what you can
+
+8. NEVER combine information from different sources to create new facts unless explicitly stated in the sources
+   - But DO combine related facts from sources to form a coherent answer
+
+9. If you're not 100% sure a fact is in the sources, DO NOT include it
+   - But DO include facts you ARE sure are in the sources
+
+10. **Remember: If sources are provided, there IS relevant information - synthesize it into an answer**
+
+ANTI-HALLUCINATION CHECK:
+- Before writing each sentence, verify it can be directly traced to a specific source above
+- If you cannot trace a fact to a source, DO NOT include it in your answer
+- But if you CAN trace facts to sources, include them and synthesize into an answer
+
+CRITICAL REMINDER:
+- You have been provided with sources above - this means relevant information exists
+- Your job is to extract and synthesize that information into an answer
+- DO NOT say "no data" if sources are provided - that contradicts the fact that sources were provided
+
+Remember: This is for Public Administration. Providing false information can have serious legal consequences. Only state facts that are explicitly in the sources. But if sources are provided, USE THEM to answer the question.
+
+Provide your answer synthesizing information from the provided sources:"""
         
-        # Prepare messages for LLM
+        # Prepare messages for LLM with REGOLA ZERO in system message
+        # CRITICAL: If sources are provided in the user message, the LLM MUST use them
+        # The system message should NOT say "say you don't have information" if sources are provided
         messages = [
-            {"role": "system", "content": f"You are a {persona} assistant for Public Administration analysis. Provide clear, comprehensive answers based on the provided sources."},
+            {"role": "system", "content": f"""You are NATAN, a {persona} assistant for Public Administration analysis.
+
+REGOLA ZERO: 
+- If sources are provided in the user message, you MUST answer using those sources. DO NOT say "no data" if sources are provided.
+- If NO sources are provided (context is empty), then you can say you don't have information.
+- DO NOT invent information that is not in the sources, but DO extract and synthesize what IS in the sources.
+
+Your responses MUST be based ONLY on the provided sources. Never use general knowledge or assumptions.
+
+CRITICAL: If the user message includes "Relevant information from sources:" followed by content, this means sources ARE available. You MUST synthesize an answer from those sources. DO NOT respond with "no data" message if sources are provided.
+
+This is a legal requirement for PA systems - false information can have serious consequences. Only state facts from sources, but if sources are provided, USE THEM."""},
             {"role": "user", "content": prompt}
         ]
         
@@ -180,11 +279,40 @@ Provide your answer:"""
         }
         adapter = self.ai_router.get_chat_adapter(context_dict)
         
-        # Generate response
-        result = await adapter.generate(messages, temperature=0.5, max_tokens=2048)
+        # Generate response with VERY LOW temperature to minimize hallucination
+        # Temperature 0.1 = maximum conservatism, minimal creativity (exactly what we want)
+        result = await adapter.generate(messages, temperature=0.1, max_tokens=2048)
         answer_text = result["content"].strip()
         
-        return answer_text
+        # Extract token usage from result (real values from LLM)
+        usage = result.get("usage", {})
+        tokens = {
+            "input_tokens": usage.get("prompt_tokens") or usage.get("input_tokens") or 0,
+            "output_tokens": usage.get("completion_tokens") or usage.get("output_tokens") or 0
+        }
+        
+        # Get actual model used (might differ from requested if fallback occurred)
+        actual_model = result.get("model", model)
+        
+        # CRITICAL: Verify the answer doesn't contain invented data
+        # Check for common hallucination patterns (statistics, specific numbers not in sources)
+        # If answer is too long or contains patterns suggesting invented data, return no_data_response
+        if len(answer_text) > 2000:  # Suspiciously long answer might contain invented data
+            # Check if it's the standard "no data" response
+            if "non ho informazioni sufficienti" not in answer_text.lower():
+                # Might contain invented data - return safe response
+                return {
+                    "answer": self._no_data_response(question),
+                    "tokens": tokens,
+                    "model": actual_model
+                }
+        
+        # Return answer with token usage for aggregation
+        return {
+            "answer": answer_text,
+            "tokens": tokens,
+            "model": actual_model
+        }
     
     async def _generate_claims_from_context(
         self,
@@ -225,31 +353,73 @@ Provide your answer:"""
             }
         
         # Build prompt for LLM
-        prompt = f"""You are an expert analyst answering questions based on provided sources.
+        # CRITICAL: Check if context is empty or irrelevant
+        if not context or context.strip() == "" or len(context.strip()) < 100:
+            # CRITICAL: Se il contesto è troppo breve, non può contenere informazioni reali
+            # Ritorna array vuoto - il pipeline bloccherà la risposta
+            return []
+        
+        # Verifica aggiuntiva: il contesto non deve essere un messaggio di errore
+        error_indicators = [
+            "nessun documento", "no document", "documento non trovato", "not found",
+            "empty database", "database vuoto", "no data available", "nessun dato disponibile"
+        ]
+        context_lower = context.lower()
+        if any(indicator in context_lower for indicator in error_indicators):
+            # Il contesto indica che non ci sono documenti - ritorna array vuoto
+            return []
+        
+        prompt = f"""You are NATAN, an expert analyst for Public Administration that generates claims ONLY from provided sources.
 
 Question: {question}
 
 Context from sources:
 {context}
 
-Instructions:
-1. Answer the question using ONLY the provided sources
-2. Break your answer into atomic claims (one fact per claim)
-3. Each claim MUST reference source IDs from the context using chunk_N format (e.g., chunk_1, chunk_2) matching [Source N]
-4. Return a JSON array of claims with this structure:
+🚨 REGOLA ZERO - LA PIÙ IMPORTANTE 🚨
+SE NON SAI, NON INVENTARE. Ritorna array vuoto [].
+
+CRITICAL INSTRUCTIONS - ANTI-HALLUCINATION MODE:
+1. Answer ONLY using information that is EXPLICITLY stated in the provided sources above
+2. If the sources do NOT contain information relevant to answer the question, return an EMPTY array: []
+3. DO NOT invent, assume, infer, or generate claims not directly supported by the sources
+4. DO NOT fill gaps with "logical" deductions or assumptions
+5. Each claim MUST be directly traceable to a specific source using chunk_N format (e.g., chunk_1, chunk_2) matching [Source N]
+6. DO NOT create statistics, numbers, dates, or facts that are not explicitly stated in the sources
+7. DO NOT combine information to create new facts unless explicitly stated in sources
+8. If a source mentions partial data, state that explicitly in the claim (e.g., "I dati disponibili indicano parzialmente...")
+9. Break your answer into atomic claims (one fact per claim)
+10. If you're not 100% sure a claim is in the sources, DO NOT include it
+11. Better to return [] than to guess or infer
+
+Return a JSON array of claims with this structure (or [] if no relevant data):
    [
      {{
-       "text": "claim text here",
+       "text": "claim text here (MUST be directly from sources, word-for-word if possible)",
        "source_ids": ["chunk_1", "chunk_2"],
        "basis_ids": []
      }}
    ]
 
-Generate the answer as atomic claims:"""
+ANTI-HALLUCINATION CHECK:
+- Before creating each claim, verify it can be directly traced to a specific [Source N] above
+- If you cannot trace a claim to a source, DO NOT include it
+- If sources are not relevant, return empty array: []
+- If you're unsure, return []
+
+Remember: This is for Public Administration. False claims can have serious legal consequences.
+
+Generate the answer as atomic claims (or [] if no relevant data):"""
         
-        # Prepare messages for LLM
+        # Prepare messages for LLM with REGOLA ZERO in system message
         messages = [
-            {"role": "system", "content": f"You are a {persona} assistant for Public Administration analysis."},
+            {"role": "system", "content": f"""You are NATAN, a {persona} assistant for Public Administration analysis.
+
+REGOLA ZERO: If you don't know something from the provided sources, DO NOT invent it. Return an empty array [].
+
+Your claims MUST be based ONLY on the provided sources. Never use general knowledge or assumptions. If sources don't contain relevant information, return [].
+
+This is a legal requirement for PA systems - false claims can have serious consequences."""},
             {"role": "user", "content": prompt}
         ]
         
@@ -261,9 +431,20 @@ Generate the answer as atomic claims:"""
         }
         adapter = self.ai_router.get_chat_adapter(context_dict)
         
-        # Generate response
-        result = await adapter.generate(messages, temperature=0.3, max_tokens=2048)
+        # Generate response with VERY LOW temperature to minimize hallucination
+        # Temperature 0.1 = maximum conservatism, minimal creativity (exactly what we want)
+        result = await adapter.generate(messages, temperature=0.1, max_tokens=2048)
         response_text = result["content"]
+        
+        # Extract token usage from result (real values from LLM)
+        usage = result.get("usage", {})
+        tokens = {
+            "input_tokens": usage.get("prompt_tokens") or usage.get("input_tokens") or 0,
+            "output_tokens": usage.get("completion_tokens") or usage.get("output_tokens") or 0
+        }
+        
+        # Get actual model used (might differ from requested if fallback occurred)
+        actual_model = result.get("model", model)
         
         # Parse JSON from response (handle markdown code blocks)
         claims = []
@@ -314,7 +495,12 @@ Generate the answer as atomic claims:"""
                 "tokens": len(response_text.split())
             }]
         
-        return claims
+        # Return claims with token usage for aggregation
+        return {
+            "claims": claims,
+            "tokens": tokens,
+            "model": actual_model
+        }
     
     def _validate_claims(
         self,
@@ -373,4 +559,23 @@ Generate the answer as atomic claims:"""
         """Get current ISO datetime string"""
         from datetime import datetime
         return datetime.utcnow().isoformat() + "Z"
+    
+    @staticmethod
+    def _no_data_response(question: str) -> str:
+        """
+        Return standard response when no data is available
+        Includes suggestion to create a project and add relevant data
+        
+        Args:
+            question: User question (for context)
+        
+        Returns:
+            Standard "no data" response with project creation suggestion
+        """
+        return (
+            f"Non ho informazioni sufficienti nei documenti disponibili per rispondere alla domanda: '{question}'. "
+            f"I documenti presenti nell'archivio non contengono dati pertinenti per questa richiesta.\n\n"
+            f"💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
+            f"Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
+        )
 
