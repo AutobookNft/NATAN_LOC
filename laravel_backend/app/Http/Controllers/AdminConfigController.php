@@ -36,7 +36,12 @@ class AdminConfigController extends Controller
     {
         $user = Auth::user();
         
-        if (!$user || !$user->tenant_id) {
+        // Superadmin usa tenant dalla sessione se disponibile
+        $tenantId = $user->hasRole('superadmin')
+            ? (request()->session()->get('current_tenant_id') ?? $user->tenant_id)
+            : $user->tenant_id;
+        
+        if (!$tenantId && !$user->hasRole('superadmin')) {
             abort(403, __('admin_config.no_tenant'));
         }
         
@@ -45,7 +50,7 @@ class AdminConfigController extends Controller
             abort(403, __('users.insufficient_permissions'));
         }
         
-        $tenant = Tenant::find($user->tenant_id);
+        $tenant = $tenantId ? Tenant::find($tenantId) : null;
         
         if (!$tenant) {
             abort(404, __('admin_config.tenant_not_found'));
@@ -69,7 +74,12 @@ class AdminConfigController extends Controller
     {
         $user = Auth::user();
         
-        if (!$user || !$user->tenant_id) {
+        // Superadmin usa tenant dalla sessione se disponibile
+        $tenantId = $user->hasRole('superadmin')
+            ? (request()->session()->get('current_tenant_id') ?? $user->tenant_id)
+            : $user->tenant_id;
+        
+        if (!$tenantId && !$user->hasRole('superadmin')) {
             abort(403, __('admin_config.no_tenant'));
         }
         
@@ -78,7 +88,7 @@ class AdminConfigController extends Controller
             abort(403, __('users.insufficient_permissions'));
         }
         
-        $tenant = Tenant::find($user->tenant_id);
+        $tenant = $tenantId ? Tenant::find($tenantId) : null;
         
         if (!$tenant) {
             abort(404, __('admin_config.tenant_not_found'));

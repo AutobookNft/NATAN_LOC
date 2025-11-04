@@ -40,7 +40,8 @@ class UserController extends Controller
     {
         $currentUser = Auth::user();
         
-        if (!$currentUser || !$currentUser->tenant_id) {
+        // Superadmin non ha bisogno di tenant_id
+        if (!$currentUser->hasRole('superadmin') && (!$currentUser || !$currentUser->tenant_id)) {
             abort(403, __('users.no_tenant'));
         }
         
@@ -49,10 +50,18 @@ class UserController extends Controller
             abort(403, __('users.insufficient_permissions'));
         }
         
-        $tenant = Tenant::find($currentUser->tenant_id);
+        // Superadmin può non avere tenant_id, usa quello dalla sessione se disponibile
+        $tenantId = $currentUser->hasRole('superadmin') 
+            ? (request()->session()->get('current_tenant_id') ?? $currentUser->tenant_id)
+            : $currentUser->tenant_id;
         
-        // Query utenti del tenant corrente
-        $query = User::where('tenant_id', $currentUser->tenant_id);
+        $tenant = $tenantId ? Tenant::find($tenantId) : null;
+        
+        // Query utenti: superadmin vede tutti, altri vedono solo il proprio tenant
+        $query = User::query();
+        if (!$currentUser->hasRole('superadmin')) {
+            $query->where('tenant_id', $currentUser->tenant_id);
+        }
         
         // Ricerca
         if ($request->filled('search')) {
@@ -86,13 +95,18 @@ class UserController extends Controller
             $user->load('roles');
         }
         
-        // Statistiche
+        // Statistiche: superadmin vede tutte, altri solo del proprio tenant
+        $statsQuery = User::query();
+        if (!$currentUser->hasRole('superadmin')) {
+            $statsQuery->where('tenant_id', $currentUser->tenant_id);
+        }
+        
         $stats = [
-            'total' => User::where('tenant_id', $currentUser->tenant_id)->count(),
-            'admins' => User::where('tenant_id', $currentUser->tenant_id)
-                ->role(['admin', 'superadmin'])
+            'total' => (clone $statsQuery)->count(),
+            'admins' => (clone $statsQuery)
+                ->role(['admin', 'superadmin', 'pa_entity_admin'])
                 ->count(),
-            'active' => User::where('tenant_id', $currentUser->tenant_id)
+            'active' => (clone $statsQuery)
                 ->whereNotNull('email_verified_at')
                 ->count(),
         ];
@@ -113,7 +127,8 @@ class UserController extends Controller
     {
         $currentUser = Auth::user();
         
-        if (!$currentUser || !$currentUser->tenant_id) {
+        // Superadmin non ha bisogno di tenant_id
+        if (!$currentUser->hasRole('superadmin') && (!$currentUser || !$currentUser->tenant_id)) {
             abort(403, __('users.no_tenant'));
         }
         
@@ -121,7 +136,12 @@ class UserController extends Controller
             abort(403, __('users.insufficient_permissions'));
         }
         
-        $tenant = Tenant::find($currentUser->tenant_id);
+        // Superadmin usa tenant dalla sessione se disponibile
+        $tenantId = $currentUser->hasRole('superadmin') 
+            ? (request()->session()->get('current_tenant_id') ?? $currentUser->tenant_id)
+            : $currentUser->tenant_id;
+        
+        $tenant = $tenantId ? Tenant::find($tenantId) : null;
         
         // Ruoli disponibili (filtrati per tenant se necessario)
         $roles = Role::orderBy('name', 'asc')->get();
@@ -142,7 +162,8 @@ class UserController extends Controller
     {
         $currentUser = Auth::user();
         
-        if (!$currentUser || !$currentUser->tenant_id) {
+        // Superadmin non ha bisogno di tenant_id
+        if (!$currentUser->hasRole('superadmin') && (!$currentUser || !$currentUser->tenant_id)) {
             abort(403, __('users.no_tenant'));
         }
         
@@ -158,12 +179,17 @@ class UserController extends Controller
             'roles.*' => ['exists:roles,name'],
         ]);
         
+        // Determina tenant_id: superadmin usa tenant dalla sessione o quello dell'utente
+        $targetTenantId = $currentUser->hasRole('superadmin')
+            ? (request()->session()->get('current_tenant_id') ?? $currentUser->tenant_id)
+            : $currentUser->tenant_id;
+        
         // Crea utente assegnato al tenant corrente
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'tenant_id' => $currentUser->tenant_id,
+            'tenant_id' => $targetTenantId,
             'email_verified_at' => now(), // Auto-verifica email per admin
         ]);
         
@@ -187,15 +213,26 @@ class UserController extends Controller
     {
         $currentUser = Auth::user();
         
-        // Verifica che l'utente appartenga al tenant corrente
-        if (!$user->tenant_id || $user->tenant_id !== $currentUser->tenant_id) {
-            abort(404);
+        // Superadmin può vedere tutti gli utenti, altri solo del proprio tenant
+        if (!$currentUser->hasRole('superadmin')) {
+            $currentTenantId = $currentUser->tenant_id;
+            if (!$user->tenant_id || $user->tenant_id !== $currentTenantId) {
+                abort(404);
+            }
         }
         
         $user->load('roles', 'tenant');
         
+        // Superadmin può vedere qualsiasi tenant
+        $tenantId = $currentUser->hasRole('superadmin') 
+            ? (request()->session()->get('current_tenant_id') ?? $currentUser->tenant_id)
+            : $currentUser->tenant_id;
+        
+        $tenant = $tenantId ? Tenant::find($tenantId) : null;
+        
         return view('natan.users.show', [
             'user' => $user,
+            'tenant' => $tenant,
         ]);
     }
     
@@ -213,12 +250,20 @@ class UserController extends Controller
             abort(403, __('users.insufficient_permissions'));
         }
         
-        // Verifica che l'utente appartenga al tenant corrente
-        if (!$user->tenant_id || $user->tenant_id !== $currentUser->tenant_id) {
-            abort(404);
+        // Superadmin può modificare qualsiasi utente, altri solo del proprio tenant
+        if (!$currentUser->hasRole('superadmin')) {
+            $currentTenantId = $currentUser->tenant_id;
+            if (!$user->tenant_id || $user->tenant_id !== $currentTenantId) {
+                abort(404);
+            }
         }
         
-        $tenant = Tenant::find($currentUser->tenant_id);
+        // Superadmin usa tenant dalla sessione se disponibile
+        $tenantId = $currentUser->hasRole('superadmin') 
+            ? (request()->session()->get('current_tenant_id') ?? $currentUser->tenant_id)
+            : $currentUser->tenant_id;
+        
+        $tenant = $tenantId ? Tenant::find($tenantId) : null;
         $roles = Role::orderBy('name', 'asc')->get();
         $user->load('roles');
         

@@ -151,8 +151,12 @@ class AuthController extends Controller
         ], $request->boolean('remember'))) {
             $user = Auth::user();
             
-            // Verifica che l'utente appartenga al tenant corretto (se ha già un tenant_id)
-            if ($user->tenant_id && $user->tenant_id != $tenantId) {
+            // Verifica che l'utente appartenga al tenant corretto
+            // ECCEZIONE: superadmin può accedere a qualsiasi tenant
+            $isSuperadmin = $user->hasRole('superadmin');
+            
+            if (!$isSuperadmin && $user->tenant_id && $user->tenant_id != $tenantId) {
+                // Utente normale con tenant_id diverso: blocca accesso
                 Auth::logout();
                 return back()
                     ->withErrors(['email' => 'Questo utente non appartiene al tenant selezionato.'])
@@ -160,9 +164,18 @@ class AuthController extends Controller
             }
             
             // Se l'utente non ha tenant_id e il tenant esiste, assegnagli quello selezionato
+            // (ma NON sovrascrivere se è superadmin e ha già un tenant_id)
             if (!$user->tenant_id && $tenant) {
                 $user->tenant_id = $tenantId;
                 $user->save();
+            }
+            
+            // Superadmin può accedere a qualsiasi tenant (non cambiamo il suo tenant_id)
+            // ma impostiamo il tenant corrente nella sessione per questa sessione
+            
+            // Superadmin: salva tenant selezionato in sessione per accesso cross-tenant
+            if ($isSuperadmin && $tenantId) {
+                $request->session()->put('current_tenant_id', $tenantId);
             }
             
             // Rigenera la sessione per sicurezza

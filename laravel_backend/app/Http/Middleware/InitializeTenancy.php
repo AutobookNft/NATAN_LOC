@@ -103,10 +103,25 @@ class InitializeTenancy
         }
 
         // 3. User authenticated (tenant_id from user)
-        if (Auth::check() && Auth::user()->tenant_id) {
-            $tenant = Tenant::find(Auth::user()->tenant_id);
-            if ($tenant) {
-                return $tenant;
+        // ECCEZIONE: superadmin può usare tenant dalla sessione se selezionato
+        if (Auth::check()) {
+            $user = Auth::user();
+            
+            // Se superadmin e ha tenant_id in sessione (tenant selezionato), usa quello
+            if ($user->hasRole('superadmin') && $request->session()->has('current_tenant_id')) {
+                $sessionTenantId = $request->session()->get('current_tenant_id');
+                $tenant = Tenant::find($sessionTenantId);
+                if ($tenant) {
+                    return $tenant;
+                }
+            }
+            
+            // Altrimenti usa il tenant_id dell'utente (come prima)
+            if ($user->tenant_id) {
+                $tenant = Tenant::find($user->tenant_id);
+                if ($tenant) {
+                    return $tenant;
+                }
             }
         }
 
