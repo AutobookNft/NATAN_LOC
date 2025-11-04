@@ -6,22 +6,22 @@ return [
         'send_button' => 'Invia',
         'send_aria' => 'Invia messaggio',
     ],
-    
+
     'sidebar' => [
         'chat' => 'Chat',
     ],
-    
+
     'history' => [
         'title' => 'Cronologia Chat',
         'empty' => 'Nessuna conversazione precedente',
         'previous' => 'Precedenti (:count)',
         'untitled' => 'Conversazione senza titolo',
     ],
-    
+
     'suggestions' => [
         'title' => 'Domande suggerite',
     ],
-    
+
     'persona' => [
         'select_title' => 'Persona',
         'auto_mode' => 'Auto',
@@ -33,16 +33,16 @@ return [
         'communication' => 'Esperto Comunicazione',
         'archivist' => 'Archivista/Documentalista',
     ],
-    
+
     'panel' => [
         'title' => 'Domande e Suggerimenti',
     ],
-    
+
     'tabs' => [
         'questions' => 'Domande',
         'explanations' => 'Spiegazioni',
     ],
-    
+
     'questions' => [
         'title' => 'Domande Strategiche',
         'close' => 'Chiudi',
@@ -52,7 +52,7 @@ return [
         'no_suggestions' => 'Nessuna domanda suggerita disponibile',
         'no_questions' => 'Nessuna domanda disponibile',
     ],
-    
+
     'categories' => [
         'strategic' => 'Strategia',
         'technical' => 'Tecnico',
@@ -69,7 +69,7 @@ return [
         'decision_support' => 'Supporto Decisionale',
         'power_questions' => 'Power Questions',
     ],
-    
+
     'explanations' => [
         'title' => 'Spiegazioni e Guide',
         'description' => 'Approfondimenti su come funziona NATAN e le sue funzionalità.',
@@ -86,7 +86,7 @@ return [
             'description' => 'Ogni risposta è scomposta in affermazioni atomiche, ognuna verificata con fonti documentali e calcolo URS.',
         ],
     ],
-    
+
     'consultants' => [
         'title' => 'Consulenti Specializzati',
         'description' => 'Scegli una persona NATAN per risposte specializzate nel dominio selezionato.',
@@ -96,18 +96,18 @@ return [
         'legal_desc' => 'Aspetti legali e conformità normativa',
         'financial_desc' => 'Analisi finanziarie e budget',
     ],
-    
+
     'trust' => [
         'zero_leak' => 'Zero-Leak Perimetrale',
         'multi_tenant' => 'Multi-Tenant Isolato',
         'verified' => 'Verificato',
         'blockchain' => 'Ancorato Blockchain',
     ],
-    
+
     'gdpr' => [
         'data_info' => 'I tuoi dati sono protetti e isolati',
     ],
-    
+
     'scrapers' => [
         'title' => 'Web Scrapers Python',
         'description' => 'Configura e gestisci l\'acquisizione automatica di atti pubblici da fonti web esterne con import MongoDB.',
@@ -164,14 +164,10 @@ return [
             'public_data' => 'Dati Pubblici',
         ],
     ],
-    
-    'use' => [
-        'no_claims' => 'Nessun claim verificato disponibile',
-        'sources' => 'Fonti',
-        'unknown_source' => 'Fonte sconosciuta',
-        'page_number' => '(p. :page)',
-        'source_link_format' => ':title',
-        'no_sources' => 'Nessuna fonte disponibile per questo claim',
-        'inference_badge' => '[Deduzione]',
+    'errors' => [
+        'authentication_required' => 'Autenticazione richiesta. Effettua il login per continuare.',
+        'tenant_id_required' => 'Tenant ID richiesto. Impossibile determinare il tenant corrente.',
+        'validation_failed' => 'Validazione fallita. Controlla i campi inseriti.',
+        'no_ai_consent' => 'Consenso per il trattamento AI non fornito. Accetta il consenso per utilizzare questa funzionalità.',
     ],
 ];

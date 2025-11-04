@@ -16,6 +16,8 @@ return [
         'use_query_failed' => 'Error executing USE query. Service: :service, Method: :method, Tenant: :tenant_id, User: :user_id, Question: :question, Error: :message',
         'use_embedding_failed' => 'Error generating USE embedding. Service: :service, Method: :method, Tenant: :tenant_id, Error: :message',
         'use_audit_save_failed' => 'Error saving USE audit. Service: :service, Method: :method, Tenant: :tenant_id, User: :user_id, Answer ID: :answer_id, Error: :message',
+        'use_proxy_failed' => 'Error during USE query proxy. Tenant: :tenant_id, User: :user_id, Question: :question, Error: :error_message',
+        'use_embedding_proxy_failed' => 'Error during USE embedding proxy. Tenant: :tenant_id, User: :user_id, Error: :error_message',
 
         // NATAN errors
         'natan_api_call_failed' => 'Error calling NATAN API. Endpoint: :endpoint, Tenant: :tenant_id, User: :user_id, Error: :message',
@@ -47,6 +49,8 @@ return [
         'use_query_failed' => 'An error occurred while processing your question. Please try again later.',
         'use_embedding_failed' => 'An error occurred while processing your request. Please try again later.',
         'use_audit_save_failed' => 'A problem occurred while saving data. The operation was still completed.',
+        'use_proxy_failed' => 'An error occurred while processing your question. Please try again later.',
+        'use_embedding_proxy_failed' => 'An error occurred while processing your request. Please try again later.',
 
         // NATAN errors
         'natan_api_call_failed' => 'An error occurred while communicating with the NATAN system. Our team has been notified.',
@@ -73,6 +77,7 @@ return [
         'microservice_auto_start_failed' => 'Service temporarily unavailable. Our team has been alerted and will resolve the issue as soon as possible.',
     ],
 ];
+
 
 
 

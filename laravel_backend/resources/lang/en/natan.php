@@ -6,22 +6,22 @@ return [
         'send_button' => 'Send',
         'send_aria' => 'Send message',
     ],
-    
+
     'sidebar' => [
         'chat' => 'Chat',
     ],
-    
+
     'history' => [
         'title' => 'Chat History',
         'empty' => 'No previous conversations',
         'previous' => 'Previous (:count)',
         'untitled' => 'Untitled conversation',
     ],
-    
+
     'suggestions' => [
         'title' => 'Suggested questions',
     ],
-    
+
     'persona' => [
         'select_title' => 'Persona',
         'auto_mode' => 'Auto',
@@ -33,16 +33,16 @@ return [
         'communication' => 'Communication & PR Specialist',
         'archivist' => 'Archivist & Information Retrieval Specialist',
     ],
-    
+
     'panel' => [
         'title' => 'Questions & Suggestions',
     ],
-    
+
     'tabs' => [
         'questions' => 'Questions',
         'explanations' => 'Explanations',
     ],
-    
+
     'questions' => [
         'title' => 'Strategic Questions',
         'close' => 'Close',
@@ -52,7 +52,7 @@ return [
         'no_suggestions' => 'No suggested questions available',
         'no_questions' => 'No questions available',
     ],
-    
+
     'categories' => [
         'strategic' => 'Strategic',
         'technical' => 'Technical',
@@ -69,7 +69,7 @@ return [
         'decision_support' => 'Decision Support',
         'power_questions' => 'Power Questions',
     ],
-    
+
     'explanations' => [
         'title' => 'Explanations and Guides',
         'description' => 'Learn how NATAN works and its features.',
@@ -86,7 +86,7 @@ return [
             'description' => 'Each response is broken down into atomic statements, each verified with documentary sources and URS calculation.',
         ],
     ],
-    
+
     'consultants' => [
         'title' => 'Specialized Consultants',
         'description' => 'Choose a NATAN persona for specialized responses in the selected domain.',
@@ -96,25 +96,21 @@ return [
         'legal_desc' => 'Legal aspects and regulatory compliance',
         'financial_desc' => 'Financial analysis and budgets',
     ],
-    
+
     'trust' => [
         'zero_leak' => 'Zero-Leak Perimeter',
         'multi_tenant' => 'Multi-Tenant Isolated',
         'verified' => 'Verified',
         'blockchain' => 'Blockchain Anchored',
     ],
-    
+
     'gdpr' => [
         'data_info' => 'Your data is protected and isolated',
     ],
-    
-    'use' => [
-        'no_claims' => 'No verified claims available',
-        'sources' => 'Sources',
-        'unknown_source' => 'Unknown source',
-        'page_number' => '(p. :page)',
-        'source_link_format' => ':title',
-        'no_sources' => 'No sources available for this claim',
-        'inference_badge' => '[Inference]',
+    'errors' => [
+        'authentication_required' => 'Authentication required. Please log in to continue.',
+        'tenant_id_required' => 'Tenant ID required. Unable to determine current tenant.',
+        'validation_failed' => 'Validation failed. Please check the entered fields.',
+        'no_ai_consent' => 'AI processing consent not provided. Please accept consent to use this feature.',
     ],
 ];

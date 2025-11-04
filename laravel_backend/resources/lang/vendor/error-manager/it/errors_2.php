@@ -16,6 +16,8 @@ return [
         'use_query_failed' => 'Errore durante l\'esecuzione della query USE. Service: :service, Method: :method, Tenant: :tenant_id, User: :user_id, Question: :question, Errore: :message',
         'use_embedding_failed' => 'Errore durante la generazione dell\'embedding USE. Service: :service, Method: :method, Tenant: :tenant_id, Errore: :message',
         'use_audit_save_failed' => 'Errore durante il salvataggio dell\'audit USE. Service: :service, Method: :method, Tenant: :tenant_id, User: :user_id, Answer ID: :answer_id, Errore: :message',
+        'use_proxy_failed' => 'Errore durante il proxy USE query. Tenant: :tenant_id, User: :user_id, Question: :question, Errore: :error_message',
+        'use_embedding_proxy_failed' => 'Errore durante il proxy USE embedding. Tenant: :tenant_id, User: :user_id, Errore: :error_message',
 
         // NATAN errors
         'natan_api_call_failed' => 'Errore durante la chiamata API NATAN. Endpoint: :endpoint, Tenant: :tenant_id, User: :user_id, Errore: :message',
@@ -47,6 +49,8 @@ return [
         'use_query_failed' => 'Si è verificato un errore durante l\'elaborazione della tua domanda. Riprova più tardi.',
         'use_embedding_failed' => 'Si è verificato un errore durante l\'elaborazione della richiesta. Riprova più tardi.',
         'use_audit_save_failed' => 'Si è verificato un problema durante il salvataggio dei dati. L\'operazione è stata comunque completata.',
+        'use_proxy_failed' => 'Si è verificato un errore durante l\'elaborazione della tua domanda. Riprova più tardi.',
+        'use_embedding_proxy_failed' => 'Si è verificato un errore durante l\'elaborazione della richiesta. Riprova più tardi.',
 
         // NATAN errors
         'natan_api_call_failed' => 'Si è verificato un errore durante la comunicazione con il sistema NATAN. Il nostro team è stato notificato.',
@@ -73,6 +77,7 @@ return [
         'microservice_auto_start_failed' => 'Servizio temporaneamente non disponibile. Il nostro team è stato allertato e risolverà il problema al più presto.',
     ],
 ];
+
 
 
 

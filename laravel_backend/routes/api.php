@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\NatanConversationController;
+use App\Http\Controllers\NatanUseProxyController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,7 +54,7 @@ Route::middleware(['auth:sanctum'])->prefix('natan')->name('api.natan.')->group(
     // Conversation API
     Route::post('/conversations/save', [NatanConversationController::class, 'saveConversation'])
         ->name('conversations.save');
-    
+
     Route::get('/conversations/{conversationId}', [NatanConversationController::class, 'getConversation'])
         ->name('conversations.get');
 });
@@ -62,7 +63,25 @@ Route::middleware(['auth:sanctum'])->prefix('natan')->name('api.natan.')->group(
 Route::middleware(['auth:web'])->prefix('natan')->name('api.natan.web.')->group(function () {
     Route::post('/conversations/save', [NatanConversationController::class, 'saveConversation'])
         ->name('conversations.save');
-    
+
     Route::get('/conversations/{conversationId}', [NatanConversationController::class, 'getConversation'])
         ->name('conversations.get');
+});
+
+// USE Pipeline Proxy Routes (proxy to Python FastAPI)
+Route::middleware(['auth:sanctum'])->prefix('api/v1')->name('api.v1.')->group(function () {
+    Route::post('/use/query', [NatanUseProxyController::class, 'proxyUseQuery'])
+        ->name('use.query');
+
+    Route::post('/embed', [NatanUseProxyController::class, 'proxyEmbedding'])
+        ->name('embed');
+});
+
+// Fallback: Also support web session auth for USE proxy
+Route::middleware(['auth:web'])->prefix('api/v1')->name('api.v1.web.')->group(function () {
+    Route::post('/use/query', [NatanUseProxyController::class, 'proxyUseQuery'])
+        ->name('use.query');
+
+    Route::post('/embed', [NatanUseProxyController::class, 'proxyEmbedding'])
+        ->name('embed');
 });
