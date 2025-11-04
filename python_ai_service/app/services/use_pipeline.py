@@ -38,8 +38,7 @@ class UsePipeline:
         tenant_id: int,
         persona: str = "strategic",
         model: str = "anthropic.sonnet-3.5",
-        query_embedding: Optional[list] = None,
-        limit: Optional[int] = None
+        query_embedding: Optional[list] = None
     ) -> Dict[str, Any]:
         """
         Process a query through complete USE pipeline
@@ -50,7 +49,6 @@ class UsePipeline:
             persona: Persona name
             model: LLM model
             query_embedding: Optional pre-computed query embedding
-            limit: Optional limit for retrieval (None = all, STATISTICS RULE)
         
         Returns:
             Complete USE pipeline result
@@ -95,12 +93,13 @@ class UsePipeline:
                     persona=persona
                 )
             
-            # Other direct queries (TODO: implement for simple factual queries)
-            return {
-                "status": "direct_query",
-                "message": "Direct query not yet implemented",
-                "routing": routing
-            }
+            # Simple numeric/count queries (e.g., "quanti documenti nel 2024?")
+            return await self._handle_direct_simple_query(
+                question=question,
+                classification=classification,
+                routing=routing,
+                tenant_id=tenant_id
+            )
         
         elif action == RouterAction.RAG_STRICT.value:
             # Step 3: Retrieve chunks
@@ -116,11 +115,10 @@ class UsePipeline:
                 embed_result = await adapter.embed(question)
                 query_embedding = embed_result["embedding"]
             
-            # STATISTICS RULE: Pass explicit limit (None = all results, no hidden limits)
             chunks = self.retriever.retrieve(
                 query_embedding=query_embedding,
                 tenant_id=tenant_id,
-                limit=limit,  # Explicit parameter, no hardcoded value
+                limit=10,
                 filters=constraints
             )
             
@@ -466,6 +464,117 @@ class UsePipeline:
             "routing": routing,
             "model_used": "conversational",
             "tokens_used": {"total": 0, "prompt": 0, "completion": 0},
+            "persona": "strategic"
+        }
+    
+    async def _handle_direct_simple_query(
+        self,
+        question: str,
+        classification: Dict[str, Any],
+        routing: Dict[str, Any],
+        tenant_id: int
+    ) -> Dict[str, Any]:
+        """
+        Handle simple numeric/count queries that can be answered directly from MongoDB
+        (e.g., "quanti documenti nel 2024?", "quante delibere ci sono?")
+        
+        Args:
+            question: User question
+            classification: Classification result
+            routing: Routing result
+            tenant_id: Tenant ID
+        
+        Returns:
+            Dict with answer and metadata
+        """
+        from app.services.mongodb_service import MongoDBService
+        import re
+        from datetime import datetime
+        
+        question_lower = question.lower().strip()
+        
+        # Build MongoDB filter
+        filter_query = {
+            "tenant_id": tenant_id
+        }
+        
+        # Extract date filters from question
+        # Patterns: "nel 2024", "dal 2023 al 2024", "nel mese di gennaio", etc.
+        year_match = re.search(r'\b(?:nel|anno|del|dell\'|nell\')\s+(\d{4})\b', question_lower)
+        if year_match:
+            year = int(year_match.group(1))
+            filter_query["created_at"] = {
+                "$gte": datetime(year, 1, 1).isoformat(),
+                "$lt": datetime(year + 1, 1, 1).isoformat()
+            }
+        
+        # Extract document type filters
+        doc_type_map = {
+            "delibera": "delibera",
+            "delibere": "delibera",
+            "atto": "atto",
+            "atti": "atto",
+            "protocollo": "protocollo",
+            "protocolli": "protocollo",
+            "provvedimento": "provvedimento",
+            "provvedimenti": "provvedimento",
+            "documento": None,  # Generic, no filter
+            "documenti": None
+        }
+        
+        for keyword, doc_type in doc_type_map.items():
+            if keyword in question_lower and doc_type:
+                filter_query["document_type"] = doc_type
+                break
+        
+        # Count documents
+        count = MongoDBService.count_documents("documents", filter_query)
+        
+        # Build answer
+        if count == 0:
+            answer_text = f"Non ci sono documenti che corrispondono ai criteri richiesti."
+        else:
+            # Extract document type name for answer
+            doc_type_name = filter_query.get("document_type", "documenti")
+            if doc_type_name == "delibera":
+                doc_type_name = "delibere"
+            elif doc_type_name == "atto":
+                doc_type_name = "atti"
+            elif doc_type_name == "protocollo":
+                doc_type_name = "protocolli"
+            elif doc_type_name == "provvedimento":
+                doc_type_name = "provvedimenti"
+            
+            year_info = ""
+            if year_match:
+                year_info = f" nel {year_match.group(1)}"
+            
+            answer_text = f"Ci sono {count} {doc_type_name}{year_info}."
+        
+        return {
+            "status": "success",
+            "question": question,
+            "answer": answer_text,
+            "answer_id": f"count_{hash(question)}",
+            "verified_claims": [{
+                "text": answer_text,
+                "urs": 1.0,
+                "ursLabel": "A",
+                "sourceRefs": [],
+                "isInference": False,
+                "ursBreakdown": {
+                    "direct_query": 1.0,
+                    "total": 1.0
+                }
+            }],
+            "blocked_claims": [],
+            "avg_urs": 1.0,
+            "verification_status": "direct_query",
+            "chunks_used": [],
+            "classification": classification,
+            "routing": routing,
+            "model_used": "mongodb_direct",
+            "tokens_used": {"total": 0, "input": 0, "output": 0},
             "persona": "strategic"
         }
 

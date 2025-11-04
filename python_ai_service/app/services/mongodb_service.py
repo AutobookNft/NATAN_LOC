@@ -137,6 +137,31 @@ class MongoDBService:
         collection = cls.get_collection(collection_name)
         result = collection.delete_many(filter)
         return result.deleted_count
+    
+    @classmethod
+    def count_documents(cls, collection_name: str, filter: Dict[str, Any]) -> int:
+        """
+        Count documents in collection matching filter
+        
+        Args:
+            collection_name: MongoDB collection name
+            filter: Query filter dict
+        
+        Returns:
+            Count of matching documents (0 if MongoDB unavailable or error)
+        """
+        if not cls.is_connected():
+            logger.debug(f"MongoDB not available, returning 0 for count in {collection_name}")
+            return 0
+        
+        try:
+            collection = cls.get_collection(collection_name)
+            if collection is None:
+                return 0
+            return collection.count_documents(filter)
+        except Exception as e:
+            logger.warning(f"MongoDB count failed for {collection_name}: {e}")
+            return 0
 
 
 

@@ -91,6 +91,10 @@ class ExecutionRouter:
         if intent_enum == QueryIntent.INTERPRETATION and has_document_request:
             action = RouterAction.RAG_STRICT
         
+        # Override: Simple count queries can be answered directly (no AI needed)
+        if action == RouterAction.RAG_STRICT and ExecutionRouter.can_respond_without_ai(intent, question, constraints):
+            action = RouterAction.DIRECT_QUERY
+        
         # Low confidence -> block (but allow if document request)
         if confidence < 0.5 and not has_document_request:
             action = RouterAction.BLOCK
@@ -120,6 +124,7 @@ class ExecutionRouter:
     @staticmethod
     def can_respond_without_ai(
         intent: str,
+        question: str,
         constraints: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
@@ -127,13 +132,35 @@ class ExecutionRouter:
         
         Args:
             intent: Query intent
+            question: Original question text
             constraints: Optional constraints
         
         Returns:
             True se può rispondere direttamente
         """
-        # Per ora: tutte le query richiedono AI
-        # TODO: Implementare logica per query semplici (es. "quante delibere nel 2024?")
+        question_lower = question.lower().strip()
+        
+        # Query semplici numeriche che possono essere risposte direttamente con MongoDB
+        # Pattern: "quanti/quante [documenti/delibere/atti] [filters]?"
+        simple_count_patterns = [
+            r'\bquant[iae]\s+(document[io]|deliber[ae]|att[io]|protocoll[io]|provvediment[io])',
+            r'\bnumero\s+(totale|di|di\s+document[io]|di\s+deliber[ae])',
+            r'\bconta\s+(document[io]|deliber[ae]|att[io])',
+            r'\b(quant[iae]|numero)\s+(ce ne sono|ci sono|sono presenti)',
+        ]
+        
+        # Verifica se è una query di conteggio semplice
+        import re
+        is_simple_count = any(re.search(pattern, question_lower) for pattern in simple_count_patterns)
+        
+        # Query semplici fattuali (chi/cosa/quando) per singolo documento
+        # NOTA: Queste richiedono comunque RAG perché servono i contenuti del documento
+        # Quindi non le trattiamo come DIRECT_QUERY
+        
+        # Solo query numeriche di conteggio possono essere risposte direttamente
+        if intent in ["numerical", "fact_check"] and is_simple_count:
+            return True
+        
         return False
 
 
