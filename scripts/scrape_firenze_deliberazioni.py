@@ -2,30 +2,20 @@
 """
 Scraper completo per Deliberazioni e Determinazioni del Comune di Firenze
 Estrae tutti gli atti dal 2018 al 2025 con allegati PDF
-Supporta salvataggio in MongoDB per NATAN_LOC
 """
 
 import requests
 import json
 import os
-import sys
-import asyncio
 from datetime import datetime
 from time import sleep
-from pathlib import Path
 from urllib.parse import urljoin
 
-# Add NATAN_LOC python_ai_service to path for MongoDB importer
-NATAN_LOC_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(NATAN_LOC_ROOT / "python_ai_service"))
-
 class FirenzeAttiScraper:
-    def __init__(self, output_dir='storage/testing/firenze_atti_completi', use_mongodb=False, tenant_id=1):
+    def __init__(self, output_dir='storage/testing/firenze_atti_completi'):
         self.base_url = "https://accessoconcertificato.comune.fi.it"
         self.api_url = f"{self.base_url}/trasparenza-atti-cat/searchAtti"
         self.output_dir = output_dir
-        self.use_mongodb = use_mongodb
-        self.tenant_id = tenant_id
         
         self.session = requests.Session()
         self.session.headers.update({
@@ -37,19 +27,7 @@ class FirenzeAttiScraper:
             'Referer': f'{self.base_url}/trasparenza-atti/',
         })
         
-        # MongoDB importer (if enabled)
-        self.mongodb_importer = None
-        if self.use_mongodb:
-            try:
-                from app.services.pa_act_mongodb_importer import PAActMongoDBImporter
-                self.mongodb_importer = PAActMongoDBImporter(tenant_id=self.tenant_id, dry_run=False)
-                print(f"✅ MongoDB import enabled (tenant_id={tenant_id})")
-            except Exception as e:
-                print(f"⚠️  Errore inizializzazione MongoDB importer: {e}")
-                print("   Continuo con salvataggio JSON solo")
-                self.use_mongodb = False
-        
-        # Crea directory (anche se usiamo MongoDB, per PDF)
+        # Crea directory
         os.makedirs(output_dir, exist_ok=True)
         os.makedirs(f"{output_dir}/json", exist_ok=True)
         os.makedirs(f"{output_dir}/pdf", exist_ok=True)
@@ -89,45 +67,7 @@ class FirenzeAttiScraper:
             print(f"⚠️  Errore download PDF {filename}: {e}")
             return None
     
-    async def import_atto_to_mongodb(self, atto_api_data, pdf_path=None):
-        """Importa un atto API in MongoDB usando PAActMongoDBImporter"""
-        if not self.mongodb_importer:
-            return False
-        
-        try:
-            # Mappa campi API a formato MongoDB importer
-            # L'API ritorna campi come: numeroAdozione, tipoAtto, oggetto, dataAdozione, etc.
-            atto_data_for_mongodb = {
-                'numero_atto': atto_api_data.get('numeroAdozione', ''),
-                'tipo_atto': atto_api_data.get('tipoAtto', ''),
-                'oggetto': atto_api_data.get('oggetto', ''),
-                'data_atto': atto_api_data.get('dataAdozione', ''),
-                'competenza': atto_api_data.get('competenza', ''),
-                'anno': atto_api_data.get('annoAdozione', None),
-                'scraper_type': 'firenze_deliberazioni'  # Identificatore scraper
-            }
-            
-            # URL PDF (primo allegato PDF disponibile)
-            pdf_url = None
-            for allegato in atto_api_data.get('allegati', []):
-                if allegato.get('contentType') == 'application/pdf':
-                    pdf_url = urljoin(self.base_url, allegato.get('link', ''))
-                    break
-            
-            # Import in MongoDB
-            success = await self.mongodb_importer.import_atto(
-                atto_data=atto_data_for_mongodb,
-                pdf_path=pdf_path,
-                pdf_url=pdf_url,
-                ente="Comune di Firenze"
-            )
-            
-            return success
-        except Exception as e:
-            print(f"⚠️  Errore import MongoDB atto {atto_api_data.get('numeroAdozione', 'N/A')}: {e}")
-            return False
-
-    async def scrape_all(self, anni=None, tipi_atto=None, download_pdfs=False, max_pdf_per_type=None):
+    def scrape_all(self, anni=None, tipi_atto=None, download_pdfs=False, max_pdf_per_type=None):
         """Scrape tutti gli atti"""
         
         # Default: dal 2018 al 2025
@@ -145,11 +85,6 @@ class FirenzeAttiScraper:
             }
         
         print("🚀 INIZIO SCRAPING ATTI COMUNE DI FIRENZE")
-        print("=" * 70)
-        if self.use_mongodb:
-            print(f"📦 MongoDB import: ABILITATO (tenant_id={self.tenant_id})")
-        else:
-            print("💾 Salvataggio: JSON locale")
         print("=" * 70)
         print(f"📅 Anni: {min(anni)} - {max(anni)}")
         print(f"📋 Tipi atto: {list(tipi_atto.keys())}")
@@ -173,40 +108,34 @@ class FirenzeAttiScraper:
                 
                 if atti:
                     print(f"✅ {len(atti)} atti trovati")
+                    tipo_atti.extend(atti)
+                    total_count += len(atti)
                     
-                    for atto in atti:
-                        pdf_path = None
-                        
-                        # Download PDF se richiesto
-                        if download_pdfs:
-                            if max_pdf_per_type and pdf_downloaded >= max_pdf_per_type:
+                    # Download PDF se richiesto
+                    if download_pdfs:
+                        pdf_count_this_type = 0
+                        for atto in atti:
+                            if max_pdf_per_type and pdf_count_this_type >= max_pdf_per_type:
                                 break
                             
                             for allegato in atto.get('allegati', []):
-                                if max_pdf_per_type and pdf_downloaded >= max_pdf_per_type:
+                                if max_pdf_per_type and pdf_count_this_type >= max_pdf_per_type:
                                     break
                                 
                                 if allegato.get('contentType') == 'application/pdf':
                                     pdf_link = allegato.get('link')
                                     if pdf_link:
                                         filename = f"{tipo_codice}_{anno}_{atto['numeroAdozione']}_{allegato['id']}.pdf"
-                                        pdf_path = self.download_pdf(pdf_link, filename)
-                                        if pdf_path:
+                                        if self.download_pdf(pdf_link, filename):
                                             pdf_downloaded += 1
+                                            pdf_count_this_type += 1
                                         sleep(0.5)  # Pausa tra download
-                        
-                        # Import in MongoDB se abilitato
-                        if self.use_mongodb:
-                            await self.import_atto_to_mongodb(atto, pdf_path)
-                        
-                        tipo_atti.append(atto)
-                        total_count += 1
                 else:
                     print("⚪ 0 atti")
                 
                 sleep(1)  # Pausa tra richieste
             
-            # Salva JSON per tipo (backup, anche se usiamo MongoDB)
+            # Salva JSON per tipo
             if tipo_atti:
                 all_atti[tipo_codice] = tipo_atti
                 output_file = os.path.join(
@@ -216,10 +145,10 @@ class FirenzeAttiScraper:
                 )
                 with open(output_file, 'w', encoding='utf-8') as f:
                     json.dump(tipo_atti, f, indent=2, ensure_ascii=False)
-                print(f"\n   💾 Backup JSON salvato: {output_file}")
+                print(f"\n   💾 Salvato: {output_file}")
                 print(f"   📊 Totale {tipo_nome}: {len(tipo_atti)} atti")
         
-        # Salva JSON completo (backup)
+        # Salva JSON completo
         master_file = os.path.join(
             self.output_dir,
             'json',
@@ -239,28 +168,10 @@ class FirenzeAttiScraper:
         if download_pdfs:
             print(f"📑 PDF scaricati: {pdf_downloaded}")
         
-        # Statistiche MongoDB se abilitato
-        if self.use_mongodb and self.mongodb_importer:
-            stats = self.mongodb_importer.stats
-            print(f"\n📊 Statistiche MongoDB:")
-            print(f"   ✅ Importati: {stats['processed']}")
-            print(f"   ⚠️  Saltati: {stats['skipped']}")
-            print(f"   ❌ Errori: {stats['errors']}")
-            print(f"   📄 Totale chunks: {stats['total_chunks']}")
-            
-            # Costi embeddings
-            cost_info = self.mongodb_importer.cost_tracker.calculate_cost()
-            if cost_info['cost_eur'] > 0:
-                print(f"\n💰 Costi embeddings:")
-                print(f"   Modello: {cost_info['model']}")
-                print(f"   Tokens: {cost_info['total_tokens']:,}")
-                print(f"   Costo: €{cost_info['cost_eur']:.4f}")
-        
         return all_atti
 
 
-async def main_async():
-    """Main async function"""
+def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Scraper Atti Comune Firenze')
@@ -270,8 +181,6 @@ async def main_async():
     parser.add_argument('--max-pdf-per-type', type=int, help='Max PDF per tipo (per test)')
     parser.add_argument('--output-dir', default='storage/testing/firenze_atti_completi', help='Directory output')
     parser.add_argument('--tipi', nargs='+', help='Tipi atto specifici (es: DG DC DD)')
-    parser.add_argument('--mongodb', action='store_true', help='Importa in MongoDB (NATAN_LOC)')
-    parser.add_argument('--tenant-id', type=int, default=1, help='Tenant ID per MongoDB (default: 1)')
     
     args = parser.parse_args()
     
@@ -288,25 +197,13 @@ async def main_async():
         }
         tipi_atto = {k: v for k, v in tipi_map.items() if k in args.tipi}
     
-    scraper = FirenzeAttiScraper(
-        output_dir=args.output_dir,
-        use_mongodb=args.mongodb,
-        tenant_id=args.tenant_id
-    )
-    await scraper.scrape_all(
+    scraper = FirenzeAttiScraper(output_dir=args.output_dir)
+    scraper.scrape_all(
         anni=anni,
         tipi_atto=tipi_atto,
         download_pdfs=args.download_pdfs,
         max_pdf_per_type=args.max_pdf_per_type
     )
-    
-    if args.mongodb:
-        print(f"\n📦 Import completato in MongoDB (tenant_id={args.tenant_id})")
-
-
-def main():
-    """Main entry point"""
-    asyncio.run(main_async())
 
 
 if __name__ == '__main__':
