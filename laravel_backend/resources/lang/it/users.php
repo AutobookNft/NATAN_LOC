@@ -53,5 +53,9 @@ return [
     
     // Search
     'search_placeholder' => 'Cerca per nome o email...',
+    'no_users_found' => 'Nessun utente trovato',
+    'actions' => 'Azioni',
+    'optional' => 'opzionale',
+    'verified' => 'Verificato',
 ];
 
