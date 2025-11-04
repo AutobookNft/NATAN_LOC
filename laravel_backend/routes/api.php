@@ -1,0 +1,68 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\NatanConversationController;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "api" middleware group. Make something great!
+|
+*/
+
+// API Session endpoint (no auth required for session check)
+Route::get('/session', function () {
+    $user = Auth::user();
+
+    if (!$user) {
+        return response()->json([
+            'user' => null,
+            'tenant' => null,
+        ], 200);
+    }
+
+    // Get tenant from user or resolver
+    $tenant = null;
+    if ($user->tenant_id) {
+        $tenant = \App\Models\Tenant::find($user->tenant_id);
+    }
+
+    return response()->json([
+        'user' => $user ? [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'tenant_id' => $user->tenant_id,
+        ] : null,
+        'tenant' => $tenant ? [
+            'id' => $tenant->id,
+            'name' => $tenant->name,
+            'slug' => $tenant->slug,
+            'domain' => $tenant->slug . '.natan.loc',
+        ] : null,
+    ]);
+})->name('api.session');
+
+// NATAN API Routes (require authentication)
+Route::middleware(['auth:sanctum'])->prefix('natan')->name('api.natan.')->group(function () {
+    // Conversation API
+    Route::post('/conversations/save', [NatanConversationController::class, 'saveConversation'])
+        ->name('conversations.save');
+    
+    Route::get('/conversations/{conversationId}', [NatanConversationController::class, 'getConversation'])
+        ->name('conversations.get');
+});
+
+// Fallback: Also support web session auth (for Blade-based frontend)
+Route::middleware(['auth:web'])->prefix('natan')->name('api.natan.web.')->group(function () {
+    Route::post('/conversations/save', [NatanConversationController::class, 'saveConversation'])
+        ->name('conversations.save');
+    
+    Route::get('/conversations/{conversationId}', [NatanConversationController::class, 'getConversation'])
+        ->name('conversations.get');
+});
