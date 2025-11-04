@@ -142,7 +142,52 @@ if [ -f "/tmp/natan_python_port.txt" ]; then
     PYTHON_PORT=$(cat /tmp/natan_python_port.txt)
 fi
 
-# 3. Frontend Vite Dev Server
+# 3. Laravel Backend
+echo ""
+echo "🔵 Starting Laravel backend..."
+
+LARAVEL_PORT=7000
+if check_port $LARAVEL_PORT; then
+    echo -e "${GREEN}✓${NC} Laravel ($LARAVEL_PORT) is already running"
+else
+    cd laravel_backend
+    
+    # Check if .env exists
+    if [ ! -f ".env" ]; then
+        echo -e "${YELLOW}⚠${NC} .env file not found - copying from .env.example"
+        if [ -f ".env.example" ]; then
+            cp .env.example .env
+            php artisan key:generate >/dev/null 2>&1 || true
+            echo -e "${YELLOW}⚠${NC} Please configure .env file before continuing"
+        else
+            echo -e "${RED}✗${NC} .env.example not found"
+            cd ..
+            exit 1
+        fi
+    fi
+    
+    # Install dependencies if needed
+    if [ ! -d "vendor" ]; then
+        echo "Installing Laravel dependencies..."
+        composer install --no-interaction --prefer-dist
+    fi
+    
+    # Run migrations if needed (optional - comment out if you want to run manually)
+    # php artisan migrate --force
+    
+    # Start Laravel in background
+    echo "Starting Laravel on http://localhost:$LARAVEL_PORT..."
+    nohup php artisan serve --host=0.0.0.0 --port=$LARAVEL_PORT > /tmp/natan_laravel.log 2>&1 &
+    LARAVEL_PID=$!
+    echo $LARAVEL_PID > /tmp/natan_laravel.pid
+    echo -e "${GREEN}✓${NC} Laravel started (PID: $LARAVEL_PID)"
+    echo "   Logs: /tmp/natan_laravel.log"
+    sleep 2
+    
+    cd ..
+fi
+
+# 4. Frontend Vite Dev Server
 echo ""
 echo "⚡ Starting Frontend Vite dev server..."
 
@@ -187,13 +232,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${GREEN}✓ All services started!${NC}"
 echo ""
 echo "📡 Services:"
+echo "   • Laravel Backend: http://localhost:7000"
 echo "   • Python FastAPI:  http://localhost:8001"
 echo "   • Frontend:        http://localhost:5173"
 echo "   • API Docs:        http://localhost:8001/docs"
 echo "   • Health Check:    http://localhost:8001/healthz"
 echo ""
 echo "📝 Logs:"
-echo "   • Python:  tail -f /tmp/natan_python.log"
+echo "   • Laravel:  tail -f /tmp/natan_laravel.log"
+echo "   • Python:   tail -f /tmp/natan_python.log"
 echo "   • Frontend: tail -f /tmp/natan_frontend.log"
 echo ""
 echo "🛑 To stop services:"

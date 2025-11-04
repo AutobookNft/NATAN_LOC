@@ -28,6 +28,21 @@ else
     echo -e "${YELLOW}⚠${NC} Python FastAPI PID file not found"
 fi
 
+# Stop Laravel
+if [ -f "/tmp/natan_laravel.pid" ]; then
+    LARAVEL_PID=$(cat /tmp/natan_laravel.pid)
+    if ps -p $LARAVEL_PID > /dev/null 2>&1; then
+        echo "Stopping Laravel (PID: $LARAVEL_PID)..."
+        kill $LARAVEL_PID 2>/dev/null || true
+        rm /tmp/natan_laravel.pid
+        echo -e "${GREEN}✓${NC} Laravel stopped"
+    else
+        rm /tmp/natan_laravel.pid
+    fi
+else
+    echo -e "${YELLOW}⚠${NC} Laravel PID file not found"
+fi
+
 # Stop Vite dev server
 if [ -f "/tmp/natan_frontend.pid" ]; then
     VITE_PID=$(cat /tmp/natan_frontend.pid)
@@ -44,6 +59,11 @@ else
 fi
 
 # Kill processes on ports if still running
+if lsof -Pi :7000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "Killing process on port 7000..."
+    kill $(lsof -ti:7000) 2>/dev/null || true
+fi
+
 if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "Killing process on port 8000..."
     kill $(lsof -ti:8000) 2>/dev/null || true
@@ -56,6 +76,11 @@ fi
 
 echo ""
 echo -e "${GREEN}✓ All services stopped${NC}"
+
+
+
+
+
 
 
 
