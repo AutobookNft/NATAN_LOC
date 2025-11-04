@@ -76,6 +76,14 @@ class LogicalVerifier:
                             "document_id": source_ref.get("document_id")
                         })
             
+            # CRITICAL: Block claims with no valid source references (is_inference = True)
+            # These are claims invented by the LLM without source support
+            if claim.get("is_inference", False) or len(sourceRefs) == 0:
+                # Force URS to 0.0 for claims without sources - these are hallucinations
+                urs_score.score = 0.0
+                urs_score.label = "X"
+                urs_score.reason = "Claim senza fonti valide - potenziale allucinazione"
+            
             # Add URS to claim (use camelCase for frontend compatibility)
             claim_with_urs = {
                 **claim,
@@ -86,8 +94,8 @@ class LogicalVerifier:
                 "sourceRefs": sourceRefs  # Add mapped source references
             }
             
-            # Block if URS < 0.5
-            if urs_score.score < 0.5:
+            # Block if URS < 0.5 OR no sources
+            if urs_score.score < 0.5 or len(sourceRefs) == 0 or claim.get("is_inference", False):
                 blocked_claims.append(claim_with_urs)
             else:
                 verified_claims.append(claim_with_urs)

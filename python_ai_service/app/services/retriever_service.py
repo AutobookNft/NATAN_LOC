@@ -22,7 +22,7 @@ class RetrieverService:
         self,
         query_embedding: List[float],
         tenant_id: int,
-        limit: Optional[int] = None,
+        limit: int = 10,
         min_score: float = 0.3,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
@@ -32,7 +32,7 @@ class RetrieverService:
         Args:
             query_embedding: Query embedding vector
             tenant_id: Tenant ID for isolation
-            limit: Max results to return (None = all results, STATISTICS RULE)
+            limit: Max results to return
             min_score: Minimum similarity score
             filters: Optional filters (date_range, document_type, etc.)
         
@@ -167,11 +167,8 @@ class RetrieverService:
         # Sort by similarity (descending)
         results.sort(key=lambda x: x.get("similarity", x.get("similarity_score", 0)), reverse=True)
         
-        # STATISTICS RULE: If limit is None, return all results (explicit, not hidden)
-        # If limit is set, apply it
-        if limit is not None:
-            return results[:limit]
-        return results
+        # Limit results
+        return results[:limit]
     
     @staticmethod
     def _cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:

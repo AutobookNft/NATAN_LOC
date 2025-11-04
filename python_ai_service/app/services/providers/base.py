@@ -42,3 +42,16 @@ class BaseEmbeddingAdapter(ABC):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
