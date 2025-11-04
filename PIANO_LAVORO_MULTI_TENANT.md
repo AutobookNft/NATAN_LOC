@@ -322,3 +322,8 @@ AZIONE: Verificare che frontend ottiene tenant_id correttamente da /api/session
 
 **Pronto per esecuzione!**
 
+
+
+
+
+

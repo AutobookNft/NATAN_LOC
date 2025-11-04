@@ -122,3 +122,16 @@ Nel database `natan_ai_core` troverai:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+

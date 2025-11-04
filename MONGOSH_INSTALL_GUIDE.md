@@ -103,3 +103,16 @@ db.documents.find({tenant_id: 1}).limit(10).forEach(doc => printjson(doc))
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
