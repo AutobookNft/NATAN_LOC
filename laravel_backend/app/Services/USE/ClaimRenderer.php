@@ -4,13 +4,13 @@ namespace App\Services\USE;
 
 /**
  * Claim Renderer - HTML rendering con colori/badge URS
- * 
+ *
  * Renders verified claims with:
  * - Colors based on URS label (A=green, B=blue, C=yellow, X=red)
  * - URS badge
  * - Clickable source links
  * - [Deduzione] badge for inferences
- * 
+ *
  * @package App\Services\USE
  * @version 1.0.0
  */
@@ -18,7 +18,7 @@ class ClaimRenderer
 {
     /**
      * Render claims as HTML
-     * 
+     *
      * @param array $claims List of verified claims
      * @return string HTML string
      */
@@ -41,7 +41,7 @@ class ClaimRenderer
 
     /**
      * Render single claim
-     * 
+     *
      * @param array $claim Claim data
      * @return string HTML string
      */
@@ -95,7 +95,7 @@ class ClaimRenderer
 
     /**
      * Get CSS color classes based on URS label
-     * 
+     *
      * @param string $ursLabel URS label (A, B, C, X)
      * @return array CSS classes
      */
@@ -132,7 +132,7 @@ class ClaimRenderer
 
     /**
      * Render URS badge
-     * 
+     *
      * @param string $label URS label
      * @param float $score URS score
      * @return string HTML
@@ -153,7 +153,7 @@ class ClaimRenderer
 
     /**
      * Render claim text with clickable source links
-     * 
+     *
      * @param string $text Claim text
      * @param array $sourceRefs Source references
      * @return string HTML
@@ -168,7 +168,7 @@ class ClaimRenderer
 
     /**
      * Render source links section
-     * 
+     *
      * @param array $sourceRefs Source references
      * @return string HTML
      */
@@ -182,10 +182,9 @@ class ClaimRenderer
             $title = $ref['title'] ?? __('natan.use.unknown_source');
             $page = $ref['page'] ?? null;
 
-            // I18N: Build link text using translation keys (no hardcoded text)
             $linkText = $title;
             if ($page) {
-                $linkText .= ' ' . __('natan.use.page_number', ['page' => $page]);
+                $linkText .= ' ' . __('natan.use.source_page', ['page' => $page]);
             }
 
             $html .= sprintf(
@@ -204,7 +203,7 @@ class ClaimRenderer
 
     /**
      * Render URS breakdown (collapsible)
-     * 
+     *
      * @param array $breakdown URS breakdown data
      * @return string HTML
      */
@@ -237,7 +236,7 @@ class ClaimRenderer
 
     /**
      * Render blocked claims (claims with URS < 0.5)
-     * 
+     *
      * @param array $blockedClaims Blocked claims
      * @return string HTML
      */
