@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 /**
  * @package Database\Seeders
@@ -35,5 +36,26 @@ class RoleSeeder extends Seeder
         );
 
         $this->command->info('✅ Ruolo pa_entity_admin creato/verificato');
+
+        // Permission per accesso NATAN
+        // Tutti gli utenti autenticati dovrebbero avere accesso a NATAN
+        Permission::firstOrCreate(
+            ['name' => 'access_natan', 'guard_name' => 'web'],
+            ['name' => 'access_natan', 'guard_name' => 'web']
+        );
+
+        $this->command->info('✅ Permission access_natan creata/verificata');
+
+        // Assegna permission access_natan ai ruoli principali
+        $rolesToAssign = ['superadmin', 'admin', 'pa_entity_admin', 'editor', 'collector', 'guest'];
+        $permission = Permission::where('name', 'access_natan')->first();
+
+        foreach ($rolesToAssign as $roleName) {
+            $role = Role::where('name', $roleName)->first();
+            if ($role && $permission && !$role->hasPermissionTo($permission)) {
+                $role->givePermissionTo($permission);
+                $this->command->info("✅ Permission access_natan assegnata a ruolo: {$roleName}");
+            }
+        }
     }
 }
