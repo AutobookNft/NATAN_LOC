@@ -59,12 +59,53 @@ class AiCostsController extends Controller
                 ->count(),
         ];
         
-        // Stima costi (placeholder - da integrare con dati reali)
+        // Calcola costi reali dai messaggi (assistant messages con tokens)
+        $totalCost = 0.0;
+        $thisMonthCost = 0.0;
+        $lastMonthCost = 0.0;
+        $totalMessagesWithCost = 0;
+        
+        // Get all assistant messages with tokens
+        $assistantMessages = NatanChatMessage::where('role', 'assistant')
+            ->where(function($query) {
+                $query->whereNotNull('tokens_input')
+                      ->orWhereNotNull('tokens_output');
+            })
+            ->get();
+        
+        foreach ($assistantMessages as $msg) {
+            if ($msg->tokens_input || $msg->tokens_output) {
+                $cost = \App\Services\CostCalculator::calculateCost([
+                    'input' => $msg->tokens_input ?? 0,
+                    'output' => $msg->tokens_output ?? 0,
+                ], $msg->ai_model);
+                
+                $totalCost += $cost;
+                $totalMessagesWithCost++;
+                
+                // This month
+                if ($msg->created_at->year === now()->year && $msg->created_at->month === now()->month) {
+                    $thisMonthCost += $cost;
+                }
+                
+                // Last month
+                $lastMonth = now()->subMonth();
+                if ($msg->created_at->year === $lastMonth->year && $msg->created_at->month === $lastMonth->month) {
+                    $lastMonthCost += $cost;
+                }
+            }
+        }
+        
+        // Calculate average cost per message
+        $averagePerMessage = $totalMessagesWithCost > 0 
+            ? $totalCost / $totalMessagesWithCost 
+            : 0.0;
+        
         $costsEstimate = [
-            'total_estimated' => $messagesStats['total'] * 0.001, // Stima: €0.001 per messaggio
-            'this_month' => $messagesStats['this_month'] * 0.001,
-            'last_month' => $messagesStats['last_month'] * 0.001,
-            'average_per_message' => 0.001,
+            'total_estimated' => $totalCost,
+            'this_month' => $thisMonthCost,
+            'last_month' => $lastMonthCost,
+            'average_per_message' => $averagePerMessage,
         ];
         
         // Statistiche generali
