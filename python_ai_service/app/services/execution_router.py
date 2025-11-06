@@ -91,12 +91,13 @@ class ExecutionRouter:
         if intent_enum == QueryIntent.INTERPRETATION and has_document_request:
             action = RouterAction.RAG_STRICT
         
-        # Override: Simple count queries can be answered directly (no AI needed)
-        if action == RouterAction.RAG_STRICT and ExecutionRouter.can_respond_without_ai(intent, question, constraints):
+        # CRITICAL: Check simple count queries FIRST, before confidence check
+        # This ensures count queries are always handled directly, even with low confidence
+        if ExecutionRouter.can_respond_without_ai(intent, question, constraints):
             action = RouterAction.DIRECT_QUERY
-        
-        # Low confidence -> block (but allow if document request)
-        if confidence < 0.5 and not has_document_request:
+            reason = "Query di conteggio semplice, risposta diretta da MongoDB"
+        # Low confidence -> block (but allow if document request OR simple count query)
+        elif confidence < 0.5 and not has_document_request:
             action = RouterAction.BLOCK
             reason = f"Low classification confidence: {confidence}"
         else:
@@ -142,11 +143,14 @@ class ExecutionRouter:
         
         # Query semplici numeriche che possono essere risposte direttamente con MongoDB
         # Pattern: "quanti/quante [documenti/delibere/atti] [filters]?"
+        # IMPORTANT: Match anche con "ci sono", "nel database", etc.
         simple_count_patterns = [
-            r'\bquant[iae]\s+(document[io]|deliber[ae]|att[io]|protocoll[io]|provvediment[io])',
-            r'\bnumero\s+(totale|di|di\s+document[io]|di\s+deliber[ae])',
+            r'\bquant[iae]\s+(document[io]|deliber[ae]|att[io]|protocoll[io]|provvediment[io])',  # "quanti atti"
+            r'\bquant[iae]\s+(document[io]|deliber[ae]|att[io]|protocoll[io]|provvediment[io])\s+(ci sono|ce ne sono|sono presenti|nel database)',  # "quanti atti ci sono"
+            r'\bnumero\s+(totale|di|di\s+document[io]|di\s+deliber[ae]|di\s+att[io])',
             r'\bconta\s+(document[io]|deliber[ae]|att[io])',
             r'\b(quant[iae]|numero)\s+(ce ne sono|ci sono|sono presenti)',
+            r'\b(quant[iae]|numero)\s+(document[io]|deliber[ae]|att[io]|protocoll[io]|provvediment[io])\s+(ci sono|ce ne sono|sono presenti|nel database)',  # "quanti atti ci sono nel database"
         ]
         
         # Verifica se è una query di conteggio semplice

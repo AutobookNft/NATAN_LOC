@@ -68,24 +68,27 @@ class RetrieverService:
                     query_filter["created_at"]["$lte"] = filters["date_to"]
         
         # Get candidates from MongoDB - ensure connection first
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             candidates = MongoDBService.find_documents("documents", query_filter)
             if not candidates:
                 # CRITICAL: Empty database = no documents to retrieve
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.warning(f"⚠️ CRITICAL: No documents found in MongoDB with filter: {query_filter}. Database may be empty.")
                 return []  # Return empty - verifica postuma bloccherà risposta
+            
+            # Log retrieval info for debugging
+            logger.info(f"🔍 Retriever: Found {len(candidates)} candidate documents for tenant {tenant_id}")
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"❌ CRITICAL: Error retrieving documents from MongoDB: {e}")
             return []  # Return empty on error
         
         # Calculate cosine similarity with minimum threshold
         results = []
         query_vector = np.array(query_embedding)
-        MIN_SIMILARITY_THRESHOLD = 0.3  # CRITICAL: Minimum similarity to consider chunk relevant
+        # CRITICAL: Lower threshold for documents with only "oggetto" (subject) - they have less semantic content
+        # Once documents have full PDF text, we can raise this back to 0.3
+        MIN_SIMILARITY_THRESHOLD = 0.2  # Lowered from 0.3 to allow retrieval of documents with only "oggetto"
         
         for doc in candidates:
             # Check if document has chunks with embeddings (preferred) or document-level embedding
@@ -102,9 +105,14 @@ class RetrieverService:
                     chunk_vector = np.array(chunk_embedding)
                     similarity = float(np.dot(query_vector, chunk_vector) / (np.linalg.norm(query_vector) * np.linalg.norm(chunk_vector)))
                     
-                    # CRITICAL: Use higher threshold to avoid irrelevant chunks
+                    # CRITICAL: Use effective threshold (lowered to 0.2 for documents with only "oggetto")
                     effective_threshold = max(min_score, MIN_SIMILARITY_THRESHOLD)
+                    if similarity < effective_threshold:
+                        logger.debug(f"⚠️ Chunk similarity {similarity:.3f} below threshold {effective_threshold} for doc {doc.get('document_id', 'N/A')[:30]}")
+                    
                     if similarity >= effective_threshold:
+                        # Log successful retrieval
+                        logger.debug(f"✅ Chunk retrieved: similarity {similarity:.3f} >= {effective_threshold} for doc {doc.get('document_id', 'N/A')[:30]}")
                         results.append({
                             "document_id": doc.get("document_id"),
                             "chunk_index": chunk.get("chunk_index"),
@@ -166,6 +174,12 @@ class RetrieverService:
         
         # Sort by similarity (descending)
         results.sort(key=lambda x: x.get("similarity", x.get("similarity_score", 0)), reverse=True)
+        
+        # Log final results for debugging
+        if results:
+            logger.info(f"✅ Retriever: Returning {len(results[:limit])} chunks (top similarity: {results[0].get('similarity', 0):.3f})")
+        else:
+            logger.warning(f"⚠️ Retriever: No chunks found above threshold {MIN_SIMILARITY_THRESHOLD} for tenant {tenant_id}")
         
         # Limit results
         return results[:limit]

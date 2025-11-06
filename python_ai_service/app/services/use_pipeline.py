@@ -503,21 +503,25 @@ class UsePipeline:
         year_match = re.search(r'\b(?:nel|anno|del|dell\'|nell\')\s+(\d{4})\b', question_lower)
         if year_match:
             year = int(year_match.group(1))
+            # IMPORTANT: created_at in MongoDB is datetime object, not ISO string
             filter_query["created_at"] = {
-                "$gte": datetime(year, 1, 1).isoformat(),
-                "$lt": datetime(year + 1, 1, 1).isoformat()
+                "$gte": datetime(year, 1, 1),
+                "$lt": datetime(year + 1, 1, 1)
             }
         
         # Extract document type filters
+        # IMPORTANT: Map Italian keywords to actual document_type values in MongoDB
         doc_type_map = {
-            "delibera": "delibera",
-            "delibere": "delibera",
-            "atto": "atto",
-            "atti": "atto",
-            "protocollo": "protocollo",
-            "protocolli": "protocollo",
-            "provvedimento": "provvedimento",
-            "provvedimenti": "provvedimento",
+            "delibera": "pa_act",  # Deliberazioni sono pa_act
+            "delibere": "pa_act",
+            "atto": "pa_act",  # Atti sono pa_act, non "atto"
+            "atti": "pa_act",
+            "determinazione": "pa_act",
+            "determinazioni": "pa_act",
+            "protocollo": "pa_act",  # Protocolli sono pa_act
+            "protocolli": "pa_act",
+            "provvedimento": "pa_act",  # Provvedimenti sono pa_act
+            "provvedimenti": "pa_act",
             "documento": None,  # Generic, no filter
             "documenti": None
         }
@@ -529,6 +533,9 @@ class UsePipeline:
         
         # Count documents
         count = MongoDBService.count_documents("documents", filter_query)
+        
+        # Log for debugging
+        logger.info(f"[USE Pipeline] Direct simple query: count={count}, filter={filter_query}, tenant_id={tenant_id}")
         
         # Build answer
         if count == 0:
