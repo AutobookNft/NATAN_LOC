@@ -112,7 +112,7 @@ export class MessageComponent {
       claimsSection.appendChild(claimsHeader);
       
       const claimsContainer = document.createElement('div');
-      claimsContainer.innerHTML = ClaimRenderer.renderClaims(message.claims);
+      claimsContainer.innerHTML = ClaimRenderer.renderClaims(message.claims, message.verificationStatus);
       claimsSection.appendChild(claimsContainer);
       
       bubble.appendChild(claimsSection);
@@ -139,9 +139,25 @@ export class MessageComponent {
       sourcesList.className = 'space-y-1.5 sm:space-y-2';
       message.sources.forEach((source, index) => {
         const link = document.createElement('a');
-        link.href = this.escapeHtml(source.url || '#');
-        link.target = source.url?.startsWith('#') ? '_self' : '_blank';
-        link.rel = source.url?.startsWith('#') ? '' : 'noopener noreferrer';
+        
+        // Handle internal document references (#doc-{document_id})
+        const isInternal = source.url?.startsWith('#doc-');
+        let href = this.escapeHtml(source.url || '#');
+        let documentId: string = '';
+        
+        if (isInternal && source.url) {
+          // Convert #doc-{document_id} to /natan/documents/view/{document_id}
+          documentId = source.url.replace('#doc-', '');
+          href = `/natan/documents/view/${encodeURIComponent(documentId)}`;
+          console.log('[Message] Internal document link:', { original: source.url, documentId, href });
+        }
+        
+        link.href = href;
+        link.target = isInternal ? '_self' : '_blank';
+        link.rel = isInternal ? '' : 'noopener noreferrer';
+        if (isInternal && documentId) {
+          link.setAttribute('data-document-id', documentId);
+        }
         link.className = 'flex items-start gap-2 text-xs sm:text-sm text-natan-blue hover:text-natan-blue-dark hover:underline transition-colors';
         link.setAttribute('aria-label', `Fonte ${index + 1}: ${this.escapeHtml(source.title || 'Senza titolo')}`);
         
