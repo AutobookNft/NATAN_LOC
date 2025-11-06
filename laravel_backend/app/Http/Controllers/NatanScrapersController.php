@@ -8,22 +8,42 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use App\Services\PythonScraperService;
+use App\Services\Gdpr\AuditLogService;
+use App\Enums\Gdpr\GdprActivityCategory;
+use Ultra\UltraLogManager\UltraLogManager;
+use Ultra\ErrorManager\Interfaces\ErrorManagerInterface;
 
 /**
  * @package App\Http\Controllers
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
- * @version 1.0.0 (NATAN_LOC - Python Scrapers Management)
- * @date 2025-01-28
- * @purpose Gestione interfaccia per esecuzione scraper Python con MongoDB import
+ * @version 2.0.0 (NATAN_LOC - Python Scrapers Management with UEM/ULM/GDPR)
+ * @date 2025-11-05
+ * @purpose Gestione interfaccia per esecuzione scraper Python con compliance GDPR completa
+ *
+ * GDPR-COMPLIANT:
+ * - UEM: Gestione errori strutturata
+ * - ULM: Logging operativo strutturato
+ * - GDPR Audit: Tracciamento completo azioni utente per compliance PA
  */
 class NatanScrapersController extends Controller
 {
     protected PythonScraperService $scraperService;
+    protected UltraLogManager $logger;
+    protected ErrorManagerInterface $errorManager;
+    protected AuditLogService $auditService;
 
-    public function __construct(PythonScraperService $scraperService)
-    {
+    public function __construct(
+        PythonScraperService $scraperService,
+        UltraLogManager $logger,
+        ErrorManagerInterface $errorManager,
+        AuditLogService $auditService
+    ) {
         $this->scraperService = $scraperService;
+        $this->logger = $logger;
+        $this->errorManager = $errorManager;
+        $this->auditService = $auditService;
     }
 
     /**
@@ -32,13 +52,20 @@ class NatanScrapersController extends Controller
     public function index(): View
     {
         $scrapers = $this->getAvailableScrapers();
-        
+
         // Calcola statistiche
+        $totalDocuments = $this->getTotalDocumentsInMongoDB();
+        
         $stats = [
             'total' => count($scrapers),
             'available' => count($scrapers),
-            'total_documents' => $this->getTotalDocumentsInMongoDB(),
+            'total_documents' => $totalDocuments,
         ];
+        
+        $this->logger->info('[NatanScrapersController] Index page stats', [
+            'stats' => $stats,
+            'log_category' => 'SCRAPER_STATS'
+        ]);
 
         return view('natan.scrapers.index', [
             'scrapers' => $scrapers,
@@ -58,8 +85,27 @@ class NatanScrapersController extends Controller
             abort(404, 'Scraper non trovato');
         }
 
+        // Calcola statistiche per questo scraper
+        $tenantId = Auth::user()?->tenant_id ?? app('currentTenantId') ?? 2;
+        $totalDocuments = $this->getTotalDocumentsInMongoDBForScraper($scraperId, $tenantId);
+        
+        // Trova ultima esecuzione (dal progress file più recente)
+        $lastExecution = $this->getLastExecutionTime($scraperId);
+        
+        $stats = [
+            'total_documents' => $totalDocuments,
+            'last_execution' => $lastExecution,
+        ];
+        
+        $this->logger->info('[NatanScrapersController] Show page stats', [
+            'scraper_id' => $scraperId,
+            'stats' => $stats,
+            'log_category' => 'SCRAPER_STATS'
+        ]);
+
         return view('natan.scrapers.show', [
             'scraper' => $scraper,
+            'stats' => $stats,
         ]);
     }
 
@@ -68,6 +114,77 @@ class NatanScrapersController extends Controller
      */
     public function run(Request $request, string $scraperId): JsonResponse
     {
+        // Aumenta timeout per esecuzione scraper (30 minuti)
+        set_time_limit(1800);
+        ini_set('max_execution_time', '1800');
+        // FormData invia boolean come stringhe "1"/"0" o "true"/"false", quindi convertiamo
+        $input = $request->all();
+
+        // ULM: Log raw input per debug
+        $this->logger->info('[NatanScrapersController] Raw input received', [
+            'raw_input' => $input,
+            'mongodb_import_raw' => $input['mongodb_import'] ?? 'not set',
+            'mongodb_import_type' => gettype($input['mongodb_import'] ?? null),
+            'log_category' => 'SCRAPER_INPUT_DEBUG'
+        ]);
+
+        // Funzione helper per convertire vari formati in boolean
+        $convertToBoolean = function ($value) {
+            if ($value === null || $value === '') {
+                return null;
+            }
+            if (is_bool($value)) {
+                return $value;
+            }
+            if (is_string($value)) {
+                $value = strtolower(trim($value));
+                // "1", "true", "yes", "on" => true
+                if (in_array($value, ['1', 'true', 'yes', 'on', 'si', 'sì'])) {
+                    return true;
+                }
+                // "0", "false", "no", "off" => false
+                if (in_array($value, ['0', 'false', 'no', 'off', 'non'])) {
+                    return false;
+                }
+                return null;
+            }
+            return (bool)$value;
+        };
+
+        // Converti stringhe in boolean
+        if (isset($input['mongodb_import'])) {
+            $originalValue = $input['mongodb_import'];
+            $convertedValue = $convertToBoolean($input['mongodb_import']);
+            $input['mongodb_import'] = $convertedValue;
+            $this->logger->info('[NatanScrapersController] Boolean conversion', [
+                'field' => 'mongodb_import',
+                'original' => $originalValue,
+                'original_type' => gettype($originalValue),
+                'original_string' => (string)$originalValue,
+                'converted' => $convertedValue,
+                'converted_type' => gettype($convertedValue),
+                'converted_string' => (string)$convertedValue,
+                'is_true' => $convertedValue === true,
+                'is_false' => $convertedValue === false,
+                'log_category' => 'SCRAPER_INPUT_DEBUG'
+            ]);
+        } else {
+            // Se mongodb_import non è presente, loggiamo per debug
+            $this->logger->info('[NatanScrapersController] mongodb_import not set in input', [
+                'input_keys' => array_keys($input),
+                'log_category' => 'SCRAPER_INPUT_DEBUG'
+            ]);
+        }
+        if (isset($input['dry_run'])) {
+            $input['dry_run'] = $convertToBoolean($input['dry_run']);
+        }
+        if (isset($input['download_pdfs'])) {
+            $input['download_pdfs'] = $convertToBoolean($input['download_pdfs']);
+        }
+
+        // Sostituisci l'input con i valori convertiti
+        $request->merge($input);
+
         $validated = $request->validate([
             'year_single' => 'nullable|integer|min:2000|max:2030',
             'year_range' => 'nullable|string|regex:/^\d{4}-\d{4}$/',
@@ -88,16 +205,166 @@ class NatanScrapersController extends Controller
         }
 
         try {
+            // ULM: Log input
+            $this->logger->info('[NatanScrapersController] Run scraper request', [
+                'scraper_id' => $scraperId,
+                'validated' => $validated,
+                'user_id' => Auth::user()?->id,
+                'tenant_id' => Auth::user()?->tenant_id ?? app('currentTenantId'),
+                'log_category' => 'SCRAPER_CONTROLLER'
+            ]);
+
             $result = $this->scraperService->executeScraper(
                 $scraper,
                 $validated
             );
 
+            // Verifica se ci sono errori anche se success = true
+            if (isset($result['success']) && $result['success'] === false) {
+                $this->logger->error('[NatanScrapersController] Scraper execution failed', [
+                    'scraper_id' => $scraperId,
+                    'error' => $result['error'] ?? 'unknown',
+                    'error_code' => $result['error_code'] ?? 'unknown',
+                    'log_category' => 'SCRAPER_CONTROLLER'
+                ]);
+                return response()->json($result, 500);
+            }
+
+            // Verifica errori in output
+            $output = $result['output'] ?? '';
+            $errorOutput = $result['error_output'] ?? '';
+
+            if (!empty($errorOutput) && preg_match('/ModuleNotFoundError|ImportError|Traceback/i', $errorOutput)) {
+                $this->logger->error('[NatanScrapersController] Python error detected', [
+                    'scraper_id' => $scraperId,
+                    'error_output' => substr($errorOutput, 0, 500),
+                    'log_category' => 'SCRAPER_CONTROLLER'
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Errore Python: ' . substr($errorOutput, 0, 300),
+                    'details' => $errorOutput,
+                    'output' => substr($output, 0, 500)
+                ], 500);
+            }
+
+            // Restituisci anche il nome del file di progresso per il polling
+            // (già presente in $result, non serve riassegnarlo)
+
+            // ULM: Log success
+            $this->logger->info('[NatanScrapersController] Scraper execution completed', [
+                'scraper_id' => $scraperId,
+                'stats' => $result['stats'] ?? [],
+                'has_progress_file' => !empty($result['progress_file']),
+                'log_category' => 'SCRAPER_CONTROLLER'
+            ]);
+
             return response()->json($result);
+        } catch (\Exception $e) {
+            // UEM: Handle unexpected exceptions
+            return $this->errorManager->handle('SCRAPER_EXECUTION_FAILED', [
+                'scraper_id' => $scraperId,
+                'error_message' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'user_id' => Auth::user()?->id,
+                'tenant_id' => Auth::user()?->tenant_id ?? app('currentTenantId'),
+            ], $e);
+        }
+    }
+
+    /**
+     * Ottieni progresso esecuzione scraper
+     */
+    public function progress(Request $request, string $scraperId): JsonResponse
+    {
+        // Se check_active=1, trova il progress_file più recente
+        if ($request->has('check_active') && $request->get('check_active') == '1') {
+            $logsPath = storage_path('logs');
+            $pattern = "scraper_progress_{$scraperId}_*.json";
+            $files = glob($logsPath . '/' . $pattern);
+
+            if (empty($files)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Nessun file di progresso trovato',
+                    'status' => 'not_found'
+                ], 404);
+            }
+
+            // Prendi il file più recente
+            usort($files, function ($a, $b) {
+                return filemtime($b) - filemtime($a);
+            });
+
+            $progressFile = $files[0];
+            $progressFileName = basename($progressFile);
+        } else {
+            $validated = $request->validate([
+                'progress_file' => 'required|string',
+            ]);
+            $progressFileName = $validated['progress_file'];
+            $progressFile = storage_path('logs/' . $progressFileName);
+        }
+
+        if (!file_exists($progressFile)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'File di progresso non trovato',
+                'status' => 'not_found',
+                'progress_file' => $progressFileName
+            ], 404);
+        }
+
+        try {
+            $progressData = json_decode(file_get_contents($progressFile), true);
+
+            if (!$progressData) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Errore lettura file di progresso',
+                ], 500);
+            }
+
+            // Raccogli tutti gli errori da tutti i documenti processati
+            $allErrors = [];
+            foreach ($progressData['documents'] ?? [] as $doc) {
+                if (isset($doc['stats']['error_details']) && is_array($doc['stats']['error_details'])) {
+                    foreach ($doc['stats']['error_details'] as $error) {
+                        $allErrors[] = $error;
+                    }
+                }
+            }
+            
+            // Rimuovi duplicati mantenendo solo l'ultimo errore per ogni atto
+            $uniqueErrors = [];
+            foreach ($allErrors as $error) {
+                $attoNum = $error['atto'] ?? 'unknown';
+                $uniqueErrors[$attoNum] = $error;
+            }
+            
+            // Includi error_details nelle stats se presenti nel file di progress
+            $stats = $progressData['stats'] ?? [];
+            if (!empty($uniqueErrors)) {
+                $stats['error_details'] = array_values($uniqueErrors);
+            } elseif (isset($progressData['stats']['error_details'])) {
+                $stats['error_details'] = $progressData['stats']['error_details'];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'status' => $progressData['status'] ?? 'unknown',
+                'stats' => $stats,
+                'documents' => array_slice($progressData['documents'] ?? [], -20), // Ultimi 20 documenti
+                'total_documents' => count($progressData['documents'] ?? []),
+                'started_at' => $progressData['started_at'] ?? null,
+                'last_update' => $progressData['last_update'] ?? null,
+                'completed_at' => $progressData['completed_at'] ?? null,
+                'progress_file' => $progressFileName ?? basename($progressFile),
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => 'Errore: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -107,38 +374,187 @@ class NatanScrapersController extends Controller
      */
     public function preview(Request $request, string $scraperId): JsonResponse
     {
+        $user = Auth::user();
+        $tenantId = $user?->tenant_id ?? app('currentTenantId');
+
+        // ULM: Log method call
+        $this->logger->info('[NatanScrapersController] Preview method called', [
+            'scraper_id' => $scraperId,
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'ip' => $request->ip(),
+            'user_id' => $user?->id,
+            'tenant_id' => $tenantId,
+            'log_category' => 'SCRAPER_CONTROLLER'
+        ]);
+
+        // Il frontend invia 'year', convertiamo a 'year_single'
+        $input = $request->all();
+
+        // ULM: Log raw input
+        $this->logger->debug('[NatanScrapersController] Preview raw input', [
+            'scraper_id' => $scraperId,
+            'input' => $input,
+            'method' => $request->method(),
+            'content_type' => $request->header('Content-Type'),
+            'log_category' => 'SCRAPER_CONTROLLER'
+        ]);
+
+        if (isset($input['year']) && !isset($input['year_single'])) {
+            $input['year_single'] = $input['year'];
+        }
+        $request->merge($input);
+
         $validated = $request->validate([
             'year_single' => 'nullable|integer|min:2000|max:2030',
             'year_range' => 'nullable|string|regex:/^\d{4}-\d{4}$/',
+            'year' => 'nullable|integer|min:2000|max:2030', // Accetta anche 'year' dal frontend
+        ]);
+
+        // Se arriva 'year' senza 'year_single', usa 'year'
+        if (isset($validated['year']) && !isset($validated['year_single'])) {
+            $validated['year_single'] = $validated['year'];
+        }
+
+        // ULM: Log validated input
+        $this->logger->info('[NatanScrapersController] Preview validated input', [
+            'scraper_id' => $scraperId,
+            'validated' => $validated,
+            'user_id' => $user?->id,
+            'tenant_id' => $tenantId,
+            'log_category' => 'SCRAPER_CONTROLLER'
         ]);
 
         $scrapers = $this->getAvailableScrapers();
         $scraper = collect($scrapers)->firstWhere('id', $scraperId);
 
         if (!$scraper) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Scraper non trovato'
-            ], 404);
+            // UEM: Handle scraper not found
+            return $this->errorManager->handle('SCRAPER_SCRIPT_NOT_FOUND', [
+                'scraper_id' => $scraperId,
+                'user_id' => $user?->id,
+                'tenant_id' => $tenantId,
+            ], new \Exception("Scraper non trovato: {$scraperId}"));
         }
 
         try {
+
             // Force dry-run
             $validated['dry_run'] = true;
             $validated['mongodb_import'] = false;
-            
+
             $result = $this->scraperService->executeScraper(
                 $scraper,
                 $validated
             );
 
-            return response()->json($result);
+            // ULM: Log completion
+            $this->logger->info('[NatanScrapersController] Preview scraper completed', [
+                'scraper_id' => $scraperId,
+                'success' => $result['success'] ?? 'unknown',
+                'has_output' => !empty($result['output'] ?? ''),
+                'has_error_output' => !empty($result['error_output'] ?? ''),
+                'user_id' => $user?->id,
+                'tenant_id' => $tenantId,
+                'log_category' => 'SCRAPER_CONTROLLER'
+            ]);
+
+            // Verifica se ci sono errori anche se success = true
+            if (isset($result['success']) && $result['success'] === false) {
+                return response()->json($result, 500);
+            }
+
+            // Verifica errori in output
+            $output = $result['output'] ?? '';
+            $errorOutput = $result['error_output'] ?? '';
+
+            if (!empty($errorOutput) && preg_match('/ModuleNotFoundError|ImportError|Traceback/i', $errorOutput)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Errore Python: ' . substr($errorOutput, 0, 300),
+                    'details' => $errorOutput,
+                    'output' => substr($output, 0, 500)
+                ], 500);
+            }
+
+            // Estrai dati per il frontend (count, first_act, last_act)
+            $responseData = $result;
+            $responseData['count'] = $result['stats']['processed'] ?? 0;
+            $responseData['year'] = $validated['year_single'] ?? $validated['year'] ?? null;
+
+            // Estrai primo e ultimo atto dall'output JSON (se disponibile)
+            $firstAct = null;
+            $lastAct = null;
+
+            // Cerca file JSON salvati dallo scraper per estrarre atti
+            if (preg_match('/Backup JSON salvato:\s*([^\n]+)/i', $result['output'] ?? '', $jsonMatches)) {
+                $jsonPath = trim($jsonMatches[1]);
+                // Se il path è relativo, costruisci path assoluto
+                if (!str_starts_with($jsonPath, '/')) {
+                    $jsonPath = base_path('../' . $jsonPath);
+                }
+
+                if (file_exists($jsonPath)) {
+                    try {
+                        $jsonContent = json_decode(file_get_contents($jsonPath), true);
+                        if (is_array($jsonContent)) {
+                            // Se è un array di atti, prendi primo e ultimo
+                            if (isset($jsonContent[0]) && is_array($jsonContent[0])) {
+                                $firstAct = $this->formatActForResponse($jsonContent[0]);
+                            }
+                            if (count($jsonContent) > 1 && is_array($jsonContent[count($jsonContent) - 1])) {
+                                $lastAct = $this->formatActForResponse($jsonContent[count($jsonContent) - 1]);
+                            }
+                        } elseif (is_array($jsonContent) && count($jsonContent) > 0) {
+                            // Se è un oggetto con chiavi tipo (DG, DC, etc.), prendi da tutti i tipi
+                            $allAtti = [];
+                            foreach ($jsonContent as $tipoAtti) {
+                                if (is_array($tipoAtti)) {
+                                    $allAtti = array_merge($allAtti, $tipoAtti);
+                                }
+                            }
+                            if (!empty($allAtti)) {
+                                $firstAct = $this->formatActForResponse($allAtti[0]);
+                                $lastAct = $this->formatActForResponse($allAtti[count($allAtti) - 1]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        $this->logger->warning('[NatanScrapersController] Failed to parse JSON file', [
+                            'json_path' => $jsonPath,
+                            'error' => $e->getMessage(),
+                            'log_category' => 'SCRAPER_PREVIEW'
+                        ]);
+                    }
+                }
+            }
+
+            $responseData['first_act'] = $firstAct;
+            $responseData['last_act'] = $lastAct;
+
+            return response()->json($responseData);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
+            // UEM: Handle unexpected exceptions
+            return $this->errorManager->handle('SCRAPER_EXECUTION_FAILED', [
+                'scraper_id' => $scraperId,
+                'error_message' => $e->getMessage(),
+                'error_type' => get_class($e),
+                'user_id' => $user?->id,
+                'tenant_id' => $tenantId,
+            ], $e);
         }
+    }
+
+    /**
+     * Formatta un atto per la risposta JSON al frontend
+     */
+    protected function formatActForResponse(array $atto): array
+    {
+        return [
+            'numero' => $atto['numeroAdozione'] ?? $atto['numero'] ?? '-',
+            'data' => $atto['dataAdozione'] ?? $atto['data'] ?? '-',
+            'tipo' => $atto['tipoCodice'] ?? $atto['tipo'] ?? '-',
+            'oggetto' => $atto['oggetto'] ?? $atto['titolo'] ?? '-',
+        ];
     }
 
     /**
@@ -181,13 +597,132 @@ class NatanScrapersController extends Controller
     }
 
     /**
-     * Get total documents in MongoDB
+     * Get total documents in MongoDB for current tenant
      */
     protected function getTotalDocumentsInMongoDB(): int
     {
-        // TODO: Implement MongoDB document count via API or service
-        // For now return 0 - will be implemented when MongoDB integration is ready
-        return 0;
+        try {
+            $tenantId = Auth::user()?->tenant_id ?? app('currentTenantId') ?? 2;
+            $count = $this->getTotalDocumentsInMongoDBForScraper(null, $tenantId);
+            
+            $this->logger->info('[NatanScrapersController] Total documents count for index', [
+                'tenant_id' => $tenantId,
+                'count' => $count,
+                'log_category' => 'SCRAPER_STATS'
+            ]);
+            
+            return $count;
+        } catch (\Exception $e) {
+            $this->logger->warning('[NatanScrapersController] Failed to count MongoDB documents', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'log_category' => 'SCRAPER_STATS'
+            ]);
+            return 0;
+        }
+    }
+
+    /**
+     * Get total documents in MongoDB for specific scraper and tenant
+     */
+    protected function getTotalDocumentsInMongoDBForScraper(?string $scraperId, int $tenantId): int
+    {
+        try {
+            // Esegui comando Python per contare documenti in MongoDB
+            $pythonExecutable = base_path('../python_ai_service/venv/bin/python');
+            if (!file_exists($pythonExecutable)) {
+                $pythonExecutable = 'python3';
+            }
+            
+            // Build filter query
+            $filter = ['tenant_id' => $tenantId, 'document_type' => 'pa_act'];
+            
+            // Se scraper specifico, filtra per scraper_type
+            $scraperTypeMap = [
+                'firenze_deliberazioni' => 'firenze_deliberazioni',
+                'albo_firenze_v2' => 'albo_firenze',
+                'albo_pretorio_firenze' => 'albo_pretorio_firenze',
+            ];
+            if ($scraperId && isset($scraperTypeMap[$scraperId])) {
+                $filter['metadata.scraper_type'] = $scraperTypeMap[$scraperId];
+            }
+            
+            // Converti filter in JSON per passarlo al comando Python
+            $filterJson = json_encode($filter);
+            
+            // Comando Python inline per contare documenti
+            // IMPORTANT: Usa doppie virgolette per JSON e escape corretto
+            $pythonScript = sprintf(
+                "import sys; sys.path.insert(0, '%s'); from dotenv import load_dotenv; from pathlib import Path; import json; load_dotenv(Path('%s/.env'), override=True); from app.services.mongodb_service import MongoDBService; filter_query = json.loads('%s'); print(MongoDBService.count_documents('documents', filter_query))",
+                base_path('../python_ai_service'),
+                base_path('../python_ai_service'),
+                addslashes($filterJson)
+            );
+            
+            $command = escapeshellarg($pythonExecutable) . ' -c ' . escapeshellarg($pythonScript);
+            
+            $this->logger->info('[NatanScrapersController] Executing MongoDB count command', [
+                'scraper_id' => $scraperId,
+                'tenant_id' => $tenantId,
+                'filter' => $filter,
+                'command_preview' => substr($command, 0, 200),
+                'log_category' => 'SCRAPER_STATS'
+            ]);
+            
+            $output = shell_exec($command . ' 2>&1');
+            $count = (int)trim($output ?? '0');
+            
+            $this->logger->info('[NatanScrapersController] MongoDB count result', [
+                'scraper_id' => $scraperId,
+                'tenant_id' => $tenantId,
+                'count' => $count,
+                'output' => $output,
+                'log_category' => 'SCRAPER_STATS'
+            ]);
+            
+            return max(0, $count);
+        } catch (\Exception $e) {
+            $this->logger->warning('[NatanScrapersController] Failed to count MongoDB documents for scraper', [
+                'scraper_id' => $scraperId,
+                'tenant_id' => $tenantId,
+                'error' => $e->getMessage(),
+                'log_category' => 'SCRAPER_STATS'
+            ]);
+            return 0;
+        }
+    }
+
+    /**
+     * Get last execution time for scraper
+     */
+    protected function getLastExecutionTime(string $scraperId): ?string
+    {
+        try {
+            $logsPath = storage_path('logs');
+            $pattern = "scraper_progress_{$scraperId}_*.json";
+            $files = glob($logsPath . '/' . $pattern);
+            
+            if (empty($files)) {
+                return null;
+            }
+            
+            // Prendi il file più recente
+            usort($files, function($a, $b) {
+                return filemtime($b) - filemtime($a);
+            });
+            
+            $progressFile = $files[0];
+            $progressData = json_decode(file_get_contents($progressFile), true);
+            
+            if ($progressData && isset($progressData['completed_at'])) {
+                return $progressData['completed_at'];
+            } elseif ($progressData && isset($progressData['started_at'])) {
+                return $progressData['started_at'];
+            }
+            
+            return null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 }
-
