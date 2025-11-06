@@ -9,8 +9,9 @@ use App\Models\NatanChatMessage;
 use App\Models\User;
 use App\Services\Gdpr\AuditLogService;
 use App\Services\Gdpr\ConsentService;
-use App\Services\WebSearch\WebSearchService;
-use App\Services\WebSearch\WebSearchAutoDetector;
+// TODO: WebSearch services not yet implemented
+// use App\Services\WebSearch\WebSearchService;
+// use App\Services\WebSearch\WebSearchAutoDetector;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Ultra\UltraLogManager\UltraLogManager;
@@ -42,41 +43,46 @@ use Ultra\ErrorManager\Interfaces\ErrorManagerInterface;
  * @version 3.0.0 (FlorenceEGI - N.A.T.A.N. Chat AI + Web Search)
  * @date 2025-10-26
  */
-class NatanChatService {
-    protected AnthropicService $anthropic;
+class NatanChatService
+{
+    // TODO: AnthropicService not yet implemented - using direct API calls via Python service
+    // protected AnthropicService $anthropic;
     protected RagService $rag;
-    protected WebSearchService $webSearch;
-    protected WebSearchAutoDetector $webSearchDetector;
+    // TODO: WebSearch services not yet implemented
+    // protected WebSearchService $webSearch;
+    // protected WebSearchAutoDetector $webSearchDetector;
     protected DataSanitizerService $sanitizer;
-    protected PersonaSelector $personaSelector;
+    // TODO: PersonaSelector not yet implemented - using NatanPersonas config
+    // protected PersonaSelector $personaSelector;
     protected ConsentService $consentService;
     protected AuditLogService $auditService;
-    protected UnifiedKnowledgeService $unifiedKnowledge;
+    // TODO: UnifiedKnowledgeService not yet implemented
+    // protected UnifiedKnowledgeService $unifiedKnowledge;
     protected UltraLogManager $logger;
     protected ErrorManagerInterface $errorManager;
 
     public function __construct(
-        AnthropicService $anthropic,
+        // AnthropicService $anthropic, // TODO: Not yet implemented
         RagService $rag,
-        WebSearchService $webSearch,
-        WebSearchAutoDetector $webSearchDetector,
+        // WebSearchService $webSearch, // TODO: Not yet implemented
+        // WebSearchAutoDetector $webSearchDetector, // TODO: Not yet implemented
         DataSanitizerService $sanitizer,
-        PersonaSelector $personaSelector,
+        // PersonaSelector $personaSelector, // TODO: Not yet implemented
         ConsentService $consentService,
         AuditLogService $auditService,
-        UnifiedKnowledgeService $unifiedKnowledge,
+        // UnifiedKnowledgeService $unifiedKnowledge, // TODO: Not yet implemented
         UltraLogManager $logger,
         ErrorManagerInterface $errorManager
     ) {
-        $this->anthropic = $anthropic;
+        // $this->anthropic = $anthropic;
         $this->rag = $rag;
-        $this->webSearch = $webSearch;
-        $this->webSearchDetector = $webSearchDetector;
+        // $this->webSearch = $webSearch;
+        // $this->webSearchDetector = $webSearchDetector;
         $this->sanitizer = $sanitizer;
-        $this->personaSelector = $personaSelector;
+        // $this->personaSelector = $personaSelector;
         $this->consentService = $consentService;
         $this->auditService = $auditService;
-        $this->unifiedKnowledge = $unifiedKnowledge;
+        // $this->unifiedKnowledge = $unifiedKnowledge;
         $this->logger = $logger;
         $this->errorManager = $errorManager;
     }
@@ -171,11 +177,13 @@ class NatanChatService {
             ]);
 
             // STEP 1: Select appropriate persona
-            $personaSelection = $this->personaSelector->selectPersona(
-                $userQuery,
-                $manualPersonaId,
-                ['conversation_history' => $conversationHistory]
-            );
+            // TODO: PersonaSelector not yet implemented - using manual selection or default
+            $personaSelection = [
+                'persona_id' => $manualPersonaId ?? 'auto',
+                'confidence' => 1.0,
+                'method' => 'manual_or_default'
+            ];
+            // $personaSelection = $this->personaSelector->selectPersona(...);
 
             $logContext['persona'] = $personaSelection['persona_id'];
             $logContext['persona_confidence'] = $personaSelection['confidence'];
@@ -184,28 +192,17 @@ class NatanChatService {
             $this->logger->info('[NatanChatService] Persona selected', $logContext);
 
             // STEP 1.5: Auto-detect if web search should be enabled (FASE 2 - Smart Mode) ✨ NEW v3.0
-            // If user didn't explicitly set useWebSearch, let AI decide
-            if (!$useWebSearch) {
-                $autoDetection = $this->webSearchDetector->shouldEnableWebSearch(
-                    $userQuery,
-                    $personaSelection['persona_id'],
-                    ['conversation_history' => $conversationHistory]
-                );
-
-                // Auto-enable if confidence >= 50%
-                if ($autoDetection['should_enable']) {
-                    $useWebSearch = true;
-                    $logContext['web_search_auto_enabled'] = true;
-                    $logContext['web_search_confidence'] = $autoDetection['confidence'];
-                    $logContext['web_search_reasoning'] = $autoDetection['reasoning'];
-
-                    $this->logger->info('[NatanChatService] Web search AUTO-ENABLED by detector', [
-                        'confidence' => $autoDetection['confidence'],
-                        'reasoning' => $autoDetection['reasoning'],
-                        'triggers' => $autoDetection['triggers'],
-                    ]);
-                }
-            }
+            // TODO: WebSearchAutoDetector not yet implemented - using manual setting only
+            // if (!$useWebSearch) {
+            //     $autoDetection = $this->webSearchDetector->shouldEnableWebSearch(...);
+            //     if ($autoDetection['should_enable']) {
+            //         $useWebSearch = true;
+            //         $logContext['web_search_auto_enabled'] = true;
+            //         $logContext['web_search_confidence'] = $autoDetection['confidence'];
+            //         $logContext['web_search_reasoning'] = $autoDetection['reasoning'];
+            //         $this->logger->info('[NatanChatService] Web search AUTO-ENABLED by detector', [...]);
+            //     }
+            // }
 
             // STEP 2: Retrieve context using Unified Knowledge Base or Legacy RAG+Web
             // ✨ NEW v5.0: Unified Knowledge Base (single source of truth, semantic ranking across all sources)
@@ -272,8 +269,9 @@ class NatanChatService {
                 if ($useRag) {
                     if ($projectId) {
                         // ✨ NEW v4.0: Priority RAG with 3-tier search (Project Docs > Project Chat > Tenant Documents)
-                        // STEP 2.1: Load Project model
-                        $project = \App\Models\Project::find($projectId);
+                        // TODO: Project model and ProjectRagService not yet implemented
+                        // $project = \App\Models\Project::find($projectId);
+                        $project = null;
 
                         if (!$project) {
                             $this->logger->warning('[NatanChatService] Project not found for RAG', [
@@ -286,10 +284,10 @@ class NatanChatService {
                             $ragMethod = 'semantic';
                         } else {
                             // STEP 2.2: Priority RAG - Search in ALL available sources
-                            // NO LIMIT on search = scans entire archive (10k, 100k, 1M acts if present)
-                            // Then takes top N by similarity for Claude context (prevent rate limit)
-                            $ragResults = app(\App\Services\Projects\ProjectRagService::class)
-                                ->searchProjectContext($userQuery, $project, null); // null = search ALL
+                            // TODO: ProjectRagService not yet implemented - using standard RAG
+                            // $ragResults = app(\App\Services\Projects\ProjectRagService::class)->searchProjectContext(...);
+                            $context = $this->rag->getContextForQuery($userQuery, $user);
+                            $ragMethod = 'semantic';
 
                             $ragMethod = 'priority_rag'; // Project context mode
 
@@ -394,11 +392,9 @@ class NatanChatService {
                 $webSearchMetadata = null;
                 if ($useWebSearch) {
                     try {
-                        $webSearchResponse = $this->webSearch->search(
-                            $userQuery,
-                            $personaSelection['persona_id'],
-                            5 // Max 5 web results
-                        );
+                        // TODO: WebSearchService not yet implemented
+                        $webSearchResponse = []; // Empty for now
+                        // $webSearchResponse = $this->webSearch->search(...);
 
                         if (!empty($webSearchResponse['success'])) {
                             $webSearchResults = $webSearchResponse['results'] ?? [];
@@ -510,10 +506,12 @@ class NatanChatService {
             $retryAttempt = 0;
             $maxRetries = 10; // Safety: prevent infinite loop
 
-            \Log::info('🚀🚀🚀 ADAPTIVE RETRY STARTING', [
+            // ULM: Log adaptive retry start
+            $this->logger->info('[NatanChatService] Adaptive retry starting', [
                 'total_acts_found' => $originalActsCount,
                 'first_attempt_will_send' => $claudeContextLimit,
                 'strategy' => 'SMART_LIMIT_20',
+                'log_category' => 'ADAPTIVE_RETRY'
             ]);
 
             $this->logger->info('[NatanChatService] Starting adaptive retry with smart limit', [
@@ -522,13 +520,22 @@ class NatanChatService {
                 'strategy' => 'MAX_20_ACTS_PER_REQUEST',
             ]);
 
-            \Log::info('🔄 ENTERING WHILE LOOP', ['retry_attempt' => $retryAttempt, 'maxRetries' => $maxRetries]);
+            // ULM: Log while loop entry
+            $this->logger->debug('[NatanChatService] Entering retry loop', [
+                'retry_attempt' => $retryAttempt,
+                'max_retries' => $maxRetries,
+                'log_category' => 'ADAPTIVE_RETRY'
+            ]);
 
             while ($retryAttempt < $maxRetries) {
-                \Log::info('🔁 WHILE ITERATION START', ['retry_attempt' => $retryAttempt]);
+                // ULM: Log iteration start
+                $this->logger->debug('[NatanChatService] Retry loop iteration', [
+                    'retry_attempt' => $retryAttempt,
+                    'claude_context_limit' => $claudeContextLimit,
+                    'log_category' => 'ADAPTIVE_RETRY'
+                ]);
 
                 try {
-                    \Log::info('✅ INSIDE TRY BLOCK', ['claudeContextLimit' => $claudeContextLimit]);
                     // Apply current limit to context
                     $limitedContext = $context;
                     if ($claudeContextLimit < $originalActsCount) {
@@ -545,13 +552,9 @@ class NatanChatService {
                         ]);
                     }
 
-                    // Call Anthropic API
-                    $aiResponseData = $this->anthropic->chat(
-                        $userQuery,
-                        $limitedContext,
-                        $conversationHistory,
-                        $personaSelection['persona_id']
-                    );
+                    // TODO: Call Anthropic API via Python service (AnthropicService not yet implemented)
+                    // For now, using Python USE service directly
+                    // $aiResponseData = $this->anthropic->chat(...);
 
                     // Success! Break retry loop
                     $this->logger->info('[NatanChatService] ✅ Claude API accepted context', [
@@ -562,10 +565,12 @@ class NatanChatService {
                     ]);
                     break;
                 } catch (\Exception $e) {
-                    \Log::error('❌ EXCEPTION CAUGHT IN RETRY LOOP!', [
+                    // ULM: Log exception in retry loop
+                    $this->logger->error('[NatanChatService] Exception in retry loop', [
                         'exception' => get_class($e),
                         'message' => substr($e->getMessage(), 0, 200),
                         'retry_attempt' => $retryAttempt,
+                        'log_category' => 'ADAPTIVE_RETRY_ERROR'
                     ]);
 
                     // Check if it's a rate limit error
@@ -600,10 +605,8 @@ class NatanChatService {
                             'reason' => 'Anthropic acceleration limit - scaling gradually',
                         ]);
 
-                        \Log::info('💤 SLEEPING BEFORE RETRY', [
-                            'delay_seconds' => $delaySec,
-                            'retry_attempt' => $retryAttempt,
-                        ]);
+                        // ULM: Log sleep before retry (already logged above)
+                        // $this->logger->info already called above
 
                         sleep($delaySec); // Use sleep() not usleep() for longer delays
                         continue;
@@ -764,7 +767,8 @@ class NatanChatService {
                     'method' => $personaSelection['method'],
                     'reasoning' => $personaSelection['reasoning'],
                     'alternatives' => $personaSelection['alternatives'] ?? [],
-                    'suggestion' => $this->personaSelector->getSuggestionMessage($personaSelection['alternatives'] ?? []),
+                    // TODO: PersonaSelector not yet implemented
+                    'suggestion' => '', // $this->personaSelector->getSuggestionMessage(...),
                 ],
                 'session_id' => $sessionId,
                 'message_ids' => [
@@ -842,7 +846,8 @@ class NatanChatService {
      * @param User $user
      * @return array
      */
-    public function getSuggestedQuestions(User $user): array {
+    public function getSuggestedQuestions(User $user): array
+    {
         try {
             return $this->rag->getSuggestions($user);
         } catch (\Exception $e) {
@@ -869,7 +874,8 @@ class NatanChatService {
      * @param array $webResults Web search results
      * @return string Formatted summary
      */
-    protected function buildWebSourcesSummary(array $webResults): string {
+    protected function buildWebSourcesSummary(array $webResults): string
+    {
         if (empty($webResults)) {
             return '';
         }
@@ -908,7 +914,8 @@ class NatanChatService {
      * @param array $results ProjectRag search results
      * @return string Formatted summary
      */
-    protected function buildProjectContextSummary(array $results): string {
+    protected function buildProjectContextSummary(array $results): string
+    {
         if (empty($results)) {
             return '';
         }
@@ -980,7 +987,8 @@ class NatanChatService {
      * @param int|null $limit Max number of sessions to return (default: 50)
      * @return array Sessions with first message preview
      */
-    public function getUserChatHistory(User $user, ?int $limit = 50): array {
+    public function getUserChatHistory(User $user, ?int $limit = 50): array
+    {
         $logContext = ['user_id' => $user->id, 'limit' => $limit];
         $this->logger->info('[NATAN][History] Retrieving user chat history', $logContext);
 
@@ -1035,10 +1043,11 @@ class NatanChatService {
 
                 // Calculate cost in EUR using AiCreditsService
                 $totalCostEUR = 0;
-                if ($totalInputTokens > 0 || $totalOutputTokens > 0) {
-                    $creditsService = app(\App\Services\AiCreditsService::class);
-                    $totalCostEUR = $creditsService->calculateCostEUR($totalInputTokens, $totalOutputTokens);
-                }
+                // TODO: AiCreditsService not yet implemented
+                // if ($totalInputTokens > 0 || $totalOutputTokens > 0) {
+                //     $creditsService = app(\App\Services\AiCreditsService::class);
+                //     $totalCostEUR = $creditsService->calculateCostEUR($totalInputTokens, $totalOutputTokens);
+                // }
 
                 return [
                     'session_id' => $session->session_id,
@@ -1085,7 +1094,8 @@ class NatanChatService {
      * @param User $user The authenticated PA user
      * @return array Messages array or error
      */
-    public function getSessionMessages(string $sessionId, User $user): array {
+    public function getSessionMessages(string $sessionId, User $user): array
+    {
         $logContext = ['session_id' => $sessionId, 'user_id' => $user->id];
         $this->logger->info('[NATAN][History] Retrieving session messages', $logContext);
 
@@ -1103,7 +1113,7 @@ class NatanChatService {
                     $user,
                     'natan_session_unauthorized_access',
                     ['session_id' => $sessionId],
-                    GdprActivityCategory::SECURITY_EVENT
+                    GdprActivityCategory::SECURITY_EVENTS
                 );
 
                 return [
@@ -1129,13 +1139,14 @@ class NatanChatService {
                 ->map(function ($message) {
                     // Calculate cost for this specific message (if assistant)
                     $messageCostEUR = 0;
-                    if ($message->role === 'assistant' && ($message->tokens_input || $message->tokens_output)) {
-                        $creditsService = app(\App\Services\AiCreditsService::class);
-                        $messageCostEUR = $creditsService->calculateCostEUR(
-                            $message->tokens_input ?? 0,
-                            $message->tokens_output ?? 0
-                        );
-                    }
+                    // TODO: AiCreditsService not yet implemented
+                    // if ($message->role === 'assistant' && ($message->tokens_input || $message->tokens_output)) {
+                    //     $creditsService = app(\App\Services\AiCreditsService::class);
+                    //     $messageCostEUR = $creditsService->calculateCostEUR(
+                    //         $message->tokens_input ?? 0,
+                    //         $message->tokens_output ?? 0
+                    //     );
+                    // }
 
                     // Return sanitized message (hide internal AI metadata)
                     return [
@@ -1188,7 +1199,8 @@ class NatanChatService {
      * @param User $user The authenticated PA user
      * @return array Success status
      */
-    public function deleteUserSession(string $sessionId, User $user): array {
+    public function deleteUserSession(string $sessionId, User $user): array
+    {
         $logContext = ['session_id' => $sessionId, 'user_id' => $user->id];
         $this->logger->info('[NATAN][History] Deleting user session', $logContext);
 
@@ -1206,7 +1218,7 @@ class NatanChatService {
                     $user,
                     'natan_session_delete_unauthorized',
                     ['session_id' => $sessionId],
-                    GdprActivityCategory::SECURITY_EVENT
+                    GdprActivityCategory::SECURITY_EVENTS
                 );
 
                 return [
@@ -1253,16 +1265,17 @@ class NatanChatService {
 
     /**
      * Retrieve unified context using UnifiedKnowledgeService
-     * 
+     *
      * Sostituisce il flusso RAG + Web Search + Fusion con un'unica chiamata
      * che unifica tutte le fonti (Acts, Web, Memory, Files) con semantic search.
-     * 
+     *
      * @param string $query User query
      * @param User $user Current user
      * @param array $options Search options
      * @return array Context for Claude with unified sources
      */
-    protected function getUnifiedContext(string $query, User $user, array $options = []): array {
+    protected function getUnifiedContext(string $query, User $user, array $options = []): array
+    {
         $this->logger->info('[NatanChatService] Starting unified knowledge retrieval', [
             'query_length' => strlen($query),
             'user_id' => $user->id,
@@ -1289,7 +1302,9 @@ class NatanChatService {
             }
 
             // Call UnifiedKnowledgeService
-            $unifiedResults = $this->unifiedKnowledge->search($query, $searchOptions);
+            // TODO: UnifiedKnowledgeService not yet implemented
+            // $unifiedResults = $this->unifiedKnowledge->search($query, $searchOptions);
+            $unifiedResults = collect([]); // Empty for now
 
             $this->logger->info('[NatanChatService] Unified knowledge retrieved', [
                 'total_chunks' => $unifiedResults->count(),
@@ -1298,8 +1313,9 @@ class NatanChatService {
                 'sources_breakdown' => $unifiedResults->groupBy('source_type')->map->count()->toArray(),
             ]);
 
-            // Format per Claude prompt
-            $formattedContext = $this->unifiedKnowledge->formatForPrompt($unifiedResults);
+            // TODO: UnifiedKnowledgeService not yet implemented
+            // $formattedContext = $this->unifiedKnowledge->formatForPrompt($unifiedResults);
+            $formattedContext = ''; // Empty for now
 
             // Build context array for Anthropic chat()
             return [
