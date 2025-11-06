@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.services.mongodb_service import MongoDBService
 from app.services.ai_router import AIRouter
+from app.services.document_structure_parser import DocumentStructureParser
 
 logging.basicConfig(
     level=logging.INFO,
@@ -93,6 +94,7 @@ class PAActMongoDBImporter:
         self.tenant_id = tenant_id
         self.dry_run = dry_run
         self.ai_router = AIRouter()
+        self.structure_parser = DocumentStructureParser()
         
         # Statistics tracking
         self.stats = {
@@ -106,6 +108,38 @@ class PAActMongoDBImporter:
         
         # Cost tracking
         self.cost_tracker = CostTracker()
+    
+    def download_pdf_from_url(self, pdf_url: str, atto_data: Dict[str, Any]) -> Optional[str]:
+        """Download PDF from URL to temporary file"""
+        try:
+            import requests
+            import tempfile
+            
+            # Create temp directory if it doesn't exist
+            temp_dir = Path(__file__).parent.parent.parent / "temp_pdfs"
+            temp_dir.mkdir(exist_ok=True)
+            
+            # Generate filename from atto data
+            numero_atto = atto_data.get('numero_atto', 'unknown')
+            tipo_atto = atto_data.get('tipo_atto', 'atto').replace(' ', '_')
+            filename = f"{tipo_atto}_{numero_atto}.pdf"
+            temp_pdf_path = temp_dir / filename
+            
+            # Download PDF
+            response = requests.get(pdf_url, timeout=30, stream=True)
+            response.raise_for_status()
+            
+            with open(temp_pdf_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            logger.info(f"  ✅ PDF scaricato: {temp_pdf_path}")
+            return str(temp_pdf_path)
+        except Exception as e:
+            logger.error(f"Errore download PDF da {pdf_url}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
     
     def extract_pdf_text(self, pdf_path: str) -> Optional[str]:
         """Extract text from PDF file"""
@@ -195,7 +229,20 @@ class PAActMongoDBImporter:
         """
         tipo = atto_data.get('tipo_atto', '').replace(' ', '_')
         numero = atto_data.get('numero_atto', '').replace('/', '_').replace(' ', '_')
-        anno = atto_data.get('anno', '') or atto_data.get('data_atto', '')[:4] if atto_data.get('data_atto') else ''
+        
+        # Estrai anno da anno o data_atto (può essere int o string)
+        anno = atto_data.get('anno', '')
+        if not anno:
+            data_atto = atto_data.get('data_atto', '')
+            if data_atto:
+                if isinstance(data_atto, int):
+                    anno = str(data_atto)
+                elif isinstance(data_atto, str) and len(data_atto) >= 4:
+                    anno = data_atto[:4]
+                else:
+                    anno = str(data_atto)
+        if not anno:
+            anno = ''
         
         # Create base ID
         base_id = f"pa_act_{ente}_{tipo}_{numero}_{anno}".lower()
@@ -262,17 +309,71 @@ class PAActMongoDBImporter:
         try:
             # Extract text from PDF if available
             text_content = None
-            if pdf_path and os.path.exists(pdf_path):
-                logger.info(f"  📄 Estraendo testo da PDF: {Path(pdf_path).name}")
-                text_content = self.extract_pdf_text(pdf_path)
-            elif atto_data.get('oggetto'):
-                # Use oggetto as content if no PDF
-                text_content = atto_data.get('oggetto', '')
+            temp_pdf_path = None
+            using_fallback_oggetto = False  # Track if we're using oggetto as fallback
             
+            # Try local PDF path first
+            if pdf_path and os.path.exists(pdf_path):
+                logger.info(f"  📄 Estraendo testo da PDF locale: {Path(pdf_path).name}")
+                text_content = self.extract_pdf_text(pdf_path)
+            # If no local PDF but URL available, download it temporarily
+            elif pdf_url and not pdf_path:
+                try:
+                    logger.info(f"  📥 Downloading PDF from URL: {pdf_url}")
+                    temp_pdf_path = self.download_pdf_from_url(pdf_url, atto_data)
+                    if temp_pdf_path and os.path.exists(temp_pdf_path):
+                        logger.info(f"  📄 Estraendo testo da PDF scaricato: {Path(temp_pdf_path).name}")
+                        text_content = self.extract_pdf_text(temp_pdf_path)
+                        if text_content:
+                            extracted_chars = len(text_content.strip())
+                            logger.info(f"  ✅ Testo estratto: {extracted_chars} caratteri")
+                        else:
+                            logger.warning(f"  ⚠️  Estrazione PDF fallita: nessun testo estratto da {Path(temp_pdf_path).name}")
+                    else:
+                        logger.warning(f"  ⚠️  Download PDF fallito: file non trovato dopo download")
+                except Exception as e:
+                    logger.error(f"  ❌ Errore download/estrazione PDF da URL: {e}")
+                    import traceback
+                    logger.error(f"  Traceback: {traceback.format_exc()}")
+            
+            # Fallback to oggetto if no PDF text extracted
             if not text_content or len(text_content.strip()) < 50:
-                logger.warning(f"  ⚠️  Nessun contenuto testo valido per atto {atto_data.get('numero_atto', 'N/A')}")
-                self.stats["skipped"] += 1
-                return False
+                if atto_data.get('oggetto'):
+                    logger.warning(f"  ⚠️  PDF non disponibile o estrazione fallita per atto {atto_data.get('numero_atto', 'N/A')}")
+                    logger.warning(f"  ⚠️  Testo estratto: {len(text_content.strip()) if text_content else 0} caratteri (minimo richiesto: 50)")
+                    logger.warning(f"  ⚠️  Uso oggetto come fallback: '{atto_data.get('oggetto', '')[:100]}...'")
+                    text_content = atto_data.get('oggetto', '')
+                    # Mark that we're using fallback oggetto (will be used in update logic)
+                    using_fallback_oggetto = True
+                else:
+                    logger.warning(f"  ⚠️  Nessun contenuto testo valido per atto {atto_data.get('numero_atto', 'N/A')}")
+                    self.stats["skipped"] += 1
+                    # Clean up temp file if created
+                    if temp_pdf_path and os.path.exists(temp_pdf_path):
+                        try:
+                            os.remove(temp_pdf_path)
+                        except:
+                            pass
+                    return False
+            
+            # Clean up temp file after extraction
+            if temp_pdf_path and os.path.exists(temp_pdf_path):
+                try:
+                    os.remove(temp_pdf_path)
+                except:
+                    pass
+            
+            # Parse document structure (identifica sezioni logiche)
+            document_structure = None
+            if text_content and len(text_content) > 500:
+                try:
+                    logger.info(f"  📋 Analizzando struttura documento...")
+                    document_structure = self.structure_parser.parse_structure(text_content, use_llm=True)
+                    if document_structure.get('section_count', 0) > 0:
+                        logger.info(f"  ✅ Identificate {document_structure['section_count']} sezioni: {', '.join(document_structure.get('section_names', []))}")
+                except Exception as e:
+                    logger.warning(f"  ⚠️  Errore analisi struttura: {e}")
+                    document_structure = None
             
             # Split into chunks
             chunks = self.split_text_into_chunks(text_content)
@@ -336,6 +437,25 @@ class PAActMongoDBImporter:
             # Prepare document for MongoDB
             document_id = self.generate_document_id(atto_data, ente)
             
+            # CRITICAL: Check if document already exists by protocol_number + tenant_id
+            # This handles cases where document_id format changed (e.g., timestamp vs year, tipo_atto missing)
+            # If found, use existing document_id to ensure update instead of duplicate creation
+            protocol_number = atto_data.get('numero_atto', '')
+            if protocol_number:
+                existing_docs = MongoDBService.find_documents("documents", {
+                    "protocol_number": protocol_number,
+                    "tenant_id": self.tenant_id
+                }, limit=1)
+                
+                if existing_docs:
+                    existing_doc_id = existing_docs[0].get("document_id")
+                    if existing_doc_id and existing_doc_id != document_id:
+                        logger.info(f"  🔄 Documento esistente trovato per protocol_number {protocol_number}")
+                        logger.info(f"  🔄 Document_id esistente: {existing_doc_id}")
+                        logger.info(f"  🔄 Document_id generato: {document_id}")
+                        logger.info(f"  🔄 Usando document_id esistente per garantire update invece di creare duplicate")
+                        document_id = existing_doc_id
+            
             document = {
                 "document_id": document_id,
                 "tenant_id": self.tenant_id,
@@ -348,7 +468,8 @@ class PAActMongoDBImporter:
                 "content": {
                     "raw_text": text_content[:5000],  # Preview
                     "full_text": text_content,
-                    "chunks": chunks_with_embeddings
+                    "chunks": chunks_with_embeddings,
+                    "structure": document_structure  # Sezioni logiche identificate
                 },
                 "metadata": {
                     "source": "pa_scraper",
@@ -369,16 +490,97 @@ class PAActMongoDBImporter:
                 "updated_at": datetime.now()
             }
             
-            # Save to MongoDB
+            # Save to MongoDB (update if exists, insert if new)
             result_id = MongoDBService.insert_document("documents", document)
             
-            if result_id:
+            if result_id == 'duplicate':
+                # Documento già presente - verifica se ha testo completo o solo oggetto
+                existing_docs = MongoDBService.find_documents("documents", {
+                    "document_id": document_id,
+                    "tenant_id": self.tenant_id
+                }, limit=1)
+                
+                if existing_docs:
+                    existing_doc = existing_docs[0]
+                    existing_full_text = existing_doc.get("content", {}).get("full_text", "")
+                    existing_chars = len(existing_full_text)
+                    new_chars = len(text_content)
+                    
+                    # Se il nuovo documento ha più testo O se manca la struttura, aggiorna
+                    existing_structure = existing_doc.get("content", {}).get("structure")
+                    existing_structure_count = existing_structure.get('section_count', 0) if existing_structure else 0
+                    new_structure_count = document_structure.get('section_count', 0) if document_structure else 0
+                    
+                    # Aggiorna se:
+                    # 1. Il nuovo testo è significativamente più lungo (almeno 100 caratteri in più)
+                    # 2. Il documento esistente ha solo l'oggetto (meno di 1000 caratteri) e il nuovo ha testo completo
+                    # 3. Manca la struttura e il nuovo documento la ha
+                    # CRITICAL: NON aggiornare se il nuovo testo è solo l'oggetto (fallback) e il documento esistente ha già solo l'oggetto
+                    # Questo previene loop infiniti di "aggiornamenti" inutili quando l'estrazione PDF fallisce
+                    is_fallback_oggetto = (new_chars < 1000 and using_fallback_oggetto)
+                    existing_is_oggetto = (existing_chars < 1000)
+                    
+                    needs_update = (
+                        (new_chars > existing_chars + 100 or  # Almeno 100 caratteri in più
+                        (existing_chars < 1000 and new_chars >= 1000) or  # Da oggetto a testo completo
+                        (new_structure_count > 0 and existing_structure_count == 0))  # Aggiungi struttura se manca
+                        and not (is_fallback_oggetto and existing_is_oggetto)  # NON aggiornare se entrambi sono solo oggetto
+                    )
+                    
+                    if is_fallback_oggetto and existing_is_oggetto:
+                        logger.info(f"  ⏭️  Salto aggiornamento: documento esistente e nuovo hanno entrambi solo l'oggetto (estrazione PDF fallita, nessun miglioramento)")
+                    
+                    if needs_update:
+                        # Determina il motivo dell'aggiornamento per log più chiaro
+                        if (existing_chars < 1000 and new_chars >= 1000):
+                            logger.info(f"  🔄 Documento esistente con solo oggetto ({existing_chars} caratteri) → aggiornamento con testo completo PDF ({new_chars} caratteri)...")
+                        elif new_chars > existing_chars + 100:
+                            logger.info(f"  🔄 Documento esistente con testo incompleto ({existing_chars} → {new_chars} caratteri). Aggiornamento...")
+                        elif new_structure_count > 0 and existing_structure_count == 0:
+                            logger.info(f"  🔄 Aggiungendo struttura documento ({existing_structure_count} → {new_structure_count} sezioni)...")
+                        
+                        # Update document with new content
+                        update_result = MongoDBService.update_document("documents", {
+                            "document_id": document_id,
+                            "tenant_id": self.tenant_id
+                        }, {
+                            "content.full_text": text_content,
+                            "content.raw_text": text_content[:5000],
+                            "content.chunks": chunks_with_embeddings,
+                            "content.structure": document_structure,
+                            "embedding": doc_embedding,
+                            "metadata.chunk_count": len(chunks_with_embeddings),
+                            "metadata.total_chars": len(text_content),
+                            "metadata.pdf_path": pdf_path,
+                            "metadata.pdf_url": pdf_url,  # Aggiorna anche PDF URL se disponibile
+                            "updated_at": datetime.now()
+                        })
+                        
+                        if update_result > 0:
+                            logger.info(f"  ✅ Documento aggiornato in MongoDB: {document_id} ({existing_chars} → {new_chars} caratteri)")
+                            self.stats["processed"] += 1
+                            return True
+                        else:
+                            logger.warning(f"  ⚠️  Aggiornamento fallito per {document_id}")
+                            self.stats["skipped"] += 1
+                            return True  # Considerato successo (skip)
+                    else:
+                        # Documento già presente con testo completo o simile
+                        logger.info(f"  ⏭️  Documento già presente in MongoDB: {document_id} (testo completo: {existing_chars} caratteri)")
+                        self.stats["skipped"] += 1
+                        return True  # Considerato successo (skip, non errore)
+                else:
+                    # Duplicate ma documento non trovato (strano, ma gestiamo)
+                    logger.warning(f"  ⚠️  Documento marcato come duplicate ma non trovato: {document_id}")
+                    self.stats["skipped"] += 1
+                    return True
+            elif result_id:
                 logger.info(f"  ✅ Salvato in MongoDB: {document_id}")
                 self.stats["processed"] += 1
                 self.stats["total_documents"] += 1
                 return True
             else:
-                logger.error(f"  ❌ Errore salvataggio MongoDB")
+                logger.error(f"  ❌ Errore salvataggio MongoDB per {document_id}")
                 self.stats["errors"] += 1
                 self.stats["error_details"].append({
                     "atto": atto_data.get('numero_atto', 'N/A'),

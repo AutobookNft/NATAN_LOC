@@ -35,6 +35,9 @@ class MongoDBService:
     @classmethod
     def is_connected(cls) -> bool:
         """Check if MongoDB is connected"""
+        # Se client non esiste, prova a crearlo
+        if cls._client is None:
+            cls.get_client()
         if cls._client is None:
             return False
         try:
@@ -74,7 +77,10 @@ class MongoDBService:
     
     @classmethod
     def insert_document(cls, collection_name: str, document: Dict[str, Any]) -> Optional[str]:
-        """Insert document into collection (returns None if MongoDB unavailable)"""
+        """
+        Insert document into collection (returns None if MongoDB unavailable)
+        Returns 'duplicate' if document already exists (E11000 error)
+        """
         if not cls.is_connected():
             logger.debug(f"MongoDB not available, skipping insert into {collection_name}")
             return None
@@ -86,6 +92,11 @@ class MongoDBService:
             result = collection.insert_one(document)
             return str(result.inserted_id)
         except Exception as e:
+            error_msg = str(e)
+            # E11000 = duplicate key error (document already exists)
+            if 'E11000' in error_msg or 'duplicate key' in error_msg.lower():
+                logger.debug(f"MongoDB document already exists in {collection_name}: {document.get('document_id', 'unknown')}")
+                return 'duplicate'  # Special return value for duplicates
             logger.warning(f"MongoDB insert failed for {collection_name}: {e}")
             return None
     
