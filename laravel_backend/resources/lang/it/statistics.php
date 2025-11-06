@@ -18,6 +18,7 @@ return [
     'documents_statistics' => 'Statistiche Documenti',
     'conversations_statistics' => 'Statistiche Conversazioni',
     'by_type' => 'Per Tipo',
+    'by_month' => 'Per Mese',
     'unknown' => 'Sconosciuto',
     'no_documents' => 'Nessun documento disponibile',
     'no_conversations' => 'Nessuna conversazione disponibile',
