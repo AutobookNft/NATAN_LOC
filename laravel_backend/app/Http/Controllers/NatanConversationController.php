@@ -48,6 +48,11 @@ class NatanConversationController extends Controller
             'messages.*.role' => 'required|in:user,assistant',
             'messages.*.content' => 'required|string',
             'messages.*.timestamp' => 'required|date',
+            'messages.*.claims' => 'nullable|array',
+            'messages.*.sources' => 'nullable|array',
+            'messages.*.verification_status' => 'nullable|string',
+            'messages.*.tokens_used' => 'nullable|array',
+            'messages.*.model_used' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -97,8 +102,41 @@ class NatanConversationController extends Controller
                         ->first();
                 }
 
-                // Skip if message already exists
+                // If message already exists, update it with new data (especially claims/sources)
                 if ($existingMessage) {
+                    // Update existing message with new claims/sources if they're provided
+                    if ($msg['role'] === 'assistant') {
+                        $ragSources = [
+                            'claims' => $msg['claims'] ?? [],
+                            'sources' => $msg['sources'] ?? [],
+                            'verification_status' => $msg['verification_status'] ?? $msg['verificationStatus'] ?? null,
+                            'avg_urs' => $msg['avg_urs'] ?? $msg['avgUrs'] ?? null,
+                        ];
+                        
+                        // Update tokens and model if provided
+                        $updateData = [];
+                        if (isset($msg['tokens_used']) && is_array($msg['tokens_used'])) {
+                            $tokensInput = $msg['tokens_used']['input'] ?? $msg['tokens_used']['prompt'] ?? 0;
+                            $tokensOutput = $msg['tokens_used']['output'] ?? $msg['tokens_used']['completion'] ?? 0;
+                            if ($tokensInput > 0) $updateData['tokens_input'] = $tokensInput;
+                            if ($tokensOutput > 0) $updateData['tokens_output'] = $tokensOutput;
+                        }
+                        if (isset($msg['model_used'])) {
+                            $updateData['ai_model'] = $msg['model_used'];
+                        }
+                        
+                        // Update rag_sources if we have new data
+                        if (!empty($ragSources['claims']) || !empty($ragSources['sources'])) {
+                            $updateData['rag_sources'] = $ragSources;
+                        }
+                        
+                        // Update the message if we have new data
+                        if (!empty($updateData)) {
+                            $existingMessage->update($updateData);
+                            $existingMessage->refresh();
+                        }
+                    }
+                    
                     $savedMessages[] = $existingMessage;
                     continue;
                 }
@@ -113,6 +151,18 @@ class NatanConversationController extends Controller
                     $tokensOutput = $msg['tokens_used']['output'] ?? $msg['tokens_used']['completion'] ?? 0;
                 }
                 $aiModel = $msg['model_used'] ?? null;
+
+                // Extract sources, claims, and verification status for assistant messages
+                $ragSources = null;
+                if ($msg['role'] === 'assistant') {
+                    // Store claims, sources, and verification status in rag_sources field
+                    $ragSources = [
+                        'claims' => $msg['claims'] ?? [],
+                        'sources' => $msg['sources'] ?? [],
+                        'verification_status' => $msg['verification_status'] ?? $msg['verificationStatus'] ?? null,
+                        'avg_urs' => $msg['avg_urs'] ?? $msg['avgUrs'] ?? null,
+                    ];
+                }
 
                 // Risolvi tenant_id esplicitamente
                 $tenantId = $user->tenant_id 
@@ -132,6 +182,7 @@ class NatanConversationController extends Controller
                     'tokens_input' => $tokensInput > 0 ? $tokensInput : null,
                     'tokens_output' => $tokensOutput > 0 ? $tokensOutput : null,
                     'ai_model' => $aiModel,
+                    'rag_sources' => $ragSources, // Store claims, sources, verification status
                     'created_at' => isset($msg['timestamp']) ? \Carbon\Carbon::parse($msg['timestamp']) : now(),
                 ]);
 
@@ -206,7 +257,7 @@ class NatanConversationController extends Controller
 
         // Convert to frontend format
         $convertedMessages = $messages->map(function ($msg) {
-            return [
+            $messageData = [
                 'id' => (string) $msg->id,
                 'role' => $msg->role,
                 'content' => $msg->content,
@@ -217,6 +268,16 @@ class NatanConversationController extends Controller
                 ],
                 'model_used' => $msg->ai_model,
             ];
+
+            // Restore claims, sources, and verification status from rag_sources for assistant messages
+            if ($msg->role === 'assistant' && $msg->rag_sources && is_array($msg->rag_sources)) {
+                $messageData['claims'] = $msg->rag_sources['claims'] ?? [];
+                $messageData['sources'] = $msg->rag_sources['sources'] ?? [];
+                $messageData['verification_status'] = $msg->rag_sources['verification_status'] ?? null;
+                $messageData['avg_urs'] = $msg->rag_sources['avg_urs'] ?? null;
+            }
+
+            return $messageData;
         })->toArray();
 
         // Get first user message for title
