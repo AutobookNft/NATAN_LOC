@@ -35,6 +35,10 @@ return [
     'roles' => 'Ruoli',
     'select_roles' => 'Seleziona ruoli',
     'tenant' => 'Tenant',
+    'select_tenant' => 'Seleziona Tenant',
+    'select_tenant_description' => 'Scegli il tenant a cui assegnare questo utente.',
+    'tenant_required' => 'Il tenant è obbligatorio.',
+    'tenant_not_found' => 'Tenant non trovato.',
     
     // Validation
     'name_required' => 'Il nome è obbligatorio.',
@@ -43,6 +47,7 @@ return [
     'password_required' => 'La password è obbligatoria.',
     'password_min' => 'La password deve essere almeno 8 caratteri.',
     'password_confirmed' => 'Le password non corrispondono.',
+    'invalid_roles_selected' => 'Uno o più ruoli selezionati non possono essere assegnati con il tuo livello di permessi.',
     
     // Details
     'details' => 'Dettagli Utente',

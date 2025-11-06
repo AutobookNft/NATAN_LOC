@@ -35,6 +35,10 @@ return [
     'roles' => 'Roles',
     'select_roles' => 'Select roles',
     'tenant' => 'Tenant',
+    'select_tenant' => 'Select Tenant',
+    'select_tenant_description' => 'Choose the tenant to assign this user to.',
+    'tenant_required' => 'Tenant is required.',
+    'tenant_not_found' => 'Tenant not found.',
     
     // Validation
     'name_required' => 'Name is required.',
@@ -43,6 +47,7 @@ return [
     'password_required' => 'Password is required.',
     'password_min' => 'Password must be at least 8 characters.',
     'password_confirmed' => 'Passwords do not match.',
+    'invalid_roles_selected' => 'One or more selected roles cannot be assigned with your permission level.',
     
     // Details
     'details' => 'User Details',
