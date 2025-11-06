@@ -9,15 +9,23 @@
     $attributes = $item->getHtmlAttributes();
     $iconName = $item->icon;
     
-    // Verifica permission se specificata
-    $hasPermission = true;
-    if ($item->permission && auth()->check()) {
-        // Verifica ruolo: admin, superadmin o pa_entity_admin
-        if ($item->permission === 'admin') {
-            $hasPermission = auth()->user()->hasAnyRole(['admin', 'superadmin', 'pa_entity_admin']);
+    // Verifica permission: semplice e diretto - permission === nome ruolo
+    $hasPermission = false;
+    if (auth()->check()) {
+        $user = auth()->user();
+        
+        if ($item->permission === null) {
+            // Permission null = accessibile a tutti gli utenti NATAN autenticati
+            $hasPermission = true;
+        } elseif ($item->permission === 'pa_entity_admin') {
+            // Permission 'pa_entity_admin' = verifica ruolo pa_entity_admin O superadmin
+            $hasPermission = $user->hasAnyRole(['pa_entity_admin', 'superadmin']);
+        } elseif ($item->permission === 'superadmin') {
+            // Permission 'superadmin' = verifica solo ruolo superadmin
+            $hasPermission = $user->hasRole('superadmin');
         } else {
-            // Altri permessi (access_natan, etc.)
-            $hasPermission = auth()->user()->hasPermissionTo($item->permission);
+            // Altri permessi Spatie (access_natan, etc.)
+            $hasPermission = $user->hasPermissionTo($item->permission);
         }
     }
 @endphp

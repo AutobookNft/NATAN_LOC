@@ -34,16 +34,20 @@
     
     {{-- Drawer Content (stesso contenuto sidebar desktop) --}}
     <div class="p-4">
-        {{-- Cronologia Chat --}}
-        @if(count($chatHistory) > 0)
+        {{-- Cronologia Chat - Solo nel contesto chat --}}
+        @if(request()->routeIs('natan.chat'))
             <div class="mb-6">
                 <h3 class="text-xs font-institutional font-bold uppercase tracking-wider text-natan-blue-extra-light mb-3">
                     {{ __('natan.history.title') }}
                 </h3>
                 <div class="space-y-2">
-                    @foreach(array_slice($chatHistory, 0, 5) as $chat)
+                    @forelse(array_slice($chatHistory, 0, 5) as $chat)
                         <x-natan.chat-history-item :chat="$chat" :expanded="false" />
-                    @endforeach
+                    @empty
+                        <p class="px-2 text-xs text-natan-blue-extra-light/70">
+                            {{ __('natan.history.empty') }}
+                        </p>
+                    @endforelse
                 </div>
             </div>
             <hr class="border-white/10 my-4" />
