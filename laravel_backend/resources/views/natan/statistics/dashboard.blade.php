@@ -85,14 +85,29 @@
                         <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ __('statistics.documents_statistics') }}</h2>
                         
                         {{-- By Type --}}
-                        @if(count($documentsStats['by_type']) > 0)
+                        @if(count($documentsStats['by_type'] ?? []) > 0)
                             <div class="mb-4">
                                 <h3 class="text-sm font-medium text-gray-700 mb-2">{{ __('statistics.by_type') }}</h3>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                                     @foreach($documentsStats['by_type'] as $type => $count)
                                         <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
                                             <span class="text-xs text-gray-600">{{ $type ?: __('statistics.unknown') }}</span>
-                                            <span class="text-sm font-bold text-gray-900">{{ $count }}</span>
+                                            <span class="text-sm font-bold text-gray-900">{{ number_format($count) }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- By Month --}}
+                        @if(count($documentsStats['by_month'] ?? []) > 0)
+                            <div class="mb-4">
+                                <h3 class="text-sm font-medium text-gray-700 mb-2">{{ __('statistics.by_month') }}</h3>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                                    @foreach($documentsStats['by_month'] as $month => $count)
+                                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                            <span class="text-xs text-gray-600">{{ $month }}</span>
+                                            <span class="text-sm font-bold text-gray-900">{{ number_format($count) }}</span>
                                         </div>
                                     @endforeach
                                 </div>
@@ -100,7 +115,7 @@
                         @endif
 
                         {{-- Empty State --}}
-                        @if($documentsStats['total'] == 0)
+                        @if(($documentsStats['total'] ?? 0) == 0)
                             <p class="text-sm text-gray-500 text-center py-4">{{ __('statistics.no_documents') }}</p>
                         @endif
                     </div>
