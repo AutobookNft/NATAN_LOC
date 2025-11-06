@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenancy' => \App\Http\Middleware\InitializeTenancy::class,
+            'superadmin' => \App\Http\Middleware\EnsureSuperadmin::class,
+            'natan.access' => \App\Http\Middleware\EnsureNatanAccess::class,
         ]);
 
         // Registra il middleware tenancy nel gruppo web per inizializzare il tenant
