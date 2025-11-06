@@ -82,4 +82,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserConversation::class, 'user_id');
     }
+
+    /**
+     * Get activities for this user (audit trail)
+     */
+    public function activities()
+    {
+        return $this->hasMany(UserActivity::class, 'user_id');
+    }
 }

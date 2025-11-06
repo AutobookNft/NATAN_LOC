@@ -987,5 +987,53 @@ return [
             'msg_to' => 'toast',
         ],
 
+        // ====================================================
+        // SCRAPER ERRORS (NATAN_LOC - Python Scrapers)
+        // ====================================================
+
+        'SCRAPER_SCRIPT_NOT_FOUND' => [
+            'type' => 'error',
+            'blocking' => 'blocking',
+            'dev_message_key' => 'error-manager::errors_2.dev.scraper_script_not_found',
+            'user_message_key' => 'error-manager::errors_2.user.scraper_script_not_found',
+            'http_status_code' => 404,
+            'devTeam_email_need' => true,
+            'notify_slack' => false,
+            'msg_to' => 'toast',
+        ],
+
+        'SCRAPER_EXECUTION_FAILED' => [
+            'type' => 'error',
+            'blocking' => 'blocking',
+            'dev_message_key' => 'error-manager::errors_2.dev.scraper_execution_failed',
+            'user_message_key' => 'error-manager::errors_2.user.scraper_execution_failed',
+            'http_status_code' => 500,
+            'devTeam_email_need' => true,
+            'notify_slack' => true,
+            'msg_to' => 'toast',
+        ],
+
+        'SCRAPER_PYTHON_ERROR' => [
+            'type' => 'error',
+            'blocking' => 'blocking',
+            'dev_message_key' => 'error-manager::errors_2.dev.scraper_python_error',
+            'user_message_key' => 'error-manager::errors_2.user.scraper_python_error',
+            'http_status_code' => 500,
+            'devTeam_email_need' => true,
+            'notify_slack' => true,
+            'msg_to' => 'toast',
+        ],
+
+        'SCRAPER_TIMEOUT' => [
+            'type' => 'error',
+            'blocking' => 'blocking',
+            'dev_message_key' => 'error-manager::errors_2.dev.scraper_timeout',
+            'user_message_key' => 'error-manager::errors_2.user.scraper_timeout',
+            'http_status_code' => 504,
+            'devTeam_email_need' => true,
+            'notify_slack' => true,
+            'msg_to' => 'toast',
+        ],
+
     ]
 ];

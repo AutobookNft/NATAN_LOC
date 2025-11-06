@@ -42,6 +42,12 @@ return [
         'microservice_not_reachable' => 'Microservizio non raggiungibile. URL: :url, Service: :service, Errore: :message',
         'microservice_health_check_failed' => 'Health check del microservizio fallito. URL: :url, Service: :service, Errore: :message',
         'microservice_auto_start_failed' => 'Tentativo di avvio automatico del microservizio fallito. Service: :service, Path: :path, Errore: :message',
+
+        // Scraper errors (NATAN_LOC)
+        'scraper_script_not_found' => 'Script Python scraper non trovato. Script: :script_path, Scraper: :scraper_id',
+        'scraper_execution_failed' => 'Esecuzione scraper fallita. Scraper: :scraper_id, Exit code: :exit_code, Errore: :error_message',
+        'scraper_python_error' => 'Errore Python durante esecuzione scraper. Scraper: :scraper_id, Errore: :error_message',
+        'scraper_timeout' => 'Timeout durante esecuzione scraper. Scraper: :scraper_id, Timeout: :timeout_seconds secondi',
     ],
 
     'user' => [
@@ -75,5 +81,11 @@ return [
         'microservice_not_reachable' => 'Servizio temporaneamente non disponibile. Il nostro team è stato notificato.',
         'microservice_health_check_failed' => 'Servizio temporaneamente non disponibile. Riprova tra qualche minuto.',
         'microservice_auto_start_failed' => 'Servizio temporaneamente non disponibile. Il nostro team è stato allertato e risolverà il problema al più presto.',
+
+        // Scraper errors (NATAN_LOC)
+        'scraper_script_not_found' => 'Script scraper non trovato. Il nostro team è stato notificato.',
+        'scraper_execution_failed' => 'Si è verificato un errore durante l\'esecuzione dello scraper. Il nostro team è stato notificato.',
+        'scraper_python_error' => 'Errore durante l\'esecuzione dello scraper. Il nostro team è stato notificato.',
+        'scraper_timeout' => 'Lo scraper ha impiegato troppo tempo. Riprova più tardi o contatta il supporto.',
     ],
 ];

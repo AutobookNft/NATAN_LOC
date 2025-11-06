@@ -81,7 +81,15 @@ class AuditLogService {
     ) {
         $this->logger = $logger;
         $this->errorManager = $errorManager;
-        $this->activityCategories = config('gdpr.activity_categories');
+        // GDPR Config: Get activity categories with safe fallback
+        $this->activityCategories = config('gdpr.activity_categories', []);
+        
+        // Validate config loaded
+        if (empty($this->activityCategories)) {
+            $this->logger->warning('[AuditLogService] GDPR activity_categories config is empty, using defaults', [
+                'log_category' => 'AUDIT_SERVICE_CONFIG_WARNING'
+            ]);
+        }
     }
 
     /**
