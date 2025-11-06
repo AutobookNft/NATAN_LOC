@@ -11,7 +11,7 @@ export interface Message {
     blockedClaims?: Claim[];
     sources?: Source[];
     avgUrs?: number;
-    verificationStatus?: 'SAFE' | 'WARNING' | 'BLOCKED';
+    verificationStatus?: 'SAFE' | 'WARNING' | 'BLOCKED' | 'direct_query' | 'DIRECT_QUERY';
     tokensUsed?: {
         input: number;
         output: number;
@@ -67,7 +67,7 @@ export interface UseQueryResponse {
     verified_claims?: Claim[];  // Verified claims with sources (proof)
     blocked_claims?: Claim[];
     avg_urs?: number;
-    verification_status?: 'SAFE' | 'WARNING' | 'BLOCKED';
+    verification_status?: 'SAFE' | 'WARNING' | 'BLOCKED' | 'direct_query' | 'DIRECT_QUERY';
     chunks_used?: any[];
     model_used?: string;
     tokens_used?: {

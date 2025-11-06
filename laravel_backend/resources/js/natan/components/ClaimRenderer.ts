@@ -7,15 +7,15 @@ import type { Claim } from '../types';
 import { UrsBadge } from './UrsBadge';
 
 export class ClaimRenderer {
-  static renderClaims(claims: Claim[]): string {
+  static renderClaims(claims: Claim[], verificationStatus?: string): string {
     if (!claims || claims.length === 0) {
       return '<p class="text-gray-500">Nessun claim verificato disponibile.</p>';
     }
 
-    return claims.map(claim => this.renderClaim(claim)).join('');
+    return claims.map(claim => this.renderClaim(claim, verificationStatus)).join('');
   }
 
-  static renderClaim(claim: Claim): string {
+  static renderClaim(claim: Claim, verificationStatus?: string): string {
     // Get URS label - if not present, try to derive from score
     let ursLabel: 'A' | 'B' | 'C' | 'X' = claim.ursLabel;
     if (!ursLabel) {
@@ -46,31 +46,52 @@ export class ClaimRenderer {
       html += `
         <div class="mt-3 space-y-1">
           <p class="text-xs font-semibold text-gray-600">Fonti:</p>
-          ${claim.sourceRefs.map(ref => {
-            // Handle internal document references (url starting with #)
-            const isInternal = ref.url && ref.url.startsWith('#');
-            const linkHref = isInternal ? 'javascript:void(0)' : this.escapeHtml(ref.url);
-            const linkClass = isInternal 
-              ? 'block text-xs text-blue-600 hover:underline cursor-pointer'
-              : 'block text-xs text-blue-600 hover:underline';
+          ${claim.sourceRefs.map((ref) => {
+            // Handle internal document references (url starting with #doc-)
+            const isInternal = ref.url && ref.url.startsWith('#doc-');
+            let linkHref = this.escapeHtml(ref.url || '#');
+            let documentId: string = '';
+            let attributes: string = '';
+            
+            // Convert #doc-{document_id} to /natan/documents/view/{document_id}
+            if (isInternal && ref.url) {
+              documentId = ref.url.replace('#doc-', '');
+              // Usa encodeURIComponent per gestire caratteri speciali nel document_id
+              linkHref = `/natan/documents/view/${encodeURIComponent(documentId)}`;
+              attributes = `data-document-id="${this.escapeHtml(documentId)}" title="Visualizza documento: ${this.escapeHtml(ref.title || '')}"`;
+              console.log('[ClaimRenderer] Internal document link:', { original: ref.url, documentId, linkHref });
+            } else {
+              attributes = 'target="_blank" rel="noopener noreferrer"';
+            }
+            
+            const linkClass = 'block text-xs text-blue-600 hover:underline cursor-pointer';
+            const title = this.escapeHtml(ref.title || 'Senza titolo');
+            const pageInfo = ref.page ? ` (p. ${ref.page})` : '';
+            const chunkInfo = ref.chunk_index !== undefined ? ` [chunk ${ref.chunk_index}]` : '';
             
             return `
             <a 
               href="${linkHref}" 
-              ${!isInternal ? 'target="_blank" rel="noopener noreferrer"' : ''}
+              ${attributes}
               class="${linkClass}"
-              ${isInternal ? `title="Documento: ${this.escapeHtml(ref.title)}"` : ''}
             >
-              → ${this.escapeHtml(ref.title)}${ref.page ? ` (p. ${ref.page})` : ''}${ref.chunk_index !== undefined ? ` [chunk ${ref.chunk_index}]` : ''}
+              → ${title}${pageInfo}${chunkInfo}
             </a>
           `;
           }).join('')}
         </div>
       `;
     } else {
-      html += `
-        <p class="mt-2 text-xs text-red-600">Nessuna fonte disponibile per questo claim.</p>
-      `;
+      // Per query dirette (direct_query), mostra messaggio positivo invece di errore
+      if (verificationStatus === 'direct_query' || verificationStatus === 'DIRECT_QUERY') {
+        html += `
+          <p class="mt-2 text-xs text-green-600 font-semibold">✓ Risposta diretta da database MongoDB (query diretta, massima affidabilità)</p>
+        `;
+      } else {
+        html += `
+          <p class="mt-2 text-xs text-red-600">Nessuna fonte disponibile per questo claim.</p>
+        `;
+      }
     }
 
     // URS breakdown (collapsible)
