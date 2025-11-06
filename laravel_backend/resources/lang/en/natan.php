@@ -112,5 +112,7 @@ return [
         'tenant_id_required' => 'Tenant ID required. Unable to determine current tenant.',
         'validation_failed' => 'Validation failed. Please check the entered fields.',
         'no_ai_consent' => 'AI processing consent not provided. Please accept consent to use this feature.',
+        'superadmin_required' => 'Access denied. NATAN is only accessible to users with superadmin role.',
+        'natan_access_required' => 'Access denied. NATAN_LOC is only accessible to PA roles (pa_entity, pa_entity_admin, admin, editor, superadmin).',
     ],
 ];
