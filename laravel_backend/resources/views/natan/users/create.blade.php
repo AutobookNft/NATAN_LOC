@@ -42,8 +42,25 @@
                             </div>
                         @endif
 
-                        {{-- Tenant Info (read-only) --}}
-                        @if($tenant)
+                        {{-- Tenant Selection --}}
+                        @if(auth()->user()->hasRole('superadmin') && isset($availableTenants) && $availableTenants->count() > 0)
+                            {{-- Superadmin: può selezionare il tenant --}}
+                            <div>
+                                <label for="tenant_id" class="block text-sm font-medium text-gray-700 mb-1">{{ __('users.tenant') }} *</label>
+                                <select id="tenant_id" name="tenant_id" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1B365D] focus:border-transparent">
+                                    <option value="">{{ __('users.select_tenant') }}</option>
+                                    @foreach($availableTenants as $availableTenant)
+                                        <option value="{{ $availableTenant->id }}" 
+                                            {{ old('tenant_id', $tenant?->id) == $availableTenant->id ? 'selected' : '' }}>
+                                            {{ $availableTenant->name }} ({{ $availableTenant->slug }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">{{ __('users.select_tenant_description') }}</p>
+                            </div>
+                        @elseif($tenant)
+                            {{-- Utente normale o tenant già determinato: mostra info (read-only) --}}
                             <div class="rounded-lg bg-[#1B365D]/10 border border-[#1B365D]/20 p-4">
                                 <div class="flex items-center gap-2">
                                     <span class="material-symbols-outlined text-[#1B365D]">business</span>
@@ -53,6 +70,8 @@
                                     </div>
                                 </div>
                             </div>
+                            {{-- Hidden field per mantenere tenant_id --}}
+                            <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
                         @endif
 
                         {{-- Name --}}
