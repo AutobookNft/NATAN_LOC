@@ -166,6 +166,22 @@ else
         fi
     fi
     
+    # Check if APP_KEY is set and not empty
+    APP_KEY=$(grep "^APP_KEY=" .env 2>/dev/null | cut -d '=' -f2- | tr -d '[:space:]' || echo "")
+    if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "" ] || [ "$APP_KEY" = "null" ]; then
+        echo -e "${YELLOW}⚠${NC} APP_KEY is missing or empty - generating new key..."
+        php artisan key:generate --force >/dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓${NC} APP_KEY generated successfully"
+        else
+            echo -e "${RED}✗${NC} Failed to generate APP_KEY"
+            cd ..
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}✓${NC} APP_KEY is configured"
+    fi
+    
     # Install dependencies if needed
     if [ ! -d "vendor" ]; then
         echo "Installing Laravel dependencies..."
