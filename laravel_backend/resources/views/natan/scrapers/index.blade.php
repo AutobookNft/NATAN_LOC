@@ -52,6 +52,7 @@
                 <span class="material-symbols-outlined text-sm text-[#D4A574]">download</span>
                 <span class="text-xs font-medium text-gray-600">Atti:</span>
                 <span class="text-sm font-bold text-[#D4A574]">{{ number_format($stats['total_documents'] ?? 0) }}</span>
+                {{-- Debug: {{ var_export($stats, true) }} --}}
             </div>
         </div>
 

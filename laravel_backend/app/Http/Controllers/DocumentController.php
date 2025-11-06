@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Models\PaAct;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * @package App\Http\Controllers
