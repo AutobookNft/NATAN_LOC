@@ -21,21 +21,7 @@ class NatanScrapersMenu extends MenuItem
             translationKey: 'menu.natan_scrapers',
             route: 'natan.scrapers.index',
             icon: 'cloud-download',
-            permission: 'access_natan'
+            permission: "pa_entity_admin" // Scrapers accessibili a tutti gli utenti autenticati del tenant
         );
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -21,8 +21,7 @@ class NatanAdminConfigMenu extends MenuItem
             translationKey: 'menu.admin_config',
             route: 'admin.config.index',
             icon: 'cog-6-tooth',
-            permission: null // Permission checked in controller (admin, superadmin, pa_entity_admin)
+            permission: 'pa_entity_admin' // Richiede ruolo pa_entity_admin o superadmin
         );
     }
 }
-

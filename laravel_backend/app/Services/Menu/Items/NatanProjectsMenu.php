@@ -21,7 +21,7 @@ class NatanProjectsMenu extends MenuItem
             translationKey: 'menu.natan_projects',
             route: '#',
             icon: 'folder',
-            permission: 'access_natan',
+            permission: null, // Progetti accessibili a tutti gli utenti autenticati del tenant
             modalAction: 'open-projects-modal'
         );
     }

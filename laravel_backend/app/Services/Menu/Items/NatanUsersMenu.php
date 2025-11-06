@@ -21,8 +21,7 @@ class NatanUsersMenu extends MenuItem
             translationKey: 'menu.users',
             route: 'users.index',
             icon: 'users',
-            permission: null // Permission checked in controller (admin, superadmin, pa_entity_admin)
+            permission: 'pa_entity_admin' // Richiede ruolo pa_entity_admin o superadmin
         );
     }
 }
-

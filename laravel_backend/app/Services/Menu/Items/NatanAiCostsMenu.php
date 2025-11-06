@@ -21,21 +21,7 @@ class NatanAiCostsMenu extends MenuItem
             translationKey: 'menu.natan_ai_costs',
             route: 'natan.ai-costs.dashboard',
             icon: 'currency-dollar',
-            permission: null // Accessible to all NATAN users
+            permission: "pa_entity_admin" // Accessible to all NATAN users
         );
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

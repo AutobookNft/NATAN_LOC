@@ -21,21 +21,7 @@ class NatanBatchMenu extends MenuItem
             translationKey: 'menu.natan_batch',
             route: 'natan.batch.index',
             icon: 'cpu-chip',
-            permission: 'access_natan'
+            permission: "pa_entity_admin" // Batch accessibili a tutti gli utenti autenticati del tenant
         );
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

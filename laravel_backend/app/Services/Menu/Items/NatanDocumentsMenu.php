@@ -21,8 +21,7 @@ class NatanDocumentsMenu extends MenuItem
             translationKey: 'menu.natan_documents',
             route: 'natan.documents.index',
             icon: 'document-text', // Rendered as Heroicons SVG inline
-            permission: 'access_natan'
+            permission: null // Documenti accessibili a tutti gli utenti autenticati del tenant
         );
     }
 }
-

@@ -21,21 +21,7 @@ class NatanEmbeddingsMenu extends MenuItem
             translationKey: 'menu.natan_embeddings',
             route: 'natan.embeddings.index',
             icon: 'magnifying-glass',
-            permission: 'access_natan'
+            permission: "pa_entity_admin" // Embeddings accessibili a tutti gli utenti autenticati del tenant
         );
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

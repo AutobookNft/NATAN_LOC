@@ -21,21 +21,7 @@ class NatanStatisticsMenu extends MenuItem
             translationKey: 'menu.natan_statistics',
             route: 'natan.statistics.dashboard',
             icon: 'chart-bar',
-            permission: 'access_natan'
+            permission: "pa_entity_admin" // Statistiche accessibili a tutti gli utenti autenticati del tenant
         );
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

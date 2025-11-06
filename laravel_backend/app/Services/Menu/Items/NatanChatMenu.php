@@ -21,13 +21,7 @@ class NatanChatMenu extends MenuItem
             translationKey: 'menu.natan_chat',
             route: 'natan.chat',
             icon: 'chat-bubble-left-right',
-            permission: 'access_natan'
+            permission: null // Chat NATAN accessibile a tutti gli utenti autenticati
         );
     }
 }
-
-
-
-
-
-

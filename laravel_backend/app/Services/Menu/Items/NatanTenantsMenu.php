@@ -21,7 +21,7 @@ class NatanTenantsMenu extends MenuItem
             translationKey: 'menu.natan_tenants',
             route: 'tenants.index',
             icon: 'business',
-            permission: 'access_natan'
+            permission: 'superadmin' // Richiede solo ruolo superadmin
         );
     }
 }
