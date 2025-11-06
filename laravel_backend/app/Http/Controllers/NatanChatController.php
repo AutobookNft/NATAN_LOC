@@ -65,11 +65,15 @@ class NatanChatController extends Controller
                         : $firstUserMessage->content)
                     : __('natan.history.untitled');
 
+                // Calculate total cost for this session
+                $totalCostEur = \App\Models\NatanChatMessage::getTotalCostForSession($session->session_id);
+
                 return [
                     'id' => $session->session_id,
                     'title' => $title,
                     'date' => $session->last_message_at,
                     'message_count' => $session->message_count,
+                    'cost_eur' => $totalCostEur,
                     'persona' => $session->persona ?? 'strategic',
                 ];
             })->toArray();
