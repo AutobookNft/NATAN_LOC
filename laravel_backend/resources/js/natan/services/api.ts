@@ -181,6 +181,15 @@ export class ApiService {
             role: 'user' | 'assistant';
             content: string;
             timestamp: string | Date;
+            claims?: any[];
+            sources?: any[];
+            verification_status?: string;
+            avg_urs?: number;
+            tokens_used?: {
+                input: number;
+                output: number;
+            };
+            model_used?: string;
         }>;
     }): Promise<any> {
         // Call Laravel backend (not Python FastAPI)

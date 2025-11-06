@@ -317,7 +317,7 @@ export class ChatInterface {
             // Get current conversation ID or generate new one
             let conversationId = this.getCurrentConversationId();
             
-            // Prepare all messages for saving (include tokens and model for cost calculation)
+            // Prepare all messages for saving (include tokens, model, claims, sources, verification_status)
             const messagesToSave = this.messages.map(msg => ({
                 id: msg.id,
                 role: msg.role,
@@ -327,6 +327,13 @@ export class ChatInterface {
                 ...(msg.role === 'assistant' && msg.tokensUsed ? {
                     tokens_used: msg.tokensUsed,
                     model_used: msg.modelUsed ?? null,
+                } : {}),
+                // Include claims, sources, and verification_status for assistant messages (CRITICAL for reopening chats)
+                ...(msg.role === 'assistant' ? {
+                    claims: msg.claims ?? [],
+                    sources: msg.sources ?? [],
+                    verification_status: msg.verificationStatus ?? null,
+                    avg_urs: msg.avgUrs ?? null,
                 } : {}),
             }));
 
@@ -512,8 +519,11 @@ export class ChatInterface {
                             output: msg.tokens_used.output || 0,
                         } : null,
                         modelUsed: msg.model_used || null,
-                        // Claims and sources are not stored in DB, so they won't be restored
-                        // This is expected behavior - only the conversation text is preserved
+                        // Restore claims, sources, and verification_status from saved data
+                        claims: msg.claims || [],
+                        sources: msg.sources || [],
+                        verificationStatus: msg.verification_status || null,
+                        avgUrs: msg.avg_urs || null,
                     };
 
                     this.messages.push(message);
