@@ -12,7 +12,7 @@
     } elseif (!$date instanceof \Carbon\Carbon) {
         $date = now();
     }
-    $messageCount = $chat['message_count'] ?? 0;
+    $costEur = $chat['cost_eur'] ?? 0.0;
     $id = $chat['id'] ?? uniqid();
 @endphp
 
@@ -29,9 +29,13 @@
                 {{ $date->diffForHumans() }}
             </p>
         </div>
-        @if($messageCount > 0)
-            <span class="flex-shrink-0 text-[10px] text-natan-blue-extra-light/70">
-                {{ $messageCount }}
+        @if($costEur > 0)
+            <span class="flex-shrink-0 text-[10px] font-semibold text-natan-blue-extra-light">
+                €{{ number_format($costEur, 2, ',', '.') }}
+            </span>
+        @else
+            <span class="flex-shrink-0 text-[10px] text-natan-blue-extra-light/50">
+                €0,00
             </span>
         @endif
     </div>
