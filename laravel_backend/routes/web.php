@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\NatanChatController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\NatanDiagnosticController;
 
 Route::get('/', function () {
     // Se l'utente è autenticato, redirect alla chat
@@ -185,4 +186,14 @@ Route::middleware(['auth'])->prefix('users')->group(function () {
     Route::put('/{user}', [\App\Http\Controllers\UserController::class, 'update'])->name('users.update');
     Route::patch('/{user}', [\App\Http\Controllers\UserController::class, 'update']);
     Route::delete('/{user}', [\App\Http\Controllers\UserController::class, 'destroy'])->name('users.destroy');
+});
+
+// Diagnostic routes (browser friendly)
+Route::prefix('diagnostic')->name('diagnostic.')->group(function () {
+    Route::match(['GET', 'POST'], '/retrieval', [NatanDiagnosticController::class, 'retrieval'])
+        ->name('retrieval');
+    Route::match(['GET', 'POST'], '/use-query', [NatanDiagnosticController::class, 'useQuery'])
+        ->name('use');
+    Route::get('/mongodb/{tenantId}', [NatanDiagnosticController::class, 'mongodb'])
+        ->name('mongodb');
 });

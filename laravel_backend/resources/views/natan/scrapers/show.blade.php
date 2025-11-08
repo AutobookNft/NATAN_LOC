@@ -423,6 +423,15 @@
                         if (modal) {
                             modal.classList.add('hidden');
                             modal.classList.remove('flex');
+                            modal.style.display = 'none';
+                            modal.style.visibility = 'hidden';
+                            modal.style.opacity = '0';
+                            modal.style.zIndex = '';
+                            // Ripristina eventuali stili forzati applicati in showLoadingModal
+                            modal.style.removeProperty('display');
+                            modal.style.removeProperty('visibility');
+                            modal.style.removeProperty('opacity');
+                            modal.style.removeProperty('z-index');
                         }
                     }
 

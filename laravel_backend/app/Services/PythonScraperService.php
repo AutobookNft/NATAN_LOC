@@ -411,14 +411,61 @@ class PythonScraperService
                 ]);
             }
 
+            $errorLogFile = null;
+
             // Update progress file with final status
             if (isset($progressFile) && file_exists($progressFile)) {
                 $progressData = json_decode(file_get_contents($progressFile), true);
                 if ($progressData) {
                     $progressData['status'] = $exitCode === 0 ? 'completed' : 'failed';
                     $progressData['completed_at'] = date('Y-m-d H:i:s');
-                    $progressData['stats'] = $stats;
-                    file_put_contents($progressFile, json_encode($progressData, JSON_PRETTY_PRINT));
+
+                    $progressErrorDetails = $progressData['stats']['error_details'] ?? [];
+                    if (!empty($progressErrorDetails)) {
+                        $stats['error_details'] = $progressErrorDetails;
+                    }
+
+                    $progressData['stats'] = array_merge($stats, [
+                        'error_details' => $progressErrorDetails
+                    ]);
+
+                    file_put_contents($progressFile, json_encode($progressData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+                    if (!empty($progressErrorDetails)) {
+                        $errorLogDir = storage_path('logs/scraper_errors');
+                        if (!is_dir($errorLogDir)) {
+                            mkdir($errorLogDir, 0775, true);
+                        }
+
+                        $errorLogFile = $errorLogDir . DIRECTORY_SEPARATOR . ($scraper['id'] ?? 'unknown') . '_errors_' . date('Ymd_His') . '.json';
+
+                        $errorLogPayload = [
+                            'scraper_id' => $scraper['id'] ?? 'unknown',
+                            'tenant_id' => $tenantId,
+                            'started_at' => $progressData['started_at'] ?? null,
+                            'completed_at' => $progressData['completed_at'],
+                            'stats' => [
+                                'processed' => $progressData['stats']['processed'] ?? 0,
+                                'saved' => $progressData['stats']['saved'] ?? 0,
+                                'skipped' => $progressData['stats']['skipped'] ?? 0,
+                                'errors' => $progressData['stats']['errors'] ?? count($progressErrorDetails),
+                                'chunks' => $progressData['stats']['chunks'] ?? 0,
+                                'documents' => $progressData['stats']['documents'] ?? 0,
+                            ],
+                            'error_count' => count($progressErrorDetails),
+                            'errors' => $progressErrorDetails,
+                            'progress_file' => basename($progressFile),
+                        ];
+
+                        file_put_contents($errorLogFile, json_encode($errorLogPayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+                        $this->logger->info('[PythonScraperService] Error log generated', [
+                            'scraper_id' => $scraper['id'] ?? 'unknown',
+                            'log_file' => $errorLogFile,
+                            'error_count' => count($progressErrorDetails),
+                            'log_category' => 'SCRAPER_ERROR_LOG'
+                        ]);
+                    }
                 }
             }
             
@@ -458,7 +505,8 @@ class PythonScraperService
                 'stats' => $stats,
                 'costs' => $costs,
                 'exit_code' => $exitCode,
-                'progress_file' => basename($progressFile ?? '')
+                'progress_file' => basename($progressFile ?? ''),
+                'error_log_file' => $errorLogFile ? basename($errorLogFile) : null
             ];
         } catch (\Exception $e) {
             // UEM: Log error (but don't return JsonResponse - return array instead)

@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Ultra\UltraLogManager\UltraLogManager;
 
 /**
@@ -32,6 +33,35 @@ class MongoDocumentController extends Controller
     public function __construct(UltraLogManager $logger)
     {
         $this->logger = $logger;
+    }
+
+    /**
+     * Restituisce gli endpoint candidati del servizio Python FastAPI
+     *
+     * @return array<int,string>
+     */
+    protected function getPythonApiCandidateUrls(): array
+    {
+        $urls = [];
+
+        $configuredUrl = config('services.python_ai.url', 'http://localhost:8001');
+        if (!empty($configuredUrl)) {
+            $urls[] = rtrim($configuredUrl, '/');
+        }
+
+        $dynamicPortFile = '/tmp/natan_python_port.txt';
+        if (file_exists($dynamicPortFile)) {
+            $portValue = trim((string) file_get_contents($dynamicPortFile));
+            if (is_numeric($portValue)) {
+                $urls[] = sprintf('http://localhost:%d', (int) $portValue);
+            }
+        }
+
+        foreach ([8001, 8000, 9000] as $port) {
+            $urls[] = sprintf('http://localhost:%d', $port);
+        }
+
+        return array_values(array_unique(array_filter($urls)));
     }
 
     /**
@@ -104,48 +134,56 @@ class MongoDocumentController extends Controller
      */
     protected function getDocumentFromMongoDB(string $documentId, int $tenantId): ?array
     {
-        try {
-            // Esegui script Python per ottenere documento MongoDB
-            $pythonExecutable = base_path('../python_ai_service/venv/bin/python');
-            if (!file_exists($pythonExecutable)) {
-                $pythonExecutable = 'python3';
-            }
-            
-            $scriptPath = base_path('../python_ai_service/app/scripts/get_mongodb_document.py');
-            
-            $command = sprintf(
-                '%s %s --document-id %s --tenant-id %d',
-                escapeshellarg($pythonExecutable),
-                escapeshellarg($scriptPath),
-                escapeshellarg($documentId),
-                $tenantId
+        $candidateUrls = $this->getPythonApiCandidateUrls();
+        $errors = [];
+
+        foreach ($candidateUrls as $baseUrl) {
+            $endpoint = rtrim($baseUrl, '/') . sprintf(
+                '/api/v1/diagnostic/document/%d/%s',
+                $tenantId,
+                rawurlencode($documentId)
             );
-            
-            $output = shell_exec($command . ' 2>&1');
-            $document = json_decode($output, true);
-            
-            if (!$document || isset($document['error'])) {
-                $this->logger->warning('[MongoDocumentController] Document not found', [
-                    'document_id' => $documentId,
-                    'tenant_id' => $tenantId,
-                    'error' => $document['error'] ?? 'Invalid JSON response',
-                    'output_preview' => substr($output, 0, 200),
-                    'log_category' => 'DOCUMENT_VIEW'
-                ]);
-                return null;
+
+            try {
+                $response = Http::timeout(30)->get($endpoint);
+
+                if ($response->successful()) {
+                    $data = $response->json();
+
+                    if (($data['success'] ?? false) && isset($data['document']) && is_array($data['document'])) {
+                        return $data['document'];
+                    }
+
+                    $errors[] = [
+                        'url' => $endpoint,
+                        'status' => $response->status(),
+                        'body' => substr($response->body(), 0, 500),
+                    ];
+                } else {
+                    $errors[] = [
+                        'url' => $endpoint,
+                        'status' => $response->status(),
+                        'body' => substr($response->body(), 0, 500),
+                    ];
+                }
+            } catch (\Throwable $throwable) {
+                $errors[] = [
+                    'url' => $endpoint,
+                    'status' => null,
+                    'body' => $throwable->getMessage(),
+                ];
             }
-            
-            return $document;
-        } catch (\Exception $e) {
-            $this->logger->error('[MongoDocumentController] MongoDB document retrieval failed', [
-                'document_id' => $documentId,
-                'tenant_id' => $tenantId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'log_category' => 'DOCUMENT_VIEW'
-            ]);
-            return null;
         }
+
+        $this->logger->warning('[MongoDocumentController] Unable to load document from Python service', [
+            'document_id' => $documentId,
+            'tenant_id' => $tenantId,
+            'attempted_urls' => $candidateUrls,
+            'errors' => $errors,
+            'log_category' => 'DOCUMENT_VIEW'
+        ]);
+
+        return null;
     }
     
     /**
