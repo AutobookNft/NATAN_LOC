@@ -38,7 +38,8 @@ class UsePipeline:
         tenant_id: int,
         persona: str = "strategic",
         model: str = "anthropic.sonnet-3.5",
-        query_embedding: Optional[list] = None
+        query_embedding: Optional[list] = None,
+        debug: bool = False
     ) -> Dict[str, Any]:
         """
         Process a query through complete USE pipeline
@@ -53,8 +54,12 @@ class UsePipeline:
         Returns:
             Complete USE pipeline result
         """
+        debug_info: Dict[str, Any] = {}
+
         # Step 1: Classify question
         classification = self.classifier.classify(question, tenant_id)
+        if debug:
+            debug_info["classification"] = classification
         
         intent = classification["intent"]
         confidence = classification["confidence"]
@@ -68,6 +73,8 @@ class UsePipeline:
             tenant_id=tenant_id,
             constraints=constraints
         )
+        if debug:
+            debug_info["routing"] = routing
         
         action = routing["action"]
         
@@ -115,22 +122,37 @@ class UsePipeline:
                 embed_result = await adapter.embed(question)
                 query_embedding = embed_result["embedding"]
             
+            # Enhanced retrieval with logging
+            logger.info(f"🔍 USE Pipeline: Starting retrieval for tenant {tenant_id}")
+            logger.info(f"🔍 USE Pipeline: Query: '{question[:100]}...' (length: {len(question)})")
+            
             chunks = self.retriever.retrieve(
                 query_embedding=query_embedding,
                 tenant_id=tenant_id,
-                limit=10,
+                limit=20,  # Increased limit for better coverage
+                min_score=0.15,  # Lower minimum score for generic queries
                 filters=constraints
             )
+            if debug:
+                debug_info["retrieved_chunks"] = {
+                    "count": len(chunks),
+                    "document_ids": [chunk.get("document_id") for chunk in chunks[:10]]
+                }
+            
+            logger.info(f"🔍 USE Pipeline: Retrieved {len(chunks)} chunks from retriever")
             
             # CRITICAL: Check if chunks are actually relevant
             if not chunks:
+                logger.warning(f"⚠️ USE Pipeline: No chunks retrieved for tenant {tenant_id}")
+                logger.warning(f"⚠️ USE Pipeline: Query was: '{question}'")
+                logger.warning(f"⚠️ USE Pipeline: This may indicate: 1) No documents in MongoDB for tenant {tenant_id}, 2) Embeddings missing, 3) Similarity threshold too high")
                 no_data_message = (
                     "Non ho informazioni sufficienti nei documenti disponibili per rispondere a questa domanda. "
                     "I documenti presenti nell'archivio non contengono dati pertinenti per questa richiesta.\n\n"
                     "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
                     "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
                 )
-                return {
+                result_payload = {
                     "status": "no_results",
                     "message": no_data_message,
                     "answer": no_data_message,
@@ -141,19 +163,50 @@ class UsePipeline:
                     "classification": classification,
                     "routing": routing
                 }
+                if debug:
+                    result_payload["debug"] = debug_info
+                return result_payload
             
             # CRITICAL: Validate chunk relevance - check if any chunk has meaningful text
             relevant_chunks = []
-            for chunk in chunks:
-                chunk_text = chunk.get("chunk_text") or chunk.get("text", "")
+            skipped_empty = 0
+            skipped_too_short = 0
+            skipped_error_indicators = 0
+            
+            logger.info(f"🔍 USE Pipeline: Validating {len(chunks)} chunks for relevance...")
+            logger.info(f"🔍 USE Pipeline: First chunk structure: {list(chunks[0].keys()) if chunks else 'NO_CHUNKS'}")
+            
+            for i, chunk in enumerate(chunks):
+                # Try multiple field names for chunk text
+                chunk_text = chunk.get("chunk_text") or chunk.get("text") or chunk.get("content") or ""
+                similarity = chunk.get("similarity") or chunk.get("score", 0)
+                doc_id = chunk.get("document_id", "N/A")[:50]
+                
+                # Log first chunk details for debugging
+                if i == 0:
+                    logger.info(f"🔍 USE Pipeline: First chunk details:")
+                    logger.info(f"   Keys: {list(chunk.keys())}")
+                    logger.info(f"   chunk_text type: {type(chunk_text)}, length: {len(str(chunk_text)) if chunk_text else 0}")
+                    logger.info(f"   chunk_text preview: {str(chunk_text)[:200] if chunk_text else 'NONE'}")
+                    logger.info(f"   similarity: {similarity}")
+                
                 if not chunk_text:
+                    skipped_empty += 1
+                    logger.warning(f"⚠️ Chunk {i+1}/{len(chunks)} skipped: empty text (doc: {doc_id}, similarity: {similarity:.3f})")
+                    logger.warning(f"   Chunk keys: {list(chunk.keys())}")
                     continue
                 
-                chunk_text_stripped = chunk_text.strip()
+                chunk_text_stripped = str(chunk_text).strip()
+                text_length = len(chunk_text_stripped)
                 
-                # Minimum meaningful content check
-                if len(chunk_text_stripped) < 50:
-                    continue
+                # TEMPORARY: Remove minimum length check to see what happens
+                # Accept ANY chunk with text, even if very short
+                # Minimum meaningful content check - DISABLED TEMPORARILY FOR DEBUGGING
+                # if text_length < 10:
+                #     skipped_too_short += 1
+                #     logger.info(f"⚠️ Chunk {i+1}/{len(chunks)} skipped: too short ({text_length} chars < 10) (doc: {doc_id}, similarity: {similarity:.3f})")
+                #     logger.info(f"   Text preview: {chunk_text_stripped[:200]}")
+                #     continue
                 
                 # CRITICAL: Check for placeholder/error indicators in chunk text
                 # If chunk contains error messages, skip it
@@ -165,6 +218,8 @@ class UsePipeline:
                 chunk_lower = chunk_text_stripped.lower()
                 if any(indicator in chunk_lower for indicator in error_indicators):
                     # Chunk is a placeholder/error message, skip it
+                    skipped_error_indicators += 1
+                    logger.warning(f"⚠️ Chunk {i+1}/{len(chunks)} skipped: contains error indicator (doc: {doc_id}, similarity: {similarity:.3f})")
                     continue
                 
                 # CRITICAL: NON filtrare per relevance_score - potrebbe escludere chunk validi
@@ -172,6 +227,20 @@ class UsePipeline:
                 # Solo verifichiamo che non siano placeholder/errori
                 
                 relevant_chunks.append(chunk)
+                logger.info(f"✅ Chunk {i+1}/{len(chunks)} accepted: {text_length} chars, similarity: {similarity:.3f} (doc: {doc_id})")
+            
+            logger.info(f"🔍 USE Pipeline: Chunk validation results:")
+            logger.info(f"   ✅ Accepted: {len(relevant_chunks)}/{len(chunks)}")
+            logger.info(f"   ⚠️ Skipped - empty: {skipped_empty}")
+            logger.info(f"   ⚠️ Skipped - too short: {skipped_too_short}")
+            logger.info(f"   ⚠️ Skipped - error indicators: {skipped_error_indicators}")
+            if debug:
+                debug_info["relevant_chunks"] = {
+                    "accepted": len(relevant_chunks),
+                    "skipped_empty": skipped_empty,
+                    "skipped_too_short": skipped_too_short,
+                    "skipped_error_indicators": skipped_error_indicators
+                }
             
             if not relevant_chunks:
                 # CRITICAL: No relevant chunks found - return immediately without calling LLM
@@ -183,7 +252,27 @@ class UsePipeline:
                     "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
                     "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
                 )
-                return {
+                logger.error(f"❌ USE Pipeline: ALL chunks filtered out!")
+                logger.error(f"   Total chunks retrieved: {len(chunks)}")
+                logger.error(f"   Skipped - empty: {skipped_empty}")
+                logger.error(f"   Skipped - too short: {skipped_too_short}")
+                logger.error(f"   Skipped - error indicators: {skipped_error_indicators}")
+                
+                # CRITICAL DEBUG: Show first chunk structure if available
+                if chunks:
+                    logger.error(f"   🔍 DEBUG: First chunk structure:")
+                    logger.error(f"      Keys: {list(chunks[0].keys())}")
+                    for key in ['chunk_text', 'text', 'content', 'document_id', 'similarity', 'score']:
+                        if key in chunks[0]:
+                            value = chunks[0][key]
+                            if isinstance(value, str):
+                                logger.error(f"      {key}: {value[:200]}")
+                            else:
+                                logger.error(f"      {key}: {type(value).__name__} = {value}")
+                
+                logger.error(f"   💡 This may indicate chunks are empty or contain error indicators")
+                
+                result_payload = {
                     "status": "no_results",
                     "message": "I documenti recuperati non contengono informazioni sufficienti o rilevanti per rispondere a questa domanda.",
                     "answer": no_data_message,
@@ -193,8 +282,11 @@ class UsePipeline:
                     "verification_status": "NO_DATA",
                     "classification": classification,
                     "routing": routing,
-                    "_internal_note": "Chunks filtered out - no relevant content found. LLM not called to prevent hallucination."
+                    "_internal_note": f"Chunks filtered out - {len(chunks)} chunks retrieved but all filtered (empty: {skipped_empty}, too_short: {skipped_too_short}, error_indicators: {skipped_error_indicators}). LLM not called to prevent hallucination."
                 }
+                if debug:
+                    result_payload["debug"] = debug_info
+                return result_payload
             
             # Use only relevant chunks
             chunks = relevant_chunks
@@ -214,6 +306,8 @@ class UsePipeline:
             
             claims = generation_result["claims"]
             answer_text = generation_result.get("answer", "")  # Natural language answer
+            if debug:
+                debug_info["answer_text"] = answer_text
             
             # CRITICAL: Check if answer text indicates "no data" - BUT if we have verified claims, 
             # the answer is WRONG and we should use claims instead (claims take precedence)
@@ -225,6 +319,8 @@ class UsePipeline:
             ]
             
             answer_says_no_data = any(indicator in answer_lower for indicator in no_data_indicators)
+            if debug:
+                debug_info["answer_says_no_data"] = answer_says_no_data
             
             # CRITICAL: If no claims generated, return no_results
             if not claims or len(claims) == 0:
@@ -234,7 +330,7 @@ class UsePipeline:
                     "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
                     "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
                 )
-                return {
+                result_payload = {
                     "status": "no_results",
                     "message": "I documenti recuperati non contengono informazioni sufficienti per rispondere a questa domanda.",
                     "answer": no_data_message,
@@ -245,6 +341,9 @@ class UsePipeline:
                     "classification": classification,
                     "routing": routing
                 }
+                if debug:
+                    result_payload["debug"] = debug_info
+                return result_payload
             
             # Step 5: Verify claims
             verification = self.verifier.verify_claims(
@@ -252,6 +351,10 @@ class UsePipeline:
                 chunks=chunks,
                 tenant_id=tenant_id
             )
+            if debug:
+                debug_info["claims_count"] = len(claims)
+                debug_info["verified_claims"] = len(verification.get("verified_claims", []))
+                debug_info["blocked_claims"] = len(verification.get("blocked_claims", []))
             
             # CRITICAL: If answer says "no data" BUT we have verified claims, this is a BUG
             # This should NOT happen anymore after the root cause fix in neurale_strict.py
@@ -279,7 +382,7 @@ class UsePipeline:
                     "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
                     "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
                 )
-                return {
+                result_payload = {
                     "status": "no_results",
                     "message": "I documenti recuperati non supportano alcuna affermazione verificabile per rispondere a questa domanda.",
                     "answer": no_data_message,
@@ -291,6 +394,9 @@ class UsePipeline:
                     "routing": routing,
                     "_internal_blocked_count": len(verification["blocked_claims"])  # Solo per log/debug interno
                 }
+                if debug:
+                    result_payload["debug"] = debug_info
+                return result_payload
             
             # STEP 6: VERIFICA POSTUMA OBBLIGATORIA - Garantisce che ogni affermazione sia tracciabile
             from app.services.post_verification_service import PostVerificationService
@@ -301,6 +407,11 @@ class UsePipeline:
                 chunks,
                 question
             )
+            if debug:
+                debug_info["post_verification_block"] = {
+                    "blocked": should_block,
+                    "reason": block_reason
+                }
             
             if should_block:
                 # CRITICAL: NON esporre claim bloccati - contengono dati potenzialmente inventati
@@ -311,7 +422,7 @@ class UsePipeline:
                     "💡 **Suggerimento**: Puoi creare un progetto e inserire tutti i dati pertinenti alla risposta. "
                     "Una volta caricati i documenti necessari, potrò rispondere alla tua domanda in modo completo e accurato."
                 )
-                return {
+                result_payload = {
                     "status": "no_results",
                     "message": block_reason,
                     "answer": no_data_message,
@@ -324,12 +435,18 @@ class UsePipeline:
                     "routing": routing,
                     "_internal_blocked_count": len(verification["blocked_claims"]) + len(verification["verified_claims"])  # Solo per log interno
                 }
+                if debug:
+                    result_payload["debug"] = debug_info
+                return result_payload
             
             # Build final result - solo se verifica postuma passa
             # CRITICAL: Non esporre blocked_claims anche in caso di successo
             # Solo claims verificati con sourceRefs vengono esposti all'utente
             # I blocked_claims contengono dati inventati - mai esporli per sicurezza legale
-            return {
+            if debug:
+                debug_info["final_status"] = verification["status"]
+                debug_info["verified_claims_list"] = [claim.get("text") for claim in verification.get("verified_claims", [])]
+            result_payload = {
                 "status": "success",
                 "question": question,
                 "answer": answer_text,  # Main natural language answer (verificata postuma)
@@ -347,13 +464,19 @@ class UsePipeline:
                 "persona": persona,
                 "_internal_blocked_count": len(verification["blocked_claims"])  # Solo per log interno, mai esposto
             }
+            if debug:
+                result_payload["debug"] = debug_info
+            return result_payload
         
         else:
-            return {
+            result_payload = {
                 "status": "error",
                 "message": f"Unknown action: {action}",
                 "routing": routing
             }
+            if debug:
+                result_payload["debug"] = debug_info
+            return result_payload
     
     async def _handle_conversational_query(
         self,

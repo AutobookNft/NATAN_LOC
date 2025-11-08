@@ -188,7 +188,7 @@ class NeuraleStrict:
         # Build prompt for natural language synthesis with STRICT anti-hallucination rules
         # CRITICAL: Se ci sono chunks forniti, l'LLM DEVE rispondere usando quei chunks
         # NON può dire "no data" se ci sono documenti forniti - questo è un bug, non un comportamento corretto
-        prompt = f"""You are NATAN, an expert assistant for Public Administration that answers questions based ONLY on provided documents.
+        prompt = f"""You are NATAN, an expert organizational knowledge assistant that answers questions based ONLY on provided documents.
 
 Question: {question}
 
@@ -225,32 +225,21 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
 6. DO NOT create statistics, numbers, dates, or facts that are not directly stated in the sources
    - But DO use statistics, numbers, dates from the sources if present
 
-7. **NEVER respond with "non ho informazioni" or "no data" message if sources are provided above**
-   - Sources were provided because they ARE relevant
-   - Your task is to extract and synthesize information from them
-   - If the answer is partial, that's acceptable - provide what you can
+IMPORTANT: Without documents you would return "no data". BUT HERE YOU HAVE DOCUMENTS. Therefore you MUST extract information from them. The user question asks for an analysis of investment areas; the documents contain budget variations and spending categories. Identify the main areas of spending/investment mentioned in the sources and summarize them.
 
-8. NEVER combine information from different sources to create new facts unless explicitly stated in the sources
-   - But DO combine related facts from sources to form a coherent answer
+7. Focus on:
+   - Budget chapters, spending categories, recurring investments
+   - Projects or initiatives funded (economic development, welfare, culture, environment, etc.)
+   - Any trend or emphasis evident in the documents (e.g., increases in specific functions)
 
-9. If you're not 100% sure a fact is in the sources, DO NOT include it
-   - But DO include facts you ARE sure are in the sources
+8. Structure your answer clearly:
+   - Introduce the context (e.g., "Dai documenti esaminati emerge che…")
+   - Elenca le principali aree/ambiti, citando i capitoli o le funzioni con le cifre o descrizioni ricavate
+   - Chiudi con una sintesi del quadro complessivo
 
-10. **Remember: If sources are provided, there IS relevant information - synthesize it into an answer**
+9. The answer MUST be in Italian.
 
-ANTI-HALLUCINATION CHECK:
-- Before writing each sentence, verify it can be directly traced to a specific source above
-- If you cannot trace a fact to a source, DO NOT include it in your answer
-- But if you CAN trace facts to sources, include them and synthesize into an answer
-
-CRITICAL REMINDER:
-- You have been provided with sources above - this means relevant information exists
-- Your job is to extract and synthesize that information into an answer
-- DO NOT say "no data" if sources are provided - that contradicts the fact that sources were provided
-
-Remember: This is for Public Administration. Providing false information can have serious legal consequences. Only state facts that are explicitly in the sources. But if sources are provided, USE THEM to answer the question.
-
-Provide your answer synthesizing information from the provided sources:"""
+Generate your final answer strictly following these instructions."""
         
         # Prepare messages for LLM with REGOLA ZERO in system message
         # CRITICAL: If sources are provided in the user message, the LLM MUST use them
@@ -413,13 +402,17 @@ Generate the answer as atomic claims (or [] if no relevant data):"""
         
         # Prepare messages for LLM with REGOLA ZERO in system message
         messages = [
-            {"role": "system", "content": f"""You are NATAN, a {persona} assistant for Public Administration analysis.
+            {
+                "role": "system",
+                "content": f"""
+You are NATAN, a {persona} assistant for Public Administration analysis.
 
-REGOLA ZERO: If you don't know something from the provided sources, DO NOT invent it. Return an empty array [].
+REGOLA ZERO: CON DOCUMENTI FORNITI DEVI produrre claims. Non puoi rispondere con un array vuoto se il contesto contiene informazioni rilevanti. Vuoto solo se davvero non c'è alcun dato pertinente.
 
-Your claims MUST be based ONLY on the provided sources. Never use general knowledge or assumptions. If sources don't contain relevant information, return [].
+I tuoi claims DEVONO basarsi SOLO sulle fonti fornite. Non usare conoscenza generale o supposizioni. Se le fonti non contengono informazioni rilevanti, restituisci [].
 
-This is a legal requirement for PA systems - false claims can have serious consequences."""},
+Questo è un requisito legale per i sistemi della Pubblica Amministrazione – claims falsi comportano conseguenze serie. Tuttavia, se il contesto contiene dati utili devi trasformarli in claims."""
+            },
             {"role": "user", "content": prompt}
         ]
         

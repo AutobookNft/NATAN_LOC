@@ -74,21 +74,63 @@ class RetrieverService:
             candidates = MongoDBService.find_documents("documents", query_filter)
             if not candidates:
                 # CRITICAL: Empty database = no documents to retrieve
-                logger.warning(f"⚠️ CRITICAL: No documents found in MongoDB with filter: {query_filter}. Database may be empty.")
+                logger.warning(f"⚠️ CRITICAL: No documents found in MongoDB with filter: {query_filter}")
+                logger.warning(f"⚠️ CRITICAL: Filter used: tenant_id={tenant_id}, embedding exists=True")
+                logger.warning(f"⚠️ CRITICAL: Possible causes: 1) No documents imported for tenant {tenant_id}, 2) Documents don't have embeddings, 3) tenant_id mismatch")
+                
+                # DIAGNOSTIC: Check if there are ANY documents for this tenant (even without embeddings)
+                diagnostic_filter = {"tenant_id": tenant_id}
+                all_docs = MongoDBService.find_documents("documents", diagnostic_filter, limit=5)
+                logger.info(f"🔍 DIAGNOSTIC: Found {len(all_docs)} total documents for tenant {tenant_id} (including those without embeddings)")
+                
+                if all_docs:
+                    docs_with_embeddings = [d for d in all_docs if d.get("embedding")]
+                    docs_with_chunk_embeddings = [d for d in all_docs if d.get("content", {}).get("chunks") and any(c.get("embedding") for c in d.get("content", {}).get("chunks", []))]
+                    logger.warning(f"⚠️ DIAGNOSTIC: {len(docs_with_embeddings)} docs have document-level embeddings, {len(docs_with_chunk_embeddings)} docs have chunk embeddings")
+                
                 return []  # Return empty - verifica postuma bloccherà risposta
             
             # Log retrieval info for debugging
             logger.info(f"🔍 Retriever: Found {len(candidates)} candidate documents for tenant {tenant_id}")
+            
+            # DIAGNOSTIC: Log document types found
+            doc_types = {}
+            for doc in candidates[:10]:  # Sample first 10
+                doc_type = doc.get("document_type", "unknown")
+                doc_types[doc_type] = doc_types.get(doc_type, 0) + 1
+            if doc_types:
+                logger.info(f"🔍 Retriever: Document types found: {doc_types}")
+                
         except Exception as e:
-            logger.error(f"❌ CRITICAL: Error retrieving documents from MongoDB: {e}")
+            logger.error(f"❌ CRITICAL: Error retrieving documents from MongoDB: {e}", exc_info=True)
             return []  # Return empty on error
         
         # Calculate cosine similarity with minimum threshold
         results = []
         query_vector = np.array(query_embedding)
-        # CRITICAL: Lower threshold for documents with only "oggetto" (subject) - they have less semantic content
-        # Once documents have full PDF text, we can raise this back to 0.3
-        MIN_SIMILARITY_THRESHOLD = 0.2  # Lowered from 0.3 to allow retrieval of documents with only "oggetto"
+        # CRITICAL: Adaptive threshold based on document count
+        # For generic/analysis queries, we need to be more permissive
+        # If we have many documents, we can afford to be more selective
+        # If we have few documents or query is generic, we need lower threshold
+        document_count = len(candidates)
+        
+        # Adaptive threshold: lower for generic queries or when we have fewer documents
+        if document_count < 50:
+            # Few documents: be very permissive (0.15) to ensure we get results
+            MIN_SIMILARITY_THRESHOLD = 0.15
+            logger.info(f"🔍 Adaptive threshold: {MIN_SIMILARITY_THRESHOLD} (few documents: {document_count})")
+        elif document_count < 200:
+            # Medium documents: moderate threshold (0.18)
+            MIN_SIMILARITY_THRESHOLD = 0.18
+            logger.info(f"🔍 Adaptive threshold: {MIN_SIMILARITY_THRESHOLD} (medium documents: {document_count})")
+        else:
+            # Many documents: standard threshold (0.2)
+            MIN_SIMILARITY_THRESHOLD = 0.2
+            logger.info(f"🔍 Adaptive threshold: {MIN_SIMILARITY_THRESHOLD} (many documents: {document_count})")
+        
+        # Use the higher of min_score (from parameters) or adaptive threshold
+        effective_threshold = max(min_score, MIN_SIMILARITY_THRESHOLD)
+        logger.info(f"🔍 Effective similarity threshold: {effective_threshold} (min_score={min_score}, adaptive={MIN_SIMILARITY_THRESHOLD})")
         
         for doc in candidates:
             # Check if document has chunks with embeddings (preferred) or document-level embedding
@@ -105,18 +147,32 @@ class RetrieverService:
                     chunk_vector = np.array(chunk_embedding)
                     similarity = float(np.dot(query_vector, chunk_vector) / (np.linalg.norm(query_vector) * np.linalg.norm(chunk_vector)))
                     
-                    # CRITICAL: Use effective threshold (lowered to 0.2 for documents with only "oggetto")
-                    effective_threshold = max(min_score, MIN_SIMILARITY_THRESHOLD)
                     if similarity < effective_threshold:
                         logger.debug(f"⚠️ Chunk similarity {similarity:.3f} below threshold {effective_threshold} for doc {doc.get('document_id', 'N/A')[:30]}")
+                        continue
                     
+                    # Chunk passed threshold
                     if similarity >= effective_threshold:
                         # Log successful retrieval
                         logger.debug(f"✅ Chunk retrieved: similarity {similarity:.3f} >= {effective_threshold} for doc {doc.get('document_id', 'N/A')[:30]}")
+                        
+                        # CRITICAL: Get chunk_text and ensure it's not empty
+                        chunk_text = chunk.get("chunk_text", "")
+                        if not chunk_text:
+                            # Try alternative field names
+                            chunk_text = chunk.get("text", "") or chunk.get("content", "") or ""
+                        
+                        # Log first chunk details for debugging
+                        if len(results) == 0:
+                            logger.info(f"🔍 Retriever: First chunk being added:")
+                            logger.info(f"   Chunk keys: {list(chunk.keys())}")
+                            logger.info(f"   chunk_text type: {type(chunk_text)}, length: {len(str(chunk_text))}")
+                            logger.info(f"   chunk_text preview: {str(chunk_text)[:200] if chunk_text else 'EMPTY'}")
+                        
                         results.append({
                             "document_id": doc.get("document_id"),
                             "chunk_index": chunk.get("chunk_index"),
-                            "chunk_text": chunk.get("chunk_text", ""),
+                            "chunk_text": chunk_text,  # Use validated chunk_text
                             "similarity": similarity,
                             "source_ref": {
                                 "document_id": doc.get("document_id"),
@@ -140,8 +196,11 @@ class RetrieverService:
                 # Cosine similarity
                 similarity = self._cosine_similarity(query_vector, doc_vector)
                 
-                # CRITICAL: Use higher threshold to avoid irrelevant chunks
-                effective_threshold = max(min_score, MIN_SIMILARITY_THRESHOLD)
+                if similarity < effective_threshold:
+                    logger.debug(f"⚠️ Doc similarity {similarity:.3f} below threshold {effective_threshold} for doc {doc.get('document_id', 'N/A')[:30]}")
+                    continue
+                
+                # Document passed threshold
                 if similarity >= effective_threshold:
                     # Get source reference
                     source_ref = self._build_source_ref(doc)
@@ -177,9 +236,93 @@ class RetrieverService:
         
         # Log final results for debugging
         if results:
-            logger.info(f"✅ Retriever: Returning {len(results[:limit])} chunks (top similarity: {results[0].get('similarity', 0):.3f})")
+            top_similarity = results[0].get('similarity', 0) if results else 0.0
+            logger.info(f"✅ Retriever: Returning {len(results[:limit])} chunks (top similarity: {top_similarity:.3f}, threshold: {effective_threshold:.3f})")
         else:
-            logger.warning(f"⚠️ Retriever: No chunks found above threshold {MIN_SIMILARITY_THRESHOLD} for tenant {tenant_id}")
+            logger.warning(f"⚠️ Retriever: No chunks found above threshold {effective_threshold:.3f} for tenant {tenant_id}")
+            logger.warning(f"⚠️ Retriever: Found {document_count} candidate documents, but none passed similarity threshold")
+            
+            # FALLBACK: For generic/analysis queries, if no results found with vector search,
+            # return recent documents even with lower similarity (but only if we have documents)
+            if document_count > 0:
+                logger.info(f"🔄 Retriever: Attempting fallback - returning recent documents with lower threshold")
+                fallback_threshold = 0.1  # Very permissive for fallback
+                fallback_results = []
+                
+                for doc in candidates[:limit * 2]:  # Check more documents for fallback
+                    chunks = doc.get("content", {}).get("chunks", [])
+                    doc_embedding = doc.get("embedding")
+                    
+                    if chunks and len(chunks) > 0:
+                        for chunk in chunks[:3]:  # Max 3 chunks per doc for fallback
+                            chunk_embedding = chunk.get("embedding")
+                            if not chunk_embedding:
+                                continue
+                            
+                            chunk_vector = np.array(chunk_embedding)
+                            similarity = float(np.dot(query_vector, chunk_vector) / (np.linalg.norm(query_vector) * np.linalg.norm(chunk_vector)))
+                            
+                            if similarity >= fallback_threshold:
+                                fallback_results.append({
+                                    "document_id": doc.get("document_id"),
+                                    "chunk_index": chunk.get("chunk_index"),
+                                    "chunk_text": chunk.get("chunk_text", ""),
+                                    "similarity": similarity,
+                                    "source_ref": {
+                                        "document_id": doc.get("document_id"),
+                                        "title": doc.get("title", doc.get("filename", "Documento")),
+                                        "filename": doc.get("filename"),
+                                        "relative_path": doc.get("relative_path"),
+                                        "url": f"#doc-{doc.get('document_id')}",
+                                        "chunk_index": chunk.get("chunk_index"),
+                                        "page_number": chunk.get("page_number"),
+                                    },
+                                    "metadata": {
+                                        "document_type": doc.get("document_type"),
+                                        "file_type": doc.get("file_type"),
+                                        **chunk.get("metadata", {}),
+                                        "_fallback": True  # Mark as fallback result
+                                    }
+                                })
+                    elif doc_embedding:
+                        doc_vector = np.array(doc_embedding)
+                        similarity = self._cosine_similarity(query_vector, doc_vector)
+                        
+                        if similarity >= fallback_threshold:
+                            content = doc.get("content", {})
+                            chunk_text = ""
+                            if isinstance(content, dict):
+                                chunk_text = content.get("full_text", content.get("raw_text", ""))
+                            elif isinstance(content, str):
+                                chunk_text = content
+                            
+                            if len(chunk_text) > 2000:
+                                chunk_text = chunk_text[:2000] + "..."
+                            
+                            fallback_results.append({
+                                "chunk_id": str(doc.get("_id", "")),
+                                "chunk_index": 0,
+                                "chunk_text": chunk_text,
+                                "document_id": doc.get("document_id"),
+                                "similarity": float(similarity),
+                                "source_ref": self._build_source_ref(doc),
+                                "metadata": {
+                                    "document_type": doc.get("document_type"),
+                                    "file_type": doc.get("file_type"),
+                                    **doc.get("metadata", {}),
+                                    "_fallback": True  # Mark as fallback result
+                                }
+                            })
+                
+                # Sort fallback results by similarity
+                fallback_results.sort(key=lambda x: x.get("similarity", 0), reverse=True)
+                fallback_results = fallback_results[:limit]
+                
+                if fallback_results:
+                    logger.info(f"✅ Retriever: Fallback successful - returning {len(fallback_results)} chunks (top similarity: {fallback_results[0].get('similarity', 0):.3f})")
+                    return fallback_results
+                else:
+                    logger.error(f"❌ Retriever: Fallback also failed - no chunks found even with threshold {fallback_threshold:.3f}")
         
         # Limit results
         return results[:limit]

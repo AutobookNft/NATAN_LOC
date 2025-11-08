@@ -4,8 +4,25 @@ FastAPI microservice for AI operations (embeddings, chat, RAG)
 """
 
 import os
+import logging
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
+
+# Configure logging BEFORE importing other modules
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('/tmp/natan_python_detailed.log', mode='a')
+    ]
+)
+
+# Set specific loggers to DEBUG for detailed diagnostics
+logging.getLogger('app.services.use_pipeline').setLevel(logging.INFO)
+logging.getLogger('app.services.retriever_service').setLevel(logging.INFO)
+logging.getLogger('app.services.mongodb_service').setLevel(logging.INFO)
 
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent / '.env'
@@ -13,7 +30,10 @@ load_dotenv(dotenv_path=env_path)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, embeddings, chat, rag, use, audit, system
+from app.routers import health, embeddings, chat, rag, use, audit, system, diagnostic
+
+logger = logging.getLogger(__name__)
+logger.info("🚀 NATAN AI Gateway starting...")
 
 app = FastAPI(
     title="NATAN AI Gateway",
@@ -38,4 +58,5 @@ app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(rag.router, prefix="/api/v1", tags=["rag"])
 app.include_router(use.router, prefix="/api/v1", tags=["use"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+app.include_router(diagnostic.router, prefix="/api/v1", tags=["diagnostic"])
 

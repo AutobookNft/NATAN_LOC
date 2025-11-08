@@ -13,6 +13,7 @@ class UseQueryRequest(BaseModel):
     persona: str = "strategic"
     model: str = "anthropic.sonnet-3.5"
     query_embedding: Optional[List[float]] = None
+    debug: bool = False
 
 class UseQueryResponse(BaseModel):
     status: str
@@ -28,6 +29,7 @@ class UseQueryResponse(BaseModel):
     tokens_used: Optional[dict] = None
     reason: Optional[str] = None
     message: Optional[str] = None
+    debug: Optional[dict] = None
 
 @router.post("/use/query", response_model=UseQueryResponse)
 async def process_use_query(request: UseQueryRequest):
@@ -42,7 +44,8 @@ async def process_use_query(request: UseQueryRequest):
             tenant_id=request.tenant_id,
             persona=request.persona,
             model=request.model,
-            query_embedding=request.query_embedding
+            query_embedding=request.query_embedding,
+            debug=request.debug
         )
         
         return UseQueryResponse(**result)
