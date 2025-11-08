@@ -7,6 +7,8 @@ export interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    commandName?: string;
+    commandResult?: CommandResultPayload | null;
     claims?: Claim[];
     blockedClaims?: Claim[];
     sources?: Source[];
@@ -82,6 +84,35 @@ export interface ApiConfig {
     baseUrl: string;
     apiToken?: string;
     timeout: number;
+}
+
+export interface CommandRow {
+    title: string;
+    description?: string | null;
+    metadata?: Array<{
+        label: string;
+        value: string;
+    }>;
+    link?: {
+        url: string;
+        label: string;
+        target?: '_blank' | '_self';
+    };
+}
+
+export interface CommandResultPayload {
+    command: string;
+    rows: CommandRow[];
+    metadata?: Record<string, unknown>;
+}
+
+export interface ChatCommandResponse {
+    success: boolean;
+    command: string;
+    message: string;
+    rows: CommandRow[];
+    metadata?: Record<string, unknown>;
+    verification_status?: 'SAFE' | 'WARNING' | 'BLOCKED' | 'direct_query' | 'DIRECT_QUERY';
 }
 
 

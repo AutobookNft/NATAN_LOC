@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\NatanChatController;
+use App\Http\Controllers\NatanCommandController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NatanDiagnosticController;
 
@@ -115,6 +116,10 @@ Route::prefix('natan')->name('natan.')->middleware(['auth', 'natan.access'])->gr
         ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
     Route::get('/conversations/{conversationId}', [\App\Http\Controllers\NatanConversationController::class, 'getConversation'])
         ->name('api.conversations.get')
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+
+    Route::post('/commands/execute', [NatanCommandController::class, 'execute'])
+        ->name('commands.execute')
         ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
 
     // Documents routes

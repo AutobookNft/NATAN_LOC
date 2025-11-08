@@ -3,7 +3,7 @@
  * Handles all HTTP requests to Laravel backend and Python FastAPI
  */
 
-import type { UseQueryResponse, ApiConfig } from '../types';
+import type { UseQueryResponse, ApiConfig, ChatCommandResponse } from '../types';
 
 export class ApiService {
     private baseUrl: string;
@@ -14,6 +14,33 @@ export class ApiService {
         this.baseUrl = config.baseUrl;
         this.apiToken = config.apiToken || null;
         this.timeout = config.timeout || 120000;
+    }
+
+    async executeCommand(command: string): Promise<ChatCommandResponse> {
+        const laravelUrl = window.location.origin;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        const response = await fetch(`${laravelUrl}/natan/commands/execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            },
+            body: JSON.stringify({ command }),
+        });
+
+        const data = await response.json().catch(() => ({
+            success: false,
+            error: response.statusText || 'Unknown error',
+        }));
+
+        if (!response.ok || data.success === false) {
+            const errorMessage = data.error || data.message || `HTTP ${response.status}`;
+            throw new Error(errorMessage);
+        }
+
+        return data as ChatCommandResponse;
     }
 
     setApiToken(token: string): void {

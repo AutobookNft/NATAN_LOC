@@ -154,4 +154,17 @@ return [
     */
     'enable_unified_knowledge' => env('NATAN_ENABLE_UNIFIED_KNOWLEDGE', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Chat Commands (Direct Query)
+    |--------------------------------------------------------------------------
+    */
+    'commands' => [
+        'default_limit' => env('NATAN_COMMAND_DEFAULT_LIMIT', 10),
+        'max_limit' => env('NATAN_COMMAND_MAX_LIMIT', 50),
+        'stats' => [
+            'default_limit' => env('NATAN_COMMAND_STATS_DEFAULT_LIMIT', 10),
+        ],
+    ],
+
 ];

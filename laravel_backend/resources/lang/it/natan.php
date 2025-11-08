@@ -172,4 +172,53 @@ return [
         'superadmin_required' => 'Accesso negato. NATAN è accessibile solo agli utenti con ruolo superadmin.',
         'natan_access_required' => 'Accesso negato. NATAN_LOC è accessibile solo a ruoli PA (pa_entity, pa_entity_admin, admin, editor, superadmin).',
     ],
+
+    'commands' => [
+        'errors' => [
+            'permission_denied' => 'Accesso negato: il tuo ruolo non consente di eseguire questo comando.',
+            'admin_required' => 'Questo comando è riservato agli amministratori del tenant (ruolo pa_entity_admin).',
+        ],
+        'values' => [
+            'blockchain_yes' => 'Ancorato su blockchain',
+            'blockchain_no' => 'Non ancorato su blockchain',
+            'no_title' => 'Titolo non disponibile',
+            'no_limit' => 'nessun limite',
+            'unknown_type' => 'Tipo documento non specificato',
+        ],
+        'links' => [
+            'open_document' => 'Apri documento',
+        ],
+        'fields' => [
+            'document_id' => 'Document ID',
+            'protocol_number' => 'Numero di protocollo',
+            'protocol_date' => 'Data protocollo',
+            'document_type' => 'Tipologia',
+            'department' => 'Dipartimento',
+            'blockchain_status' => 'Stato blockchain',
+            'count' => 'Totale',
+        ],
+        'atto' => [
+            'errors' => [
+                'identifier_required' => 'Specifica almeno un identificativo (es. numero=pa_act_xxx oppure protocollo=12345).',
+            ],
+            'messages' => [
+                'not_found' => 'Nessun documento trovato (document_id: :document_id, protocollo: :protocol_number).',
+                'found' => 'Documento trovato: **:title**',
+            ],
+        ],
+        'atti' => [
+            'messages' => [
+                'empty' => 'Nessun documento risponde ai criteri indicati.',
+                'found' => 'Risultati: **:count** (limite: :limit)',
+            ],
+        ],
+        'stats' => [
+            'errors' => [
+                'unsupported_target' => 'Tipo di statistica non supportato (:target).',
+            ],
+            'messages' => [
+                'summary' => 'Totale atti: **:count** (dal: :from, al: :to)',
+            ],
+        ],
+    ],
 ];

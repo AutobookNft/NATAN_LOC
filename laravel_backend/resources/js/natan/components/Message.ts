@@ -100,6 +100,87 @@ export class MessageComponent {
       bubble.appendChild(contentDiv);
     }
 
+    if (message.role === 'assistant' && message.commandResult && message.commandResult.rows && message.commandResult.rows.length > 0) {
+      const commandSection = document.createElement('div');
+      commandSection.className = 'mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-natan-gray-300';
+      commandSection.setAttribute('aria-label', `@${message.commandResult.command}`);
+
+      const commandHeader = document.createElement('p');
+      commandHeader.className = 'text-xs sm:text-sm font-institutional font-semibold text-natan-blue-dark mb-2 sm:mb-3';
+      commandHeader.textContent = `@${message.commandResult.command}`;
+      commandSection.appendChild(commandHeader);
+
+      const rowsContainer = document.createElement('div');
+      rowsContainer.className = 'space-y-2.5 sm:space-y-3';
+
+      message.commandResult.rows.forEach((row, index) => {
+        const rowCard = document.createElement('div');
+        rowCard.className = 'rounded-lg border border-natan-gray-300 bg-white/80 px-3 py-3 sm:px-4 sm:py-4 shadow-sm';
+        rowCard.setAttribute('role', 'group');
+        rowCard.setAttribute('aria-label', `@${message.commandResult?.command} #${index + 1}`);
+
+        const title = document.createElement('p');
+        title.className = 'text-sm sm:text-base font-semibold text-natan-blue-dark mb-1';
+        title.textContent = this.escapeHtml(row.title ?? '');
+        rowCard.appendChild(title);
+
+        if (row.description) {
+          const description = document.createElement('p');
+          description.className = 'text-xs sm:text-sm text-natan-gray-700 mb-2';
+          description.textContent = this.escapeHtml(row.description);
+          rowCard.appendChild(description);
+        }
+
+        if (row.metadata && row.metadata.length > 0) {
+          const metaList = document.createElement('ul');
+          metaList.className = 'space-y-1';
+          row.metadata.forEach((meta) => {
+            const item = document.createElement('li');
+            item.className = 'text-xs sm:text-sm text-natan-gray-600';
+
+            const label = document.createElement('span');
+            label.className = 'font-medium text-natan-gray-700';
+            label.textContent = `${this.escapeHtml(meta.label)}: `;
+
+            const value = document.createElement('span');
+            value.textContent = this.escapeHtml(meta.value);
+
+            item.appendChild(label);
+            item.appendChild(value);
+            metaList.appendChild(item);
+          });
+          rowCard.appendChild(metaList);
+        }
+
+        if (row.link && row.link.url) {
+          const link = document.createElement('a');
+          link.href = this.escapeHtml(row.link.url);
+          link.className = 'inline-flex items-center gap-2 mt-3 text-xs sm:text-sm text-natan-blue hover:text-natan-blue-dark underline';
+          const target = row.link.target ?? '_self';
+          link.target = target;
+          if (target === '_blank') {
+            link.rel = 'noopener noreferrer';
+          }
+
+          const arrow = document.createElement('span');
+          arrow.className = 'text-base leading-none';
+          arrow.textContent = '→';
+
+          const label = document.createElement('span');
+          label.textContent = this.escapeHtml(row.link.label ?? row.link.url);
+
+          link.appendChild(arrow);
+          link.appendChild(label);
+          rowCard.appendChild(link);
+        }
+
+        rowsContainer.appendChild(rowCard);
+      });
+
+      commandSection.appendChild(rowsContainer);
+      bubble.appendChild(commandSection);
+    }
+
     // Claims (verified with sources - shown as "proof" below answer)
     if (message.role === 'assistant' && message.claims?.length) {
       const claimsSection = document.createElement('div');

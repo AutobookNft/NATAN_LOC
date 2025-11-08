@@ -115,4 +115,53 @@ return [
         'superadmin_required' => 'Access denied. NATAN is only accessible to users with superadmin role.',
         'natan_access_required' => 'Access denied. NATAN_LOC is only accessible to PA roles (pa_entity, pa_entity_admin, admin, editor, superadmin).',
     ],
+
+    'commands' => [
+        'errors' => [
+            'permission_denied' => 'Access denied: your role cannot execute this command.',
+            'admin_required' => 'This command is restricted to tenant administrators (pa_entity_admin role).',
+        ],
+        'values' => [
+            'blockchain_yes' => 'Anchored on blockchain',
+            'blockchain_no' => 'Not anchored on blockchain',
+            'no_title' => 'Untitled document',
+            'no_limit' => 'no limit',
+            'unknown_type' => 'Document type not specified',
+        ],
+        'links' => [
+            'open_document' => 'Open document',
+        ],
+        'fields' => [
+            'document_id' => 'Document ID',
+            'protocol_number' => 'Protocol number',
+            'protocol_date' => 'Protocol date',
+            'document_type' => 'Type',
+            'department' => 'Department',
+            'blockchain_status' => 'Blockchain status',
+            'count' => 'Total',
+        ],
+        'atto' => [
+            'errors' => [
+                'identifier_required' => 'Provide at least one identifier (e.g. numero=pa_act_xxx or protocollo=12345).',
+            ],
+            'messages' => [
+                'not_found' => 'No document found (document_id: :document_id, protocol: :protocol_number).',
+                'found' => 'Document found: **:title**',
+            ],
+        ],
+        'atti' => [
+            'messages' => [
+                'empty' => 'No documents match the requested filters.',
+                'found' => 'Results: **:count** (limit: :limit)',
+            ],
+        ],
+        'stats' => [
+            'errors' => [
+                'unsupported_target' => 'Unsupported statistics target (:target).',
+            ],
+            'messages' => [
+                'summary' => 'Total acts: **:count** (from: :from, to: :to)',
+            ],
+        ],
+    ],
 ];

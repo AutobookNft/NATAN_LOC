@@ -43,6 +43,9 @@ return [
         'microservice_health_check_failed' => 'Microservice health check failed. URL: :url, Service: :service, Error: :message',
         'microservice_auto_start_failed' => 'Microservice auto-start attempt failed. Service: :service, Path: :path, Error: :message',
 
+        // Chat commands
+        'chat_command_failed' => 'Error while executing chat command. User: :user_id, Command: :command, Error: :message',
+
         // Scraper errors (NATAN_LOC)
         'scraper_script_not_found' => 'Python scraper script not found. Script: :script_path, Scraper: :scraper_id',
         'scraper_execution_failed' => 'Scraper execution failed. Scraper: :scraper_id, Exit code: :exit_code, Error: :error_message',
@@ -81,6 +84,9 @@ return [
         'microservice_not_reachable' => 'Service temporarily unavailable. Our team has been notified.',
         'microservice_health_check_failed' => 'Service temporarily unavailable. Please try again in a few minutes.',
         'microservice_auto_start_failed' => 'Service temporarily unavailable. Our team has been alerted and will resolve the issue as soon as possible.',
+
+        // Chat commands
+        'chat_command_failed' => 'An error occurred while executing the command. Please try again later.',
 
         // Scraper errors (NATAN_LOC)
         'scraper_script_not_found' => 'Scraper script not found. Our team has been notified.',

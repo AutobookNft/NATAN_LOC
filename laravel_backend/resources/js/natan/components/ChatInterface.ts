@@ -236,39 +236,46 @@ export class ChatInterface {
         this.inputField.style.height = 'auto';
         this.setLoading(true);
 
+        let handledByCommand = false;
+
         try {
-            // Send USE query
-            // Se tenantId è null, usa 1 come fallback temporaneo
-            // Il backend risolverà il tenant_id corretto usando TenantResolver
-            const response: UseQueryResponse = await apiService.sendUseQuery(
-                question,
-                this.tenantId ?? 1,
-                this.persona
-            );
+            if (this.isCommand(question)) {
+                handledByCommand = true;
+                await this.executeCommandFlow(question);
+            } else {
+                // Send USE query
+                // Se tenantId è null, usa 1 come fallback temporaneo
+                // Il backend risolverà il tenant_id corretto usando TenantResolver
+                const response: UseQueryResponse = await apiService.sendUseQuery(
+                    question,
+                    this.tenantId ?? 1,
+                    this.persona
+                );
 
-            // Add assistant message with natural language answer and verified claims
-            // CRITICAL: NEVER expose blocked_claims to user - they contain invented/false data
-            // Even if backend sends them, we filter them out for security
-            const assistantMessage: Message = {
-                id: this.generateId(),
-                role: 'assistant',
-                content: response.answer || this.formatResponse(response),  // Use natural language answer if available
-                timestamp: new Date(),
-                claims: response.verified_claims || [],  // ONLY verified claims with sources (shown as proof below)
-                blockedClaims: [],  // NEVER expose blocked claims - they contain invented data (security risk)
-                sources: this.extractSources(response),
-                avgUrs: response.avg_urs,
-                verificationStatus: response.verification_status,
-                tokensUsed: response.tokens_used || null,  // Store tokens for cost calculation
-                modelUsed: response.model_used || null,  // Store model for cost calculation
-            };
-            
-            // Log blocked claims count for internal monitoring (never show to user)
-            if (response.blocked_claims && response.blocked_claims.length > 0) {
-                console.warn(`[NATAN SECURITY] ${response.blocked_claims.length} claims were blocked (not shown to user for safety)`);
+                // Add assistant message with natural language answer and verified claims
+                // CRITICAL: NEVER expose blocked_claims to user - they contain invented/false data
+                // Even if backend sends them, we filter them out for security
+                const assistantMessage: Message = {
+                    id: this.generateId(),
+                    role: 'assistant',
+                    content: response.answer || this.formatResponse(response),  // Use natural language answer if available
+                    timestamp: new Date(),
+                    claims: response.verified_claims || [],  // ONLY verified claims with sources (shown as proof below)
+                    blockedClaims: [],  // NEVER expose blocked claims - they contain invented data (security risk)
+                    sources: this.extractSources(response),
+                    avgUrs: response.avg_urs,
+                    verificationStatus: response.verification_status,
+                    tokensUsed: response.tokens_used || null,  // Store tokens for cost calculation
+                    modelUsed: response.model_used || null,  // Store model for cost calculation
+                };
+                
+                // Log blocked claims count for internal monitoring (never show to user)
+                if (response.blocked_claims && response.blocked_claims.length > 0) {
+                    console.warn(`[NATAN SECURITY] ${response.blocked_claims.length} claims were blocked (not shown to user for safety)`);
+                }
+
+                this.addMessage(assistantMessage);
             }
-
-            this.addMessage(assistantMessage);
         } catch (error) {
             console.error('Error sending query:', error);
             const errorMessage: Message = {
@@ -281,6 +288,40 @@ export class ChatInterface {
         } finally {
             this.setLoading(false);
         }
+
+        if (handledByCommand) {
+            return;
+        }
+    }
+
+    private isCommand(content: string): boolean {
+        return content.trim().startsWith('@');
+    }
+
+    private async executeCommandFlow(command: string): Promise<void> {
+        const response = await apiService.executeCommand(command);
+
+        const assistantMessage: Message = {
+            id: this.generateId(),
+            role: 'assistant',
+            content: response.message,
+            timestamp: new Date(),
+            commandName: response.command,
+            commandResult: {
+                command: response.command,
+                rows: response.rows || [],
+                metadata: response.metadata || {},
+            },
+            verificationStatus: (response.verification_status as Message['verificationStatus']) ?? 'direct_query',
+            sources: [],
+            claims: [],
+            blockedClaims: [],
+            avgUrs: null,
+            tokensUsed: null,
+            modelUsed: null,
+        };
+
+        this.addMessage(assistantMessage);
     }
 
     /**
@@ -334,6 +375,8 @@ export class ChatInterface {
                     sources: msg.sources ?? [],
                     verification_status: msg.verificationStatus ?? null,
                     avg_urs: msg.avgUrs ?? null,
+                    ...(msg.commandName ? { command_name: msg.commandName } : {}),
+                    ...(msg.commandResult ? { command_result: msg.commandResult } : {}),
                 } : {}),
             }));
 
@@ -514,6 +557,8 @@ export class ChatInterface {
                         role: msg.role,
                         content: msg.content,
                         timestamp: new Date(msg.timestamp),
+                        commandName: msg.command_name ?? msg.commandName ?? undefined,
+                        commandResult: msg.command_result ?? msg.commandResult ?? null,
                         tokensUsed: msg.tokens_used ? {
                             input: msg.tokens_used.input || 0,
                             output: msg.tokens_used.output || 0,

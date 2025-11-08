@@ -987,6 +987,17 @@ return [
             'msg_to' => 'toast',
         ],
 
+        'CHAT_COMMAND_FAILED' => [
+            'type' => 'error',
+            'blocking' => 'not',
+            'dev_message_key' => 'error-manager::errors_2.dev.chat_command_failed',
+            'user_message_key' => 'error-manager::errors_2.user.chat_command_failed',
+            'http_status_code' => 500,
+            'devTeam_email_need' => false,
+            'notify_slack' => false,
+            'msg_to' => 'toast',
+        ],
+
         // ====================================================
         // SCRAPER ERRORS (NATAN_LOC - Python Scrapers)
         // ====================================================

@@ -53,6 +53,8 @@ class NatanConversationController extends Controller
             'messages.*.verification_status' => 'nullable|string',
             'messages.*.tokens_used' => 'nullable|array',
             'messages.*.model_used' => 'nullable|string',
+            'messages.*.command_name' => 'nullable|string|max:255',
+            'messages.*.command_result' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -112,6 +114,12 @@ class NatanConversationController extends Controller
                             'verification_status' => $msg['verification_status'] ?? $msg['verificationStatus'] ?? null,
                             'avg_urs' => $msg['avg_urs'] ?? $msg['avgUrs'] ?? null,
                         ];
+                        if (isset($msg['command_name'])) {
+                            $ragSources['command_name'] = $msg['command_name'];
+                        }
+                        if (isset($msg['command_result'])) {
+                            $ragSources['command_result'] = $msg['command_result'];
+                        }
                         
                         // Update tokens and model if provided
                         $updateData = [];
@@ -126,7 +134,12 @@ class NatanConversationController extends Controller
                         }
                         
                         // Update rag_sources if we have new data
-                        if (!empty($ragSources['claims']) || !empty($ragSources['sources'])) {
+                        if (
+                            !empty($ragSources['claims'])
+                            || !empty($ragSources['sources'])
+                            || isset($ragSources['command_name'])
+                            || isset($ragSources['command_result'])
+                        ) {
                             $updateData['rag_sources'] = $ragSources;
                         }
                         
@@ -162,6 +175,12 @@ class NatanConversationController extends Controller
                         'verification_status' => $msg['verification_status'] ?? $msg['verificationStatus'] ?? null,
                         'avg_urs' => $msg['avg_urs'] ?? $msg['avgUrs'] ?? null,
                     ];
+                    if (isset($msg['command_name'])) {
+                        $ragSources['command_name'] = $msg['command_name'];
+                    }
+                    if (isset($msg['command_result'])) {
+                        $ragSources['command_result'] = $msg['command_result'];
+                    }
                 }
 
                 // Risolvi tenant_id esplicitamente
@@ -275,6 +294,12 @@ class NatanConversationController extends Controller
                 $messageData['sources'] = $msg->rag_sources['sources'] ?? [];
                 $messageData['verification_status'] = $msg->rag_sources['verification_status'] ?? null;
                 $messageData['avg_urs'] = $msg->rag_sources['avg_urs'] ?? null;
+                if (!empty($msg->rag_sources['command_name'])) {
+                    $messageData['command_name'] = $msg->rag_sources['command_name'];
+                }
+                if (!empty($msg->rag_sources['command_result'])) {
+                    $messageData['command_result'] = $msg->rag_sources['command_result'];
+                }
             }
 
             return $messageData;
