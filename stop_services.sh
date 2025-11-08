@@ -13,20 +13,26 @@ NC='\033[0m'
 echo "🛑 Stopping NATAN_LOC Services..."
 echo ""
 
-# Stop Python FastAPI
-if [ -f "/tmp/natan_python.pid" ]; then
-    PYTHON_PID=$(cat /tmp/natan_python.pid)
-    if ps -p $PYTHON_PID > /dev/null 2>&1; then
-        echo "Stopping Python FastAPI (PID: $PYTHON_PID)..."
-        kill $PYTHON_PID 2>/dev/null || true
-        rm /tmp/natan_python.pid
-        echo -e "${GREEN}✓${NC} Python FastAPI stopped"
+# Stop Docker FastAPI container
+if command -v docker &> /dev/null && docker ps &> /dev/null; then
+    if command -v docker-compose &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+    elif docker compose version &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
     else
-        rm /tmp/natan_python.pid
+        DOCKER_COMPOSE_CMD=""
     fi
-else
-    echo -e "${YELLOW}⚠${NC} Python FastAPI PID file not found"
+
+    if [ -n "$DOCKER_COMPOSE_CMD" ] && [ -d "docker" ] && [ -f "docker/docker-compose.yml" ]; then
+        echo "Stopping FastAPI container..."
+        pushd docker > /dev/null
+        $DOCKER_COMPOSE_CMD stop python_fastapi >/dev/null 2>&1 || true
+        popd > /dev/null
+        echo -e "${GREEN}✓${NC} Python FastAPI container stopped"
+    fi
 fi
+
+rm -f /tmp/natan_python_port.txt 2>/dev/null || true
 
 # Stop Laravel
 if [ -f "/tmp/natan_laravel.pid" ]; then
@@ -62,11 +68,6 @@ fi
 if lsof -Pi :7000 -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "Killing process on port 7000..."
     kill $(lsof -ti:7000) 2>/dev/null || true
-fi
-
-if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "Killing process on port 8000..."
-    kill $(lsof -ti:8000) 2>/dev/null || true
 fi
 
 if lsof -Pi :5173 -sTCP:LISTEN -t >/dev/null 2>&1; then

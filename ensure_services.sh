@@ -23,96 +23,37 @@ check_port() {
     fi
 }
 
-# Function to find first available port
-find_free_port() {
-    local base_port=$1
-    local port=$base_port
-    while [ $port -lt $((base_port + 100)) ]; do
-        if ! check_port $port; then
-            echo $port
-            return 0
-        fi
-        port=$((port + 1))
-    done
-    echo ""
-    return 1
-}
-
 STARTED_SERVICES=0
 
-# 1. Check Python FastAPI
-PYTHON_PORT=$(cat /tmp/natan_python_port.txt 2>/dev/null || echo "9000")
-if ! check_port $PYTHON_PORT; then
-    echo -e "${YELLOW}⚠${NC} Python FastAPI non è in esecuzione su porta $PYTHON_PORT"
-    echo "   Avvio Python FastAPI..."
-    
-    cd python_ai_service
-    
-    # Ensure venv exists
-    if [ ! -d "venv" ]; then
-        echo "   Creazione virtual environment..."
-        python3 -m venv venv
+# 1. Ensure Python FastAPI container is running
+if command -v docker &> /dev/null && docker ps &> /dev/null; then
+    if command -v docker-compose &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker-compose"
+    elif docker compose version &> /dev/null; then
+        DOCKER_COMPOSE_CMD="docker compose"
+    else
+        DOCKER_COMPOSE_CMD=""
     fi
-    
-    # Activate and install dependencies if needed
-    source venv/bin/activate
-    if ! python3 -c "import fastapi" 2>/dev/null; then
-        echo "   Installazione dipendenze..."
-        pip install -q --upgrade pip
-        pip install -q -r requirements.txt
-    fi
-    
-    # Create .env if it doesn't exist
-    if [ ! -f ".env" ]; then
-        cat > .env << EOF
-# MongoDB
-MONGO_DB_HOST=localhost
-MONGO_DB_PORT=27017
-MONGO_DB_DATABASE=natan_ai_core
-MONGO_DB_USERNAME=natan_user
-MONGO_DB_PASSWORD=secret_password
 
-# AI Provider Keys
-OPENAI_API_KEY=${OPENAI_API_KEY:-}
-ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-OLLAMA_BASE_URL=http://localhost:11434
-EOF
-    fi
-    
-    # Find free port if needed
-    if check_port $PYTHON_PORT; then
-        PYTHON_PORT=$(find_free_port 9000)
-        if [ -z "$PYTHON_PORT" ]; then
-            echo -e "${RED}✗${NC} Nessuna porta libera trovata"
-            exit 1
+    if [ -n "$DOCKER_COMPOSE_CMD" ] && [ -d "docker" ] && [ -f "docker/docker-compose.yml" ]; then
+        if ! docker ps -q -f name=natan_python_fastapi >/dev/null 2>&1; then
+            echo -e "${YELLOW}⚠${NC} Python FastAPI container non in esecuzione"
+            echo "   Avvio container..."
+            pushd docker > /dev/null
+            $DOCKER_COMPOSE_CMD up -d python_fastapi >/dev/null 2>&1
+            popd > /dev/null
+            STARTED_SERVICES=1
+            sleep 5
+        else
+            echo -e "${GREEN}✓${NC} Python FastAPI container in esecuzione"
         fi
     fi
-    
-    # Start service
-    nohup python3 -m uvicorn app.main:app --host 127.0.0.1 --port $PYTHON_PORT --reload > /tmp/natan_python.log 2>&1 &
-    PYTHON_PID=$!
-    echo $PYTHON_PID > /tmp/natan_python.pid
-    echo $PYTHON_PORT > /tmp/natan_python_port.txt
-    echo -e "${GREEN}✓${NC} Python FastAPI avviato su porta $PYTHON_PORT (PID: $PYTHON_PID)"
-    
-    deactivate
-    cd ..
-    
-    STARTED_SERVICES=1
-    
-    # Wait for service to be ready
-    echo "   Attendo che il servizio sia pronto..."
-    sleep 5
-    
-    # Verify it's responding
-    if curl -s http://127.0.0.1:$PYTHON_PORT/healthz >/dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC} Python FastAPI risponde correttamente"
-    else
-        echo -e "${YELLOW}⚠${NC} Python FastAPI avviato ma non risponde ancora"
-    fi
 else
-    echo -e "${GREEN}✓${NC} Python FastAPI è già in esecuzione su porta $PYTHON_PORT"
+    echo -e "${RED}✗${NC} Docker non disponibile. Impossibile verificare il servizio FastAPI."
 fi
+
+PYTHON_PORT=8001
+echo $PYTHON_PORT > /tmp/natan_python_port.txt
 
 # 2. Check Frontend Vite
 if ! check_port 5173; then
