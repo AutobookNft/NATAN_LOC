@@ -2,7 +2,15 @@
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from typing import Dict, Any, List, Optional
-from app.config import MONGODB_URI, MONGODB_DATABASE
+from app.config import (
+    MONGODB_URI,
+    MONGODB_DATABASE,
+    MONGODB_HOST,
+    MONGODB_PORT,
+    MONGODB_USERNAME,
+    MONGODB_PASSWORD,
+)
+import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,6 +35,29 @@ class MongoDBService:
                 cls._connected = True
             except Exception as e:
                 logger.warning(f"MongoDB connection failed: {e}. Service will run without vector search.")
+
+                # Fallback: if running outside Docker, try localhost/127.0.0.1
+                fallback_hosts = {"mongodb", "natan_mongodb", "mongo"}
+                if MONGODB_HOST in fallback_hosts:
+                    try:
+                        logger.info("Attempting MongoDB fallback connection on 127.0.0.1")
+                        if MONGODB_PASSWORD:
+                            fallback_uri = (
+                                f"mongodb://{MONGODB_USERNAME}:{MONGODB_PASSWORD}"
+                                f"@127.0.0.1:{MONGODB_PORT}/{MONGODB_DATABASE}?authSource=admin"
+                            )
+                        else:
+                            fallback_uri = f"mongodb://127.0.0.1:{MONGODB_PORT}/{MONGODB_DATABASE}"
+
+                        cls._client = MongoClient(fallback_uri, serverSelectionTimeoutMS=5000)
+                        cls._client.admin.command("ping")
+                        cls._connected = True
+                        os.environ["MONGO_DB_HOST"] = "127.0.0.1"
+                        logger.info("MongoDB fallback connection established on 127.0.0.1")
+                        return cls._client
+                    except Exception as fallback_error:
+                        logger.error(f"MongoDB fallback connection failed: {fallback_error}")
+
                 cls._connected = False
                 cls._client = None
                 return None

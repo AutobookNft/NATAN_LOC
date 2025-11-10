@@ -30,7 +30,17 @@ load_dotenv(dotenv_path=env_path)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, embeddings, chat, rag, use, audit, system, diagnostic
+from app.routers import (
+    health,
+    embeddings,
+    chat,
+    rag,
+    use,
+    audit,
+    system,
+    diagnostic,
+    commands,
+)
 
 logger = logging.getLogger(__name__)
 logger.info("🚀 NATAN AI Gateway starting...")
@@ -59,4 +69,5 @@ app.include_router(rag.router, prefix="/api/v1", tags=["rag"])
 app.include_router(use.router, prefix="/api/v1", tags=["use"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(diagnostic.router, prefix="/api/v1", tags=["diagnostic"])
+app.include_router(commands.router, prefix="/api/v1", tags=["commands"])
 
