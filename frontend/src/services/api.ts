@@ -46,20 +46,18 @@ export class ApiService {
         retryOnConnectionError: boolean = true
     ): Promise<Response> {
         const url = `${this.baseUrl}${endpoint}`;
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(options.headers || {}),
-        };
+        const headers = new Headers(options.headers as HeadersInit | undefined);
+        headers.set('Content-Type', 'application/json');
+        headers.set('Accept', 'application/json');
 
         if (this.apiToken) {
-            headers['Authorization'] = `Bearer ${this.apiToken}`;
+            headers.set('Authorization', `Bearer ${this.apiToken}`);
         }
 
         // Add CSRF token if available
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (csrfToken) {
-            headers['X-CSRF-TOKEN'] = csrfToken;
+            headers.set('X-CSRF-TOKEN', csrfToken);
         }
 
         const controller = new AbortController();

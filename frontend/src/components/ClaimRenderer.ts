@@ -17,10 +17,11 @@ export class ClaimRenderer {
 
   static renderClaim(claim: Claim): string {
     // Get URS label - if not present, try to derive from score using UrsBadge helper
-    let ursLabel: 'A' | 'B' | 'C' | 'X' = claim.ursLabel as 'A' | 'B' | 'C' | 'X';
-    if (!ursLabel || ursLabel === 'UNKNOWN') {
-      ursLabel = UrsBadge.getLabelFromScore(claim.urs);
-    }
+    const allowedLabels: Array<'A' | 'B' | 'C' | 'X'> = ['A', 'B', 'C', 'X'];
+    const rawLabel = typeof claim.ursLabel === 'string' ? claim.ursLabel.toUpperCase() : undefined;
+    let ursLabel: 'A' | 'B' | 'C' | 'X' = allowedLabels.includes(rawLabel as any)
+      ? (rawLabel as 'A' | 'B' | 'C' | 'X')
+      : UrsBadge.getLabelFromScore(claim.urs);
 
     const containerClass = this.getContainerClass(ursLabel);
     const textClass = this.getTextClass(ursLabel);
