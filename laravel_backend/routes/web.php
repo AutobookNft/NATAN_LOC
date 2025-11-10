@@ -121,6 +121,10 @@ Route::prefix('natan')->name('natan.')->middleware(['auth', 'natan.access'])->gr
     Route::post('/commands/execute', [NatanCommandController::class, 'execute'])
         ->name('commands.execute')
         ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+    Route::post('/commands/natural-query', [NatanCommandController::class, 'natural'])
+        ->name('commands.natural')
+        ->middleware('throttle:natan-natural-query')
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
 
     // Documents routes
     Route::get('/documents', [\App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');

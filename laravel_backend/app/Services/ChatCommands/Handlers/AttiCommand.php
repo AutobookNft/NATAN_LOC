@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\ChatCommands\Handlers;
 
-use App\Models\PaAct;
 use App\Services\ChatCommands\CommandContext;
 use App\Services\ChatCommands\CommandInput;
 use App\Services\ChatCommands\CommandResult;
+use App\Services\ChatCommands\PythonCommandGateway;
 use App\Services\ChatCommands\Contracts\CommandHandlerInterface;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -26,6 +25,11 @@ final class AttiCommand implements CommandHandlerInterface
 {
     private const SUPPORTED = ['atti', 'acts', 'documents'];
 
+    public function __construct(
+        private PythonCommandGateway $gateway,
+    ) {
+    }
+
     public function supports(CommandInput $input): bool
     {
         return in_array($input->getName(), self::SUPPORTED, true);
@@ -40,145 +44,81 @@ final class AttiCommand implements CommandHandlerInterface
         }
 
         $input = $context->input();
-        $query = PaAct::query();
-
-        $filtersApplied = false;
-
-        $documentIds = $input->getArgumentList('numero');
-        if (!empty($documentIds)) {
-            $query->whereIn('document_id', $documentIds);
-            $filtersApplied = true;
-        }
-
-        $protocolNumbers = $input->getArgumentList('protocollo');
-        if (!empty($protocolNumbers)) {
-            $query->whereIn('protocol_number', $protocolNumbers);
-            $filtersApplied = true;
-        }
-
-        $types = $input->getArgumentList('tipo');
-        if (!empty($types)) {
-            $query->where(function (Builder $builder) use ($types): void {
-                foreach ($types as $type) {
-                    $builder->orWhere('document_type', 'like', '%' . $type . '%');
-                }
-            });
-            $filtersApplied = true;
-        }
-
-        $departments = $input->getArgumentList('dipartimento');
-        if (!empty($departments)) {
-            $query->where(function (Builder $builder) use ($departments): void {
-                foreach ($departments as $department) {
-                    $builder->orWhere('department', 'like', '%' . $department . '%');
-                }
-            });
-            $filtersApplied = true;
-        }
-
-        $responsibles = $input->getArgumentList('responsabile');
-        if (!empty($responsibles)) {
-            $query->where(function (Builder $builder) use ($responsibles): void {
-                foreach ($responsibles as $responsible) {
-                    $builder->orWhere('responsible', 'like', '%' . $responsible . '%');
-                }
-            });
-            $filtersApplied = true;
-        }
-
-        $text = $input->getArgument('testo') ?? $input->getArgument('titolo');
-        if ($text) {
-            $query->where(function (Builder $builder) use ($text): void {
-                $builder
-                    ->where('title', 'like', '%' . $text . '%')
-                    ->orWhere('description', 'like', '%' . $text . '%');
-            });
-            $filtersApplied = true;
-        }
-
-        $fromDate = $this->parseDateArgument($input->getArgument('dal'));
-        if ($fromDate) {
-            $query->whereDate('protocol_date', '>=', $fromDate);
-            $filtersApplied = true;
-        }
-
-        $toDate = $this->parseDateArgument($input->getArgument('al'));
-        if ($toDate) {
-            $query->whereDate('protocol_date', '<=', $toDate);
-            $filtersApplied = true;
-        }
-
-        if (!$filtersApplied) {
-            Log::warning('[ChatCommand][Atti] No filters provided, falling back to recent items', [
-                'user_id' => $user->id,
-            ]);
-        }
 
         $limit = $this->resolveLimit(
             $input->getArgument('limite') ?? $input->getArgument('limit'),
             (int) config('natan.commands.default_limit', 10)
         );
 
-        if ($limit !== null) {
-            $query->limit($limit);
-        }
+        $tenantId = $context->tenant()?->id
+            ?? $user->tenant_id
+            ?? app('currentTenantId')
+            ?? 2;
 
-        $acts = $query
-            ->orderByDesc('protocol_date')
-            ->orderByDesc('created_at')
-            ->get();
+        $payload = array_filter([
+            'tenant_id' => $tenantId,
+            'document_ids' => $this->normalizeList($input->getArgumentList('numero')),
+            'protocol_numbers' => $this->normalizeList($input->getArgumentList('protocollo')),
+            'types' => $this->normalizeList($input->getArgumentList('tipo')),
+            'departments' => $this->normalizeList($input->getArgumentList('dipartimento')),
+            'responsibles' => $this->normalizeList($input->getArgumentList('responsabile')),
+            'text' => $input->getArgument('testo') ?? $input->getArgument('titolo'),
+            'date_from' => $input->getArgument('dal'),
+            'date_to' => $input->getArgument('al'),
+            'limit' => $limit,
+        ], static fn ($value) => $value !== null && $value !== []);
 
-        if ($acts->isEmpty()) {
+        $response = $this->gateway->fetchAtti($payload);
+
+        if (!($response['success'] ?? false) || empty($response['rows'])) {
             return new CommandResult(
                 $input->getName(),
                 __('natan.commands.atti.messages.empty')
             );
         }
 
-        $rows = $acts->map(function (PaAct $act) {
+        $rows = collect($response['rows'])->map(function (array $record) {
             $metadata = [
                 [
                     'label' => __('natan.commands.fields.document_id'),
-                    'value' => $act->document_id,
+                    'value' => $record['document_id'],
                 ],
             ];
 
-            if ($act->protocol_number) {
+            if (!empty($record['protocol_number'])) {
                 $metadata[] = [
                     'label' => __('natan.commands.fields.protocol_number'),
-                    'value' => $act->protocol_number,
+                    'value' => $record['protocol_number'],
                 ];
             }
 
-            if ($act->protocol_date) {
+            if (!empty($record['protocol_date_iso'])) {
                 $metadata[] = [
                     'label' => __('natan.commands.fields.protocol_date'),
-                    'value' => $act->protocol_date instanceof Carbon
-                        ? $act->protocol_date->translatedFormat('d/m/Y')
-                        : Carbon::parse($act->protocol_date)->translatedFormat('d/m/Y'),
+                    'value' => Carbon::parse($record['protocol_date_iso'])->translatedFormat('d/m/Y'),
                 ];
             }
 
-            if ($act->document_type) {
+            if (!empty($record['document_type'])) {
                 $metadata[] = [
                     'label' => __('natan.commands.fields.document_type'),
-                    'value' => $act->document_type,
+                    'value' => $record['document_type'],
                 ];
             }
 
-            if ($act->department) {
+            if (!empty($record['department'])) {
                 $metadata[] = [
                     'label' => __('natan.commands.fields.department'),
-                    'value' => $act->department,
+                    'value' => $record['department'],
                 ];
             }
 
             return [
-                'title' => $act->title ?: __('natan.commands.values.no_title'),
-                'description' => $act->description ?: null,
+                'title' => $record['title'] ?: __('natan.commands.values.no_title'),
+                'description' => $record['description'] ?? null,
                 'metadata' => $metadata,
                 'link' => [
-                    'url' => route('natan.documents.view', ['documentId' => $act->document_id]),
+                    'url' => route('natan.documents.view', ['documentId' => $record['document_id']]),
                     'label' => __('natan.commands.links.open_document'),
                 ],
             ];
@@ -191,7 +131,7 @@ final class AttiCommand implements CommandHandlerInterface
 
         Log::info('[ChatCommand][Atti] Acts retrieved', [
             'user_id' => $user->id,
-            'filters_applied' => $filtersApplied,
+            'filters_applied' => Arr::except($payload, ['tenant_id', 'limit']),
             'result_count' => count($rows),
             'limit' => $limit,
         ]);
@@ -203,7 +143,7 @@ final class AttiCommand implements CommandHandlerInterface
             [
                 'count' => count($rows),
                 'limit' => $limit,
-                'filters_applied' => $filtersApplied,
+                'filters_applied' => !empty($payload),
             ]
         );
     }
@@ -240,6 +180,20 @@ final class AttiCommand implements CommandHandlerInterface
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * @param array<int, string> $values
+     * @return array<int, string>|null
+     */
+    private function normalizeList(array $values): ?array
+    {
+        $normalized = array_values(array_filter(
+            array_map(static fn (string $value): string => trim($value), $values),
+            static fn (string $value): bool => $value !== ''
+        ));
+
+        return $normalized === [] ? null : $normalized;
     }
 }
 

@@ -4,7 +4,7 @@
  * Mobile-first: integrates with Blade components, no DOM creation
  */
 
-import type { Message, UseQueryResponse } from '../types';
+import type { Message, UseQueryResponse, NaturalQueryResponse } from '../types';
 import { apiService } from '../services/api';
 import { MessageComponent } from './Message';
 
@@ -17,19 +17,25 @@ export class ChatInterface {
     private personaSelector: HTMLSelectElement | null = null;
     private suggestionsToggle: HTMLElement | null = null;
     private suggestionsContent: HTMLElement | null = null;
+    private commandHelperToggle: HTMLButtonElement | null = null;
+    private commandHelperPanel: HTMLElement | null = null;
+    private commandTemplateButtons: NodeListOf<HTMLButtonElement> | null = null;
     private messages: Message[] = [];
     private tenantId: number | null;
     private persona: string = 'auto';
     private isLoading: boolean = false;
+    private tabSessionId: string;
 
     constructor(tenantId: number | null = null) {
         // tenantId viene passato da /api/session o risolto dal backend
         // Se null, il backend risolverà automaticamente usando TenantResolver
         this.tenantId = tenantId;
+        this.tabSessionId = this.initTabSessionId();
         this.findDOMElements();
         this.attachEventListeners();
         this.initMobileComponents();
         this.initChatHistoryListeners();
+        this.initCommandHelper();
     }
 
     /**
@@ -79,6 +85,11 @@ export class ChatInterface {
         // Suggestions toggle (mobile only)
         this.suggestionsToggle = document.querySelector('#suggestions-toggle');
         this.suggestionsContent = document.querySelector('#suggestions-content');
+
+        // Command helper (legend + quick commands)
+        this.commandHelperToggle = document.querySelector('#command-helper-toggle') as HTMLButtonElement | null;
+        this.commandHelperPanel = document.querySelector('#command-helper-panel') as HTMLElement | null;
+        this.commandTemplateButtons = document.querySelectorAll<HTMLButtonElement>('.command-template-btn');
     }
 
     /**
@@ -148,10 +159,7 @@ export class ChatInterface {
             button.addEventListener('click', (e) => {
                 const suggestion = (e.currentTarget as HTMLElement).dataset.suggestion;
                 if (suggestion) {
-                    this.inputField.value = suggestion;
-                    this.inputField.focus();
-                    // Auto-resize textarea
-                    this.autoResizeTextarea();
+                    this.setInputValue(suggestion);
                 }
             });
         });
@@ -213,6 +221,7 @@ export class ChatInterface {
         e.preventDefault();
 
         const question = this.inputField.value.trim();
+        console.log('[Chat][handleSubmit] start', { question, isLoading: this.isLoading, tabSessionId: this.tabSessionId });
         if (!question || this.isLoading) {
             return;
         }
@@ -229,6 +238,7 @@ export class ChatInterface {
             content: question,
             timestamp: new Date(),
         };
+        console.log('[Chat][handleSubmit] queue userMessage', userMessage);
         this.addMessage(userMessage);
 
         // Clear input and reset height
@@ -237,44 +247,138 @@ export class ChatInterface {
         this.setLoading(true);
 
         let handledByCommand = false;
+        let naturalResponse: NaturalQueryResponse | null = null;
 
         try {
             if (this.isCommand(question)) {
+                console.log('[Chat][handleSubmit] detected command', question);
                 handledByCommand = true;
                 await this.executeCommandFlow(question);
             } else {
-                // Send USE query
-                // Se tenantId è null, usa 1 come fallback temporaneo
-                // Il backend risolverà il tenant_id corretto usando TenantResolver
-                const response: UseQueryResponse = await apiService.sendUseQuery(
-                    question,
-                    this.tenantId ?? 1,
-                    this.persona
-                );
-
-                // Add assistant message with natural language answer and verified claims
-                // CRITICAL: NEVER expose blocked_claims to user - they contain invented/false data
-                // Even if backend sends them, we filter them out for security
-                const assistantMessage: Message = {
-                    id: this.generateId(),
-                    role: 'assistant',
-                    content: response.answer || this.formatResponse(response),  // Use natural language answer if available
-                    timestamp: new Date(),
-                    claims: response.verified_claims || [],  // ONLY verified claims with sources (shown as proof below)
-                    blockedClaims: [],  // NEVER expose blocked claims - they contain invented data (security risk)
-                    sources: this.extractSources(response),
-                    avgUrs: response.avg_urs,
-                    verificationStatus: response.verification_status,
-                    tokensUsed: response.tokens_used || null,  // Store tokens for cost calculation
-                    modelUsed: response.model_used || null,  // Store model for cost calculation
+                console.log('[Chat][handleSubmit] executing natural query', { question });
+                naturalResponse = await apiService.executeNaturalQuery(question) ?? {
+                    success: false,
+                    message: 'Servizio non disponibile.',
+                    code: 'gateway_unreachable',
+                    rows: [],
+                    metadata: {},
+                    verification_status: 'direct_query',
                 };
-                
-                // Log blocked claims count for internal monitoring (never show to user)
-                if (response.blocked_claims && response.blocked_claims.length > 0) {
-                    console.warn(`[NATAN SECURITY] ${response.blocked_claims.length} claims were blocked (not shown to user for safety)`);
+
+                const code = naturalResponse.code ?? '';
+                const ragHint = (naturalResponse.metadata?.rag_hint ?? null) as { should_run?: boolean; reason?: string } | null;
+                const isHardBlock = ['blacklisted', 'throttled'].includes(code);
+                const isNoResults = code === 'no_results';
+                const shouldFallbackToRag =
+                    !naturalResponse.success && !isHardBlock && !isNoResults;
+                const shouldRunRag =
+                    (naturalResponse.success && ragHint?.should_run === true) ||
+                    shouldFallbackToRag ||
+                    (code === 'parse_failed');
+
+                console.log('[Chat][handleSubmit] natural response', { naturalResponse, code, ragHint, isHardBlock, isNoResults, shouldFallbackToRag, shouldRunRag });
+
+                if (naturalResponse.success) {
+                    handledByCommand = true;
+
+                    const assistantMessage: Message = {
+                        id: this.generateId(),
+                        role: 'assistant',
+                        content: naturalResponse.message,
+                        timestamp: new Date(),
+                        commandName: naturalResponse.command ?? 'natural_query',
+                        commandResult: {
+                            command: naturalResponse.command ?? 'natural_query',
+                            rows: naturalResponse.rows || [],
+                            metadata: naturalResponse.metadata || {},
+                        },
+                        verificationStatus: (naturalResponse.verification_status as Message['verificationStatus']) ?? 'direct_query',
+                        sources: [],
+                        claims: [],
+                        blockedClaims: [],
+                        avgUrs: null,
+                        tokensUsed: null,
+                        modelUsed: null,
+                    };
+
+                    this.addMessage(assistantMessage);
+                    console.log('[Chat][handleSubmit] added natural success message');
+                } else if (isNoResults) {
+                    const rawMessage = naturalResponse.message || 'Nessun documento trovato.';
+                    const sanitizedQuestion = question;
+                    const messageContent = rawMessage.includes('"')
+                        ? rawMessage.replace(/"([^"]*)"/, `"${sanitizedQuestion}"`)
+                        : `${rawMessage} (${sanitizedQuestion})`;
+                    handledByCommand = true;
+                    const noResultMessage: Message = {
+                        id: this.generateId(),
+                        role: 'assistant',
+                        content: messageContent,
+                        timestamp: new Date(),
+                        verificationStatus: 'direct_query',
+                        sources: [],
+                        claims: [],
+                        blockedClaims: [],
+                        avgUrs: null,
+                        tokensUsed: null,
+                        modelUsed: null,
+                    };
+                    this.addMessage(noResultMessage);
+                    console.log('[Chat][handleSubmit] added no-results message', { messageContent });
+                } else if (!shouldRunRag) {
+                    const errorMessage = naturalResponse.message || 'Richiesta non gestita.';
+                    const assistantMessage: Message = {
+                        id: this.generateId(),
+                        role: 'assistant',
+                        content: errorMessage,
+                        timestamp: new Date(),
+                        verificationStatus: 'direct_query',
+                        sources: [],
+                        claims: [],
+                        blockedClaims: [],
+                        avgUrs: null,
+                        tokensUsed: null,
+                        modelUsed: null,
+                    };
+
+                    this.addMessage(assistantMessage);
+
+                    if (isHardBlock) {
+                        console.log('[Chat][handleSubmit] hard block stop');
+                        return;
+                    }
                 }
 
-                this.addMessage(assistantMessage);
+                if (shouldRunRag) {
+                    console.log('[Chat][handleSubmit] fallback RAG start', { question });
+                    const response: UseQueryResponse = await apiService.sendUseQuery(
+                        question,
+                        this.tenantId ?? 1,
+                        this.persona
+                    );
+
+                    const assistantMessage: Message = {
+                        id: this.generateId(),
+                        role: 'assistant',
+                        content: response.answer || this.formatResponse(response),
+                        timestamp: new Date(),
+                        claims: response.verified_claims || [],
+                        blockedClaims: [],
+                        sources: this.extractSources(response),
+                        avgUrs: response.avg_urs,
+                        verificationStatus: response.verification_status,
+                        tokensUsed: response.tokens_used || null,
+                        modelUsed: response.model_used || null,
+                    };
+
+                    if (response.blocked_claims && response.blocked_claims.length > 0) {
+                        console.warn(`[NATAN SECURITY] ${response.blocked_claims.length} claims were blocked (not shown to user for safety)`);
+                    }
+
+                    this.addMessage(assistantMessage);
+                    handledByCommand = true;
+                    console.log('[Chat][handleSubmit] fallback RAG added message');
+                }
             }
         } catch (error) {
             console.error('Error sending query:', error);
@@ -333,9 +437,87 @@ export class ChatInterface {
         }
         
         // Set input value and trigger submit
+        console.log('[Chat][sendMessage] invoked', { content });
         this.inputField.value = content;
         this.autoResizeTextarea();
         this.inputForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+
+    private initCommandHelper(): void {
+        if (!this.commandHelperToggle || !this.commandHelperPanel) {
+            return;
+        }
+
+        const openPanel = () => {
+            this.commandHelperPanel?.classList.remove('hidden');
+            this.commandHelperToggle?.setAttribute('aria-expanded', 'true');
+        };
+
+        const closePanel = () => {
+            this.commandHelperPanel?.classList.add('hidden');
+            this.commandHelperToggle?.setAttribute('aria-expanded', 'false');
+        };
+
+        this.commandHelperToggle.addEventListener('click', (event) => {
+            event.preventDefault();
+            const isExpanded = this.commandHelperToggle?.getAttribute('aria-expanded') === 'true';
+            if (isExpanded) {
+                closePanel();
+            } else {
+                openPanel();
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement | null;
+            if (!target) {
+                return;
+            }
+
+            const isPanelOpen = this.commandHelperToggle?.getAttribute('aria-expanded') === 'true';
+            if (!isPanelOpen) {
+                return;
+            }
+
+            const clickedInsidePanel = this.commandHelperPanel?.contains(target);
+            const clickedToggle = this.commandHelperToggle?.contains(target);
+
+            if (!clickedInsidePanel && !clickedToggle) {
+                closePanel();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && this.commandHelperToggle?.getAttribute('aria-expanded') === 'true') {
+                closePanel();
+            }
+        });
+
+        if (this.commandTemplateButtons) {
+            this.commandTemplateButtons.forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const template = button.dataset.command || '';
+                    if (!template) {
+                        return;
+                    }
+
+                    this.setInputValue(template);
+                    closePanel();
+                });
+            });
+        }
+    }
+
+    private setInputValue(value: string, focus: boolean = true): void {
+        this.inputField.value = value;
+        this.autoResizeTextarea();
+
+        if (focus) {
+            this.inputField.focus();
+            const length = this.inputField.value.length;
+            this.inputField.setSelectionRange(length, length);
+        }
     }
 
     private addMessage(message: Message): void {
@@ -357,6 +539,12 @@ export class ChatInterface {
         try {
             // Get current conversation ID or generate new one
             let conversationId = this.getCurrentConversationId();
+            const isNewConversation = !conversationId;
+
+            if (isNewConversation) {
+                conversationId = this.createConversationId();
+                this.setCurrentConversationId(conversationId);
+            }
             
             // Prepare all messages for saving (include tokens, model, claims, sources, verification_status)
             const messagesToSave = this.messages.map(msg => ({
@@ -409,15 +597,15 @@ export class ChatInterface {
             // Update conversation ID if it was created
             if (result.success && result.conversation) {
                 const savedConversationId = result.conversation.id || result.conversation.session_id;
-                
-                if (!conversationId) {
-                    // Store conversation ID for future saves
+
+                if (savedConversationId) {
                     this.setCurrentConversationId(savedConversationId);
-                    // Update memory badge count only on new conversation
-                    this.updateMemoryCount();
-                    console.log('📝 New conversation created:', savedConversationId);
-                } else {
-                    console.log('📝 Conversation updated:', conversationId);
+                    if (isNewConversation) {
+                        this.updateMemoryCount();
+                        console.log('📝 New conversation created:', savedConversationId);
+                    } else {
+                        console.log('📝 Conversation updated:', savedConversationId);
+                    }
                 }
             } else {
                 console.warn('⚠️ Conversation save returned success=false:', result);
@@ -657,7 +845,22 @@ export class ChatInterface {
      * Get current conversation ID (if loaded)
      */
     public getCurrentConversationId(): string | null {
-        return this.currentConversationId;
+        if (this.currentConversationId) {
+            return this.currentConversationId;
+        }
+
+        if (typeof window === 'undefined' || !window.sessionStorage) {
+            return null;
+        }
+
+        const storageKey = this.getConversationStorageKey();
+        const storedId = window.sessionStorage.getItem(storageKey);
+        if (storedId) {
+            this.currentConversationId = storedId;
+            return storedId;
+        }
+
+        return null;
     }
 
     /**
@@ -665,6 +868,16 @@ export class ChatInterface {
      */
     public setCurrentConversationId(conversationId: string | null): void {
         this.currentConversationId = conversationId;
+        if (typeof window === 'undefined' || !window.sessionStorage) {
+            return;
+        }
+
+        const storageKey = this.getConversationStorageKey();
+        if (conversationId) {
+            window.sessionStorage.setItem(storageKey, conversationId);
+        } else {
+            window.sessionStorage.removeItem(storageKey);
+        }
     }
 
     /**
@@ -678,6 +891,33 @@ export class ChatInterface {
         if (this.welcomeMessage) {
             this.welcomeMessage.classList.remove('hidden');
         }
+        this.setCurrentConversationId(null);
+    }
+
+    private initTabSessionId(): string {
+        const fallbackId = `tab_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+        if (typeof window === 'undefined' || !window.sessionStorage) {
+            return fallbackId;
+        }
+
+        const storageKey = 'natan_tab_session_id';
+        let tabId = window.sessionStorage.getItem(storageKey);
+
+        if (!tabId) {
+            tabId = fallbackId;
+            window.sessionStorage.setItem(storageKey, tabId);
+        }
+
+        return tabId;
+    }
+
+    private getConversationStorageKey(): string {
+        return `natan_current_conversation_${this.tabSessionId}`;
+    }
+
+    private createConversationId(): string {
+        return `natan_${this.tabSessionId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     }
 }
 

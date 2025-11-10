@@ -3,7 +3,7 @@
  * Handles all HTTP requests to Laravel backend and Python FastAPI
  */
 
-import type { UseQueryResponse, ApiConfig, ChatCommandResponse } from '../types';
+import type { UseQueryResponse, ApiConfig, ChatCommandResponse, NaturalQueryResponse } from '../types';
 
 export class ApiService {
     private baseUrl: string;
@@ -41,6 +41,51 @@ export class ApiService {
         }
 
         return data as ChatCommandResponse;
+    }
+
+    async executeNaturalQuery(text: string): Promise<NaturalQueryResponse> {
+        const laravelUrl = window.location.origin;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        try {
+            const response = await fetch(`${laravelUrl}/natan/commands/natural-query`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                },
+                body: JSON.stringify({ text }),
+            });
+
+            const data = await response.json().catch(() => ({
+                success: false,
+                message: response.statusText || 'Unknown error',
+                code: 'invalid_response',
+            }));
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    message: data.message || data.error || `HTTP ${response.status}`,
+                    code: data.code ?? null,
+                    rows: [],
+                    metadata: data.metadata ?? {},
+                    verification_status: 'direct_query',
+                };
+            }
+
+            return data as NaturalQueryResponse;
+        } catch (error) {
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Network error',
+                code: 'network_error',
+                rows: [],
+                metadata: {},
+                verification_status: 'direct_query',
+            };
+        }
     }
 
     setApiToken(token: string): void {

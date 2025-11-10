@@ -177,6 +177,7 @@ return [
         'errors' => [
             'permission_denied' => 'Accesso negato: il tuo ruolo non consente di eseguire questo comando.',
             'admin_required' => 'Questo comando è riservato agli amministratori del tenant (ruolo pa_entity_admin).',
+            'gateway_unreachable' => 'Servizio comandi non disponibile. Riprova tra qualche istante.',
         ],
         'values' => [
             'blockchain_yes' => 'Ancorato su blockchain',
@@ -218,6 +219,33 @@ return [
             ],
             'messages' => [
                 'summary' => 'Totale atti: **:count** (dal: :from, al: :to)',
+            ],
+        ],
+        'helper' => [
+            'toggle_label' => 'Apri legenda e comandi rapidi',
+            'legend_title' => 'Legenda URS',
+            'legend_urs_a' => 'Affidabilità massima: documenti verificati con fonti complete.',
+            'legend_urs_b' => 'Affidabilità alta: fonti solide, possibili integrazioni secondarie.',
+            'legend_urs_c' => 'Affidabilità media: informazioni rilevanti ma con copertura parziale.',
+            'legend_urs_x' => 'Non verificato: serve verifica manuale prima di utilizzare i dati.',
+            'commands_title' => 'Comandi rapidi',
+            'commands_description' => 'Usa i prefissi @ per interrogare direttamente il database senza passare dall’AI.',
+            'atto_hint' => 'Recupera un documento specifico con document_id (es. numero=pa_act_...).',
+            'atti_hint' => 'Filtra gli atti per tipologia, dipartimento e limiti personalizzati.',
+            'atti_protocol_label' => '@atti protocollo=',
+            'atti_protocol_hint' => 'Cerca tutti gli atti con uno specifico numero di protocollo.',
+            'stats_hint' => 'Statistiche rapide sugli atti (solo amministratori).',
+        ],
+        'natural' => [
+            'errors' => [
+                'blacklisted' => 'Richiesta bloccata: il testo contiene termini non consentiti. Rimuovili e riprova.',
+                'throttled' => 'Hai superato il limite di richieste consentite. Riprova tra :minutes minuti.',
+                'parse_failed' => 'Non riesco a interpretare la richiesta. Prova a essere più specifico.',
+            ],
+            'messages' => [
+                'summary' => 'Risultati per ":query" (documenti trovati: :count, limite: :limit).',
+                'no_results' => 'Nessun documento trovato per ":query".',
+                'expanded_date_range' => 'Nessun documento esatto nel periodo richiesto. Ho esteso automaticamente la ricerca di :days_before giorni prima e :days_after giorni dopo.',
             ],
         ],
     ],

@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\ChatCommands\Handlers;
 
-use App\Models\PaAct;
 use App\Services\ChatCommands\CommandContext;
 use App\Services\ChatCommands\CommandInput;
 use App\Services\ChatCommands\CommandResult;
+use App\Services\ChatCommands\PythonCommandGateway;
 use App\Services\ChatCommands\Contracts\CommandHandlerInterface;
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Carbon\Carbon;
 
 /**
  * @package App\Services\ChatCommands\Handlers
@@ -25,6 +23,11 @@ use RuntimeException;
 final class StatsCommand implements CommandHandlerInterface
 {
     private const SUPPORTED = ['stats', 'statistiche', 'diagnostica'];
+
+    public function __construct(
+        private PythonCommandGateway $gateway,
+    ) {
+    }
 
     public function supports(CommandInput $input): bool
     {
@@ -52,46 +55,40 @@ final class StatsCommand implements CommandHandlerInterface
         $fromDate = $this->parseDateArgument($input->getArgument('dal'));
         $toDate = $this->parseDateArgument($input->getArgument('al'));
 
-        $query = PaAct::query();
-
-        if ($fromDate) {
-            $query->whereDate('protocol_date', '>=', $fromDate);
-        }
-
-        if ($toDate) {
-            $query->whereDate('protocol_date', '<=', $toDate);
-        }
-
-        $totalActs = $query->count();
-
         $limit = $this->resolveLimit(
             $input->getArgument('limite') ?? $input->getArgument('limit'),
             (int) config('natan.commands.stats.default_limit', 10)
         );
 
-        $typesQuery = PaAct::query();
+        $tenantId = $context->tenant()?->id
+            ?? $user->tenant_id
+            ?? app('currentTenantId')
+            ?? 2;
 
-        if ($fromDate) {
-            $typesQuery->whereDate('protocol_date', '>=', $fromDate);
-        }
+        $payload = array_filter([
+            'tenant_id' => $tenantId,
+            'date_from' => $input->getArgument('dal'),
+            'date_to' => $input->getArgument('al'),
+            'limit' => $limit,
+        ], static fn ($value) => $value !== null);
 
-        if ($toDate) {
-            $typesQuery->whereDate('protocol_date', '<=', $toDate);
-        }
+        $response = $this->gateway->fetchStats($payload);
 
-        $typesQuery
-            ->select('document_type', DB::raw('COUNT(*) as total'))
-            ->groupBy('document_type')
-            ->orderByDesc('total');
+        $rows = collect($response['rows'] ?? [])->map(function (array $item) {
+            $typeLabel = $item['document_type'] ?? __('natan.commands.values.unknown_type');
 
-        if ($limit !== null) {
-            $typesQuery->limit($limit);
-        }
+            return [
+                'title' => $typeLabel ?: __('natan.commands.values.unknown_type'),
+                'metadata' => [[
+                    'label' => __('natan.commands.fields.count'),
+                    'value' => (string) ($item['count'] ?? 0),
+                ]],
+            ];
+        })->values()->all();
 
-        /** @var Collection<int, object> $types */
-        $types = $typesQuery->get();
+        $totalActs = (int) ($response['total_acts'] ?? 0);
 
-        $message = __('natan.commands.stats.messages.summary', [
+        $message = trans_choice('natan.commands.stats.messages.summary', $totalActs, [
             'count' => $totalActs,
             'from' => $fromDate
                 ? $fromDate->translatedFormat('d/m/Y')
@@ -100,18 +97,6 @@ final class StatsCommand implements CommandHandlerInterface
                 ? $toDate->translatedFormat('d/m/Y')
                 : __('natan.commands.values.no_limit'),
         ]);
-
-        $rows = $types->map(function (object $typeStat) {
-            $typeLabel = $typeStat->document_type ?: __('natan.commands.values.unknown_type');
-
-            return [
-                'title' => $typeLabel,
-                'metadata' => [[
-                    'label' => __('natan.commands.fields.count'),
-                    'value' => (string) $typeStat->total,
-                ]],
-            ];
-        })->values()->all();
 
         Log::info('[ChatCommand][Stats] Stats generated', [
             'user_id' => $user->id,
@@ -126,7 +111,7 @@ final class StatsCommand implements CommandHandlerInterface
             $message,
             $rows,
             [
-                'count' => $types->count(),
+                'count' => count($rows),
                 'limit' => $limit,
                 'total_acts' => $totalActs,
             ]

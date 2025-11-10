@@ -120,6 +120,7 @@ return [
         'errors' => [
             'permission_denied' => 'Access denied: your role cannot execute this command.',
             'admin_required' => 'This command is restricted to tenant administrators (pa_entity_admin role).',
+            'gateway_unreachable' => 'Command service temporarily unavailable. Please try again shortly.',
         ],
         'values' => [
             'blockchain_yes' => 'Anchored on blockchain',
@@ -161,6 +162,33 @@ return [
             ],
             'messages' => [
                 'summary' => 'Total acts: **:count** (from: :from, to: :to)',
+            ],
+        ],
+        'helper' => [
+            'toggle_label' => 'Open legend and quick commands',
+            'legend_title' => 'URS Legend',
+            'legend_urs_a' => 'Maximum reliability: documents fully verified with accredited sources.',
+            'legend_urs_b' => 'High reliability: solid sources, minor integrations may be required.',
+            'legend_urs_c' => 'Medium reliability: relevant information with partial coverage.',
+            'legend_urs_x' => 'Unverified: manual review is required before using the data.',
+            'commands_title' => 'Quick commands',
+            'commands_description' => 'Use the @ prefix to query the database directly without going through the AI.',
+            'atto_hint' => 'Retrieve a specific document by document_id (e.g. numero=pa_act_...).',
+            'atti_hint' => 'Filter acts by type, department and custom limits.',
+            'atti_protocol_label' => '@atti protocol=',
+            'atti_protocol_hint' => 'Find all acts with a specific protocol number.',
+            'stats_hint' => 'Quick statistics on acts (administrators only).',
+        ],
+        'natural' => [
+            'errors' => [
+                'blacklisted' => 'Request blocked: the text contains forbidden terms. Remove them and try again.',
+                'throttled' => 'You exceeded the allowed request limit. Please retry in :minutes minutes.',
+                'parse_failed' => 'I could not interpret the request. Please be more specific.',
+            ],
+            'messages' => [
+                'summary' => 'Results for ":query" (documents found: :count, limit: :limit).',
+                'no_results' => 'No documents found for ":query".',
+                'expanded_date_range' => 'No exact document in the requested period. The search was automatically extended by :days_before days before and :days_after days after.',
             ],
         ],
     ],

@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\ChatCommands\Handlers;
 
-use App\Models\PaAct;
 use App\Services\ChatCommands\CommandContext;
 use App\Services\ChatCommands\CommandInput;
 use App\Services\ChatCommands\CommandResult;
+use App\Services\ChatCommands\PythonCommandGateway;
 use App\Services\ChatCommands\Contracts\CommandHandlerInterface;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Carbon\Carbon;
 
 /**
  * @package App\Services\ChatCommands\Handlers
@@ -24,6 +23,11 @@ use RuntimeException;
 final class AttoCommand implements CommandHandlerInterface
 {
     private const SUPPORTED = ['atto', 'documento'];
+
+    public function __construct(
+        private PythonCommandGateway $gateway,
+    ) {
+    }
 
     public function supports(CommandInput $input): bool
     {
@@ -47,19 +51,20 @@ final class AttoCommand implements CommandHandlerInterface
             throw new RuntimeException(__('natan.commands.atto.errors.identifier_required'));
         }
 
-        $query = PaAct::query();
+        $tenantId = $context->tenant()?->id
+            ?? $user->tenant_id
+            ?? app('currentTenantId')
+            ?? 2;
 
-        if ($documentId) {
-            $query->where('document_id', $documentId);
-        }
+        $payload = array_filter([
+            'tenant_id' => $tenantId,
+            'document_id' => $documentId,
+            'protocol_number' => $protocolNumber,
+        ], static fn ($value) => $value !== null);
 
-        if ($protocolNumber) {
-            $query->where('protocol_number', $protocolNumber);
-        }
+        $response = $this->gateway->fetchAtto($payload);
 
-        $document = $query->first();
-
-        if (!$document) {
+        if (!($response['success'] ?? false) || empty($response['rows'])) {
             return new CommandResult(
                 $input->getName(),
                 __('natan.commands.atto.messages.not_found', [
@@ -69,26 +74,26 @@ final class AttoCommand implements CommandHandlerInterface
             );
         }
 
-        $link = route('natan.documents.view', ['documentId' => $document->document_id]);
+        $record = $response['rows'][0];
+
+        $link = route('natan.documents.view', ['documentId' => $record['document_id']]);
 
         $metadata = [
             [
                 'label' => __('natan.commands.fields.document_id'),
-                'value' => $document->document_id,
+                'value' => $record['document_id'],
             ],
         ];
 
-        if ($document->protocol_number) {
+        if (!empty($record['protocol_number'])) {
             $metadata[] = [
                 'label' => __('natan.commands.fields.protocol_number'),
-                'value' => $document->protocol_number,
+                'value' => $record['protocol_number'],
             ];
         }
 
-        if ($document->protocol_date) {
-            $protocolDate = $document->protocol_date instanceof Carbon
-                ? $document->protocol_date->translatedFormat('d/m/Y')
-                : Carbon::parse($document->protocol_date)->translatedFormat('d/m/Y');
+        if (!empty($record['protocol_date_iso'])) {
+            $protocolDate = Carbon::parse($record['protocol_date_iso'])->translatedFormat('d/m/Y');
 
             $metadata[] = [
                 'label' => __('natan.commands.fields.protocol_date'),
@@ -96,36 +101,27 @@ final class AttoCommand implements CommandHandlerInterface
             ];
         }
 
-        if ($document->document_type) {
+        if (!empty($record['document_type'])) {
             $metadata[] = [
                 'label' => __('natan.commands.fields.document_type'),
-                'value' => $document->document_type,
+                'value' => $record['document_type'],
             ];
         }
 
-        if ($document->department) {
+        if (!empty($record['department'])) {
             $metadata[] = [
                 'label' => __('natan.commands.fields.department'),
-                'value' => $document->department,
-            ];
-        }
-
-        if ($document->blockchain_anchored !== null) {
-            $metadata[] = [
-                'label' => __('natan.commands.fields.blockchain_status'),
-                'value' => $document->blockchain_anchored
-                    ? __('natan.commands.values.blockchain_yes')
-                    : __('natan.commands.values.blockchain_no'),
+                'value' => $record['department'],
             ];
         }
 
         $message = __('natan.commands.atto.messages.found', [
-            'title' => $document->title ?: __('natan.commands.values.no_title'),
+            'title' => $record['title'] ?: __('natan.commands.values.no_title'),
         ]);
 
         $rows = [[
-            'title' => $document->title ?: __('natan.commands.values.no_title'),
-            'description' => $document->description ?: null,
+            'title' => $record['title'] ?: __('natan.commands.values.no_title'),
+            'description' => $record['description'] ?? null,
             'metadata' => $metadata,
             'link' => [
                 'url' => $link,
@@ -135,8 +131,8 @@ final class AttoCommand implements CommandHandlerInterface
 
         Log::info('[ChatCommand][Atto] Document retrieved', [
             'user_id' => $user->id,
-            'document_id' => $document->document_id,
-            'tenant_id' => $context->tenant()?->id,
+            'document_id' => $record['document_id'],
+            'tenant_id' => $tenantId,
         ]);
 
         return new CommandResult(
@@ -157,7 +153,7 @@ final class AttoCommand implements CommandHandlerInterface
             $value = $input->getArgument($key);
 
             if ($value) {
-                return $value;
+                return trim($value);
             }
         }
 

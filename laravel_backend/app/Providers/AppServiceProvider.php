@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Services\ChatCommands\NaturalLanguageQueryService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(\App\Services\ChatCommands\CommandRegistry::class)
             );
         });
+
+        $this->app->singleton(NaturalLanguageQueryService::class);
     }
 
     /**
@@ -36,6 +42,28 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        RateLimiter::for('natan-natural-query', function (Request $request) {
+            $config = config('natan.natural_query.rate_limit', []);
+            $maxAttempts = (int) ($config['max_attempts'] ?? 20);
+            $decayMinutes = (int) ($config['decay_minutes'] ?? 5);
+
+            $keyParts = [
+                $request->user()?->id ?? 'guest',
+                $request->ip(),
+            ];
+
+            return Limit::perMinutes($decayMinutes, $maxAttempts)
+                ->by(implode('|', $keyParts))
+                ->response(function () use ($decayMinutes) {
+                    return response()->json([
+                        'success' => false,
+                        'code' => 'throttled',
+                        'message' => __('natan.commands.natural.errors.throttled', [
+                            'minutes' => $decayMinutes,
+                        ]),
+                        'retry_after_minutes' => $decayMinutes,
+                    ], 429);
+                });
+        });
     }
 }

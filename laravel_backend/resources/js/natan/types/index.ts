@@ -115,6 +115,16 @@ export interface ChatCommandResponse {
     verification_status?: 'SAFE' | 'WARNING' | 'BLOCKED' | 'direct_query' | 'DIRECT_QUERY';
 }
 
+export interface NaturalQueryResponse {
+    success: boolean;
+    command?: string;
+    message: string;
+    rows?: CommandRow[];
+    metadata?: Record<string, unknown>;
+    verification_status?: 'SAFE' | 'WARNING' | 'BLOCKED' | 'direct_query' | 'DIRECT_QUERY';
+    code?: string | null;
+}
+
 
 
 
