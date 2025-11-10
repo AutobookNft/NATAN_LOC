@@ -722,11 +722,40 @@
                                     }, 300);
                                 } else {
                                     console.warn('[SCRAPER] ⚠️ No progress_file in response');
-                                    // Completato immediatamente (senza progress file) o già finito
-                                    updateProgress(result.stats || {});
-                                    setTimeout(() => {
-                                        hideLoadingModal();
-                                    }, 2000);
+                                    
+                                    // Aggiorna comunque la UI se abbiamo statistiche parziali
+                                    if (result && (result.stats || result.documents)) {
+                                        updateProgress({
+                                            success: true,
+                                            status: result.status ?? 'running',
+                                            stats: result.stats ?? {},
+                                            documents: result.documents ?? [],
+                                            total_documents: result.total_documents ?? 0,
+                                        });
+                                    }
+
+                                    // Prova a capire se il backend ha comunque generato un progress file
+                                    const foundProgress = await checkForActiveProgress(scraperId);
+
+                                    if (!foundProgress) {
+                                        const hasMeaningfulStats = !!(
+                                            (result?.stats?.processed ?? 0) > 0 ||
+                                            (result?.stats?.saved ?? 0) > 0 ||
+                                            (result?.total_documents ?? 0) > 0 ||
+                                            result?.status === 'completed'
+                                        );
+
+                                        if (hasMeaningfulStats) {
+                                            setTimeout(() => {
+                                                hideLoadingModal();
+                                            }, 3000);
+                                        } else {
+                                            const modalMessage = document.getElementById('modalMessage');
+                                            if (modalMessage) {
+                                                modalMessage.innerHTML = 'Scraper avviato, monitoraggio in corso...';
+                                            }
+                                        }
+                                    }
                                 }
                             } else {
                                 // Errore - mostra dettagli completi

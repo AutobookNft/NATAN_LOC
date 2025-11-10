@@ -8,6 +8,8 @@ use App\Models\PaAct;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @package App\Http\Controllers
@@ -82,14 +84,9 @@ class DocumentController extends Controller
         $perPage = in_array($perPage, [10, 15, 25, 50, 100]) ? (int)$perPage : 15;
         $documents = $query->paginate($perPage)->withQueryString();
         
-        // Statistiche
-        $stats = [
-            'total' => PaAct::count(),
-            'by_type' => PaAct::selectRaw('document_type, COUNT(*) as count')
-                ->groupBy('document_type')
-                ->pluck('count', 'document_type')
-                ->toArray(),
-        ];
+        // Statistiche (MongoDB-first con fallback MariaDB)
+        $tenantId = Auth::user()?->tenant_id ?? app('currentTenantId') ?? 2;
+        $stats = $this->resolveDocumentStats($tenantId);
         
         return view('natan.documents.index', [
             'documents' => $documents,
@@ -109,6 +106,108 @@ class DocumentController extends Controller
         return view('natan.documents.show', [
             'document' => $document,
         ]);
+    }
+
+    /**
+     * Restituisce statistiche documenti, privilegiando MongoDB quando disponibile.
+     *
+     * @param int $tenantId
+     * @return array{total:int,by_type:array<string,int>}
+     */
+    protected function resolveDocumentStats(int $tenantId): array
+    {
+        $mongoStats = $this->fetchMongoDocumentStats($tenantId);
+
+        if (!empty($mongoStats)) {
+            return $mongoStats;
+        }
+
+        return [
+            'total' => PaAct::count(),
+            'by_type' => PaAct::selectRaw('document_type, COUNT(*) as count')
+                ->groupBy('document_type')
+                ->pluck('count', 'document_type')
+                ->toArray(),
+        ];
+    }
+
+    /**
+     * Recupera statistiche documenti da Python FastAPI / MongoDB.
+     *
+     * @param int $tenantId
+     * @return array{total:int,by_type:array<string,int>}|array{}
+     */
+    protected function fetchMongoDocumentStats(int $tenantId): array
+    {
+        $payload = ['tenant_id' => $tenantId];
+
+        foreach ($this->getPythonApiCandidateUrls() as $baseUrl) {
+            $endpoint = rtrim($baseUrl, '/') . '/api/v1/diagnostic/retrieval';
+
+            try {
+                $response = Http::timeout(15)->post($endpoint, $payload);
+
+                if (!$response->successful()) {
+                    Log::warning('[DocumentController] Mongo stats endpoint failed', [
+                        'endpoint' => $endpoint,
+                        'status' => $response->status(),
+                        'body' => substr($response->body(), 0, 200),
+                    ]);
+                    continue;
+                }
+
+                $data = $response->json();
+
+                if (!is_array($data) || !($data['success'] ?? false)) {
+                    Log::warning('[DocumentController] Mongo stats response invalid', [
+                        'endpoint' => $endpoint,
+                        'payload' => $data,
+                    ]);
+                    continue;
+                }
+
+                return [
+                    'total' => (int) ($data['documents_total'] ?? 0),
+                    'by_type' => array_map('intval', $data['document_types'] ?? []),
+                ];
+            } catch (\Throwable $exception) {
+                Log::error('[DocumentController] Mongo stats request error', [
+                    'endpoint' => $endpoint,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Restituisce gli endpoint candidati del servizio Python FastAPI.
+     *
+     * @return array<int,string>
+     */
+    protected function getPythonApiCandidateUrls(): array
+    {
+        $urls = [];
+
+        $configuredUrl = config('services.python_ai.url', 'http://localhost:8001');
+        if (!empty($configuredUrl)) {
+            $urls[] = rtrim($configuredUrl, '/');
+        }
+
+        $dynamicPortFile = '/tmp/natan_python_port.txt';
+        if (file_exists($dynamicPortFile)) {
+            $portValue = trim((string) file_get_contents($dynamicPortFile));
+            if (is_numeric($portValue)) {
+                $urls[] = sprintf('http://localhost:%d', (int) $portValue);
+            }
+        }
+
+        foreach ([8001, 8000, 9000] as $port) {
+            $urls[] = sprintf('http://localhost:%d', $port);
+        }
+
+        return array_values(array_unique(array_filter($urls)));
     }
 }
 
