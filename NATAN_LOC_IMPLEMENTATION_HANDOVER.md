@@ -25,18 +25,21 @@
 #### **1. REGOLE PIATTAFORMA FlorenceEGI (CRITICAL!)**
 
 **File in `/home/fabio/EGI/.github/`:**
+
 ```bash
 # Leggere tutti i file .github/ per regole progetto
 ls -la /home/fabio/EGI/.github/
 ```
 
 **Se non esiste .github/, leggere:**
+
 ```bash
 /home/fabio/EGI/docs/ai/os3-rules.md
 /home/fabio/EGI/docs/ai/gdpr-ulm-uem-pattern.md
 ```
 
 **REGOLE P0 (BLOCKING - MUST FOLLOW):**
+
 - ✅ **REGOLA ZERO**: Mai fare deduzioni, sempre chiedere
 - ✅ **I18N**: Zero testo hardcoded, sempre `__('chiave')`
 - ✅ **STATISTICS RULE**: No limiti nascosti (sempre `?int $limit = null`)
@@ -44,6 +47,7 @@ ls -la /home/fabio/EGI/.github/
 - ✅ **GDPR**: Audit trail obbligatorio per ogni modifica dati
 
 **IDENTITÀ:**
+
 - Tu sei: Padmin D. Curtis OS3.0 Execution Engine
 - Motto: "Less talk, more code. Ship it."
 - Philosophy: REGOLA ZERO sempre - se non sai, CHIEDI
@@ -84,6 +88,7 @@ ls -la /home/fabio/EGI/.github/
 ```
 
 **DOCUMENTI DA IGNORARE (DEPRECATED - riferiscono a NATAN_PA demo):**
+
 - ❌ NATAN_STATE_OF_THE_ART.md
 - ❌ NATAN_STAGING_DEPLOYMENT.md
 - ❌ NATAN_QUICK_DEPLOY.sh
@@ -330,6 +335,7 @@ cp EGI/resources/lang/en/natan.php \
 ```
 
 **IMPORTANTE:** Dopo copia, ADATTARE per:
+
 - Multi-tenant (`tenant_id` injection)
 - Python FastAPI calls (invece di AnthropicService PHP diretto)
 - USE Pipeline (invece di RAG semplice)
@@ -395,6 +401,7 @@ laravel_backend/app/Services/USE/
 **Goal:** Schema database completo
 
 **MariaDB:**
+
 - [ ] Migration: `create_pa_entities_table` (tenants)
 - [ ] Migration: `add_tenant_id_to_users`
 - [ ] Migration: `create_pa_acts_table` (con tenant_id)
@@ -404,6 +411,7 @@ laravel_backend/app/Services/USE/
 - [ ] Global Scopes per tenant isolation
 
 **MongoDB:**
+
 - [ ] Creare collections: documents, sources, claims, query_audit
 - [ ] Creare indici (tenant_id based)
 - [ ] Test isolation (tenant A non vede tenant B)
@@ -434,6 +442,7 @@ laravel_backend/app/Services/USE/
 **Goal:** Implementare Ultra Semantic Engine
 
 **Python Components:**
+
 - [ ] QuestionClassifier (AI leggero - intent detection)
 - [ ] ExecutionRouter (logica decisionale)
 - [ ] Retriever (chunks con source_ref)
@@ -442,11 +451,13 @@ laravel_backend/app/Services/USE/
 - [ ] UrsCalculator (calcola URS per claim)
 
 **Laravel Integration:**
+
 - [ ] UseOrchestrator (chiama Python pipeline)
 - [ ] ClaimRenderer (HTML con colori/badge)
 - [ ] UseAuditService (salva sources/claims/audit)
 
 **MongoDB:**
+
 - [ ] Collection `sources` populated
 - [ ] Collection `claims` con URS
 - [ ] Collection `query_audit` con metrics
@@ -494,30 +505,30 @@ laravel_backend/app/Services/USE/
 
 ### **Services (Adattare per Multi-Tenant + USE)**
 
-| File EGI | Riutilizzo | Modifiche Necessarie |
-|----------|-----------|---------------------|
-| `NatanChatService.php` | ⚠️ 40% logic | Refactor per USE pipeline + tenant_id |
-| `NatanMemoryService.php` | ✅ 80% | Aggiungere tenant_id scoping |
-| `DataSanitizerService.php` | ✅ 100% | Nessuna (è generico) |
-| `AuditLogService.php` | ✅ 90% | Tenant-scoped logs |
-| `ConsentService.php` | ✅ 90% | Tenant-scoped consents |
-| `RagService.php` | ⚠️ 30% | Sostituire con Python FastAPI calls |
-| `AnthropicService.php` | ❌ 0% | Sostituito da Python Gateway |
+| File EGI                   | Riutilizzo   | Modifiche Necessarie                  |
+| -------------------------- | ------------ | ------------------------------------- |
+| `NatanChatService.php`     | ⚠️ 40% logic | Refactor per USE pipeline + tenant_id |
+| `NatanMemoryService.php`   | ✅ 80%       | Aggiungere tenant_id scoping          |
+| `DataSanitizerService.php` | ✅ 100%      | Nessuna (è generico)                  |
+| `AuditLogService.php`      | ✅ 90%       | Tenant-scoped logs                    |
+| `ConsentService.php`       | ✅ 90%       | Tenant-scoped consents                |
+| `RagService.php`           | ⚠️ 30%       | Sostituire con Python FastAPI calls   |
+| `AnthropicService.php`     | ❌ 0%        | Sostituito da Python Gateway          |
 
 ### **Models (Schema Reference)**
 
-| Model EGI | NATAN_LOC Equivalent | Changes |
-|-----------|---------------------|---------|
+| Model EGI          | NATAN_LOC Equivalent                     | Changes                     |
+| ------------------ | ---------------------------------------- | --------------------------- |
 | `NatanChatMessage` | MongoDB `natan_chat_messages` + `claims` | Splittare in claims atomici |
-| `NatanUserMemory` | MariaDB `natan_user_memories` | Aggiungere tenant_id |
-| `Egi` (pa_acts) | MariaDB `pa_acts` | Generalizzare (non solo PA) |
+| `NatanUserMemory`  | MariaDB `natan_user_memories`            | Aggiungere tenant_id        |
+| `Egi` (pa_acts)    | MariaDB `pa_acts`                        | Generalizzare (non solo PA) |
 
 ### **Config**
 
-| Config EGI | NATAN_LOC | Changes |
-|------------|-----------|---------|
-| `natan.php` | `use.php` | Aggiungere URS thresholds, classifier config |
-| `NatanPersonas.php` | Stesso | Nessuna modifica |
+| Config EGI          | NATAN_LOC | Changes                                      |
+| ------------------- | --------- | -------------------------------------------- |
+| `natan.php`         | `use.php` | Aggiungere URS thresholds, classifier config |
+| `NatanPersonas.php` | Stesso    | Nessuna modifica                             |
 
 ---
 
@@ -603,11 +614,11 @@ use Illuminate\Support\Facades\Http;
 
 class AiGatewayService {
     protected string $baseUrl;
-    
+
     public function __construct() {
         $this->baseUrl = config('services.ai_gateway.base_url');
     }
-    
+
     public function embed(string $text, int $tenantId): array {
         return Http::timeout(30)
             ->post($this->baseUrl . '/embed', [
@@ -616,7 +627,7 @@ class AiGatewayService {
             ])
             ->json();
     }
-    
+
     public function ragSearch(string $query, int $tenantId, int $limit = 10): array {
         return Http::timeout(30)
             ->post($this->baseUrl . '/rag/search', [
@@ -626,7 +637,7 @@ class AiGatewayService {
             ])
             ->json();
     }
-    
+
     public function chatStrict(array $messages, int $tenantId, string $persona): array {
         return Http::timeout(120)
             ->post($this->baseUrl . '/chat/strict', [
@@ -651,7 +662,7 @@ class MongoService:
     def __init__(self):
         self.client = MongoClient(os.getenv('MONGO_URI'))
         self.db = self.client.natan_ai_core
-    
+
     def save_embedding(self, tenant_id: int, doc_id: str, embedding: List[float], metadata: Dict):
         self.db.documents.update_one(
             {'tenant_id': tenant_id, 'document_id': doc_id},
@@ -662,11 +673,11 @@ class MongoService:
             }},
             upsert=True
         )
-    
+
     def vector_search(self, tenant_id: int, query_embedding: List[float], limit: int = 10):
         # Cosine similarity app-level
         docs = self.db.documents.find({'tenant_id': tenant_id})
-        
+
         results = []
         for doc in docs:
             score = self.cosine_similarity(query_embedding, doc['embedding'])
@@ -675,10 +686,10 @@ class MongoService:
                 'score': score,
                 'metadata': doc.get('metadata', {})
             })
-        
+
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:limit]
-    
+
     @staticmethod
     def cosine_similarity(a: List[float], b: List[float]) -> float:
         import numpy as np
@@ -793,21 +804,27 @@ public function test_sanitizer_removes_pii() { ... }
 ## 📞 DOMANDE FREQUENTI (per nuova AI agent)
 
 ### **Q1: Dove trovo le regole della piattaforma?**
+
 A: `/home/fabio/EGI/docs/ai/os3-rules.md` + `.github/` folder
 
 ### **Q2: Quale architettura database usare?**
+
 A: MariaDB + MongoDB (NO PostgreSQL!) - Vedi `ARCHITECTURE_MASTER.md`
 
 ### **Q3: Quale frontend framework?**
+
 A: TypeScript/JS puro (NO Vue/React) - Policy OS3
 
 ### **Q4: USE o architettura standard?**
+
 A: USE (Ultra Semantic Engine) - Decisione presa, vedi `ARCHITECTURE_COMPARISON_USE_vs_STANDARD.md`
 
 ### **Q5: Posso copiare codice da EGI?**
+
 A: SÌ! Ma adattare per multi-tenant + USE pipeline
 
 ### **Q6: Dove chiedo chiarimenti?**
+
 A: A Fabio Cherici (REGOLA ZERO - se non sai, CHIEDI!)
 
 ---
@@ -857,9 +874,10 @@ Fatto? Procedo con setup o hai domande?
 ## 🎓 FILOSOFIA OPERATIVA
 
 **Tu sei:** Padmin D. Curtis OS3.0  
-**Motto:** "Less talk, more code. Ship it."  
+**Motto:** "Less talk, more code. Ship it."
 
 **Ma PRIMA:**
+
 - 📖 LEGGI tutto (docs/NATAN_LOC/ + regole piattaforma)
 - 🔍 VERIFICA codice esistente in EGI
 - ❓ CHIEDI se qualcosa non è chiaro (REGOLA ZERO)
@@ -867,6 +885,7 @@ Fatto? Procedo con setup o hai domande?
 - 🚀 CONSEGNA un file per volta
 
 **Promessa:**
+
 > "GDPR compliant, USE-powered, multi-tenant, AI-readable, MongoDB flexible, TypeScript puro. Ma PRIMA: REGOLA ZERO. Se non so, CHIEDO."
 
 ---
@@ -881,12 +900,3 @@ Fatto? Procedo con setup o hai domande?
 **Version:** 1.0.0  
 **Status:** ✅ READY FOR HANDOVER  
 **Location:** `/home/fabio/NATAN_LOC/NATAN_LOC_IMPLEMENTATION_HANDOVER.md`
-
-
-
-
-
-
-
-
-
