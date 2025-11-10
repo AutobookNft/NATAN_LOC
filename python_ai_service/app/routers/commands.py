@@ -570,9 +570,17 @@ class StatsCommandRequest(CommandBaseRequest):
     date_from: Optional[str] = None
     date_to: Optional[str] = None
     limit: Optional[int] = Field(default=10, ge=1, le=100)
+    scraper_type: Optional[str] = None
 
     @validator("date_from", "date_to", pre=True)
     def strip_optional(cls, value):
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+    @validator("scraper_type", pre=True)
+    def normalize_scraper_type(cls, value):
         if isinstance(value, str):
             value = value.strip()
             return value or None
@@ -977,6 +985,16 @@ async def command_stats(request: StatsCommandRequest):
                 "$or": [
                     {"protocol_date": date_condition},
                     {"metadata.data_atto": date_condition},
+                ]
+            }
+        )
+
+    if request.scraper_type:
+        match_filters.append(
+            {
+                "$or": [
+                    {"metadata.scraper_type": request.scraper_type},
+                    {"scraper_type": request.scraper_type},
                 ]
             }
         )

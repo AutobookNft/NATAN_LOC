@@ -9,6 +9,8 @@ use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use App\Services\PythonScraperService;
 use App\Services\Gdpr\AuditLogService;
 use App\Enums\Gdpr\GdprActivityCategory;
@@ -603,11 +605,19 @@ class NatanScrapersController extends Controller
     {
         try {
             $tenantId = Auth::user()?->tenant_id ?? app('currentTenantId') ?? 2;
-            $count = $this->getTotalDocumentsInMongoDBForScraper(null, $tenantId);
+            $payload = [
+                'tenant_id' => $tenantId,
+                'limit' => 1,
+            ];
+
+            $response = $this->executeMongoStatsRequest($payload);
+            $count = (int) ($response['total_acts'] ?? 0);
             
             $this->logger->info('[NatanScrapersController] Total documents count for index', [
                 'tenant_id' => $tenantId,
                 'count' => $count,
+                'payload' => $payload,
+                'response' => $response,
                 'log_category' => 'SCRAPER_STATS'
             ]);
             
@@ -628,55 +638,30 @@ class NatanScrapersController extends Controller
     protected function getTotalDocumentsInMongoDBForScraper(?string $scraperId, int $tenantId): int
     {
         try {
-            // Esegui comando Python per contare documenti in MongoDB
-            $pythonExecutable = base_path('../python_ai_service/venv/bin/python');
-            if (!file_exists($pythonExecutable)) {
-                $pythonExecutable = 'python3';
-            }
-            
-            // Build filter query
-            $filter = ['tenant_id' => $tenantId, 'document_type' => 'pa_act'];
-            
-            // Se scraper specifico, filtra per scraper_type
             $scraperTypeMap = [
                 'firenze_deliberazioni' => 'firenze_deliberazioni',
                 'albo_firenze_v2' => 'albo_firenze',
                 'albo_pretorio_firenze' => 'albo_pretorio_firenze',
             ];
+
+            $payload = [
+                'tenant_id' => $tenantId,
+                'limit' => 50,
+            ];
+
             if ($scraperId && isset($scraperTypeMap[$scraperId])) {
-                $filter['metadata.scraper_type'] = $scraperTypeMap[$scraperId];
+                $payload['scraper_type'] = $scraperTypeMap[$scraperId];
             }
             
-            // Converti filter in JSON per passarlo al comando Python
-            $filterJson = json_encode($filter);
+            $response = $this->executeMongoStatsRequest($payload);
+            $count = (int) ($response['total_acts'] ?? 0);
             
-            // Comando Python inline per contare documenti
-            // IMPORTANT: Usa doppie virgolette per JSON e escape corretto
-            $pythonScript = sprintf(
-                "import sys; sys.path.insert(0, '%s'); from dotenv import load_dotenv; from pathlib import Path; import json; load_dotenv(Path('%s/.env'), override=True); from app.services.mongodb_service import MongoDBService; filter_query = json.loads('%s'); print(MongoDBService.count_documents('documents', filter_query))",
-                base_path('../python_ai_service'),
-                base_path('../python_ai_service'),
-                addslashes($filterJson)
-            );
-            
-            $command = escapeshellarg($pythonExecutable) . ' -c ' . escapeshellarg($pythonScript);
-            
-            $this->logger->info('[NatanScrapersController] Executing MongoDB count command', [
-                'scraper_id' => $scraperId,
-                'tenant_id' => $tenantId,
-                'filter' => $filter,
-                'command_preview' => substr($command, 0, 200),
-                'log_category' => 'SCRAPER_STATS'
-            ]);
-            
-            $output = shell_exec($command . ' 2>&1');
-            $count = (int)trim($output ?? '0');
-            
-            $this->logger->info('[NatanScrapersController] MongoDB count result', [
+            $this->logger->info('[NatanScrapersController] Mongo stats result', [
                 'scraper_id' => $scraperId,
                 'tenant_id' => $tenantId,
                 'count' => $count,
-                'output' => $output,
+                'payload' => $payload,
+                'response' => $response,
                 'log_category' => 'SCRAPER_STATS'
             ]);
             
@@ -690,6 +675,79 @@ class NatanScrapersController extends Controller
             ]);
             return 0;
         }
+    }
+
+    /**
+     * Esegue richiesta al servizio Python per statistiche MongoDB
+     *
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>|null
+     */
+    protected function executeMongoStatsRequest(array $payload): ?array
+    {
+        foreach ($this->getPythonApiCandidateUrls() as $baseUrl) {
+            $endpoint = rtrim($baseUrl, '/') . '/api/v1/commands/stats';
+
+            try {
+                $response = Http::timeout(15)->post($endpoint, $payload);
+
+                if (!$response->successful()) {
+                    Log::warning('[NatanScrapersController] Stats endpoint failed', [
+                        'endpoint' => $endpoint,
+                        'status' => $response->status(),
+                        'body' => substr($response->body(), 0, 200),
+                    ]);
+                    continue;
+                }
+
+                $data = $response->json();
+                if (!is_array($data) || !($data['success'] ?? false)) {
+                    Log::warning('[NatanScrapersController] Stats endpoint invalid payload', [
+                        'endpoint' => $endpoint,
+                        'payload' => $data,
+                    ]);
+                    continue;
+                }
+
+                return $data;
+            } catch (\Throwable $exception) {
+                Log::error('[NatanScrapersController] Stats endpoint error', [
+                    'endpoint' => $endpoint,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Restituisce gli endpoint candidati del servizio Python FastAPI
+     *
+     * @return array<int,string>
+     */
+    protected function getPythonApiCandidateUrls(): array
+    {
+        $urls = [];
+
+        $configuredUrl = config('services.python_ai.url', 'http://localhost:8001');
+        if (!empty($configuredUrl)) {
+            $urls[] = rtrim($configuredUrl, '/');
+        }
+
+        $dynamicPortFile = '/tmp/natan_python_port.txt';
+        if (file_exists($dynamicPortFile)) {
+            $portValue = trim((string) file_get_contents($dynamicPortFile));
+            if (is_numeric($portValue)) {
+                $urls[] = sprintf('http://localhost:%d', (int) $portValue);
+            }
+        }
+
+        foreach ([8001, 8000, 9000] as $port) {
+            $urls[] = sprintf('http://localhost:%d', $port);
+        }
+
+        return array_values(array_unique(array_filter($urls)));
     }
 
     /**
