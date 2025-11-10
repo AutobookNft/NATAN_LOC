@@ -490,15 +490,33 @@ class NatanScrapersController extends Controller
 
             // Cerca file JSON salvati dallo scraper per estrarre atti
             if (preg_match('/Backup JSON salvato:\s*([^\n]+)/i', $result['output'] ?? '', $jsonMatches)) {
-                $jsonPath = trim($jsonMatches[1]);
-                // Se il path è relativo, costruisci path assoluto
-                if (!str_starts_with($jsonPath, '/')) {
-                    $jsonPath = base_path('../' . $jsonPath);
+                $rawJsonPath = trim($jsonMatches[1]);
+                
+                $resolvedJsonPath = null;
+                $candidatePaths = [];
+                
+                if (str_starts_with($rawJsonPath, '/')) {
+                    $candidatePaths[] = $rawJsonPath;
+                } else {
+                    $relativePath = ltrim($rawJsonPath, '/');
+                    // Percorso rispetto alla root del progetto (come generato originariamente)
+                    $candidatePaths[] = base_path('../' . $relativePath);
+                    // Percorso rispetto alla cartella scripts (dove vengono salvati i file)
+                    $candidatePaths[] = base_path('../scripts/' . $relativePath);
+                    // Percorso rispetto alla root della repository (fallback generico)
+                    $candidatePaths[] = base_path('../../' . $relativePath);
                 }
-
-                if (file_exists($jsonPath)) {
+                
+                foreach ($candidatePaths as $candidatePath) {
+                    if (file_exists($candidatePath)) {
+                        $resolvedJsonPath = realpath($candidatePath);
+                        break;
+                    }
+                }
+                
+                if ($resolvedJsonPath && file_exists($resolvedJsonPath)) {
                     try {
-                        $jsonContent = json_decode(file_get_contents($jsonPath), true);
+                        $jsonContent = json_decode(file_get_contents($resolvedJsonPath), true);
                         if (is_array($jsonContent)) {
                             // Se è un array di atti, prendi primo e ultimo
                             if (isset($jsonContent[0]) && is_array($jsonContent[0])) {
@@ -522,11 +540,17 @@ class NatanScrapersController extends Controller
                         }
                     } catch (\Exception $e) {
                         $this->logger->warning('[NatanScrapersController] Failed to parse JSON file', [
-                            'json_path' => $jsonPath,
+                            'json_path' => $resolvedJsonPath,
                             'error' => $e->getMessage(),
                             'log_category' => 'SCRAPER_PREVIEW'
                         ]);
                     }
+                } else {
+                    $this->logger->warning('[NatanScrapersController] JSON file not found for preview', [
+                        'raw_path' => $rawJsonPath,
+                        'candidate_paths' => $candidatePaths,
+                        'log_category' => 'SCRAPER_PREVIEW'
+                    ]);
                 }
             }
 

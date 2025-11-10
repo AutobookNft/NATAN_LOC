@@ -17,7 +17,7 @@ class CreateTenantUserImpersonationTokensTable extends Migration
     {
         Schema::create('tenant_user_impersonation_tokens', function (Blueprint $table) {
             $table->string('token', 128)->primary();
-            $table->string('tenant_id');
+            $table->unsignedBigInteger('tenant_id');
             $table->string('user_id');
             $table->string('auth_guard');
             $table->string('redirect_url');
