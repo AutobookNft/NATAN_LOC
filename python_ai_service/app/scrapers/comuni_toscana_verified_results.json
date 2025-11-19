@@ -1,0 +1,91 @@
+{
+  "timestamp": "2025-11-13T22:22:43.117778",
+  "stats": {
+    "totale": 10,
+    "funzionanti": 1,
+    "atti_totali": 415,
+    "errori": 9
+  },
+  "comuni": [
+    {
+      "comune": "Firenze",
+      "abitanti": 367150,
+      "funzionante": true,
+      "metodo": "API_REST",
+      "atti_recuperabili": 415,
+      "url": "https://accessoconcertificato.comune.fi.it/trasparenza-atti-cat/searchAtti",
+      "note": "415 delibere 2025"
+    },
+    {
+      "comune": "Prato",
+      "abitanti": 195640,
+      "funzionante": false,
+      "tag": "NESSUN_METODO",
+      "note": "Nessun metodo automatico trovato"
+    },
+    {
+      "comune": "Livorno",
+      "abitanti": 154624,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "https://trasparenza.comune.livorno.it",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    },
+    {
+      "comune": "Arezzo",
+      "abitanti": 97303,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "https://www.comune.arezzo.it/comune/albo-pretorio",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    },
+    {
+      "comune": "Pistoia",
+      "abitanti": 89864,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "https://pistoia.trasparenza-valutazione-merito.it/web/trasparenzaj/albo-pretorio",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    },
+    {
+      "comune": "Pisa",
+      "abitanti": 89158,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "https://albopretorio.comune.pisa.it/",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    },
+    {
+      "comune": "Lucca",
+      "abitanti": 88824,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "https://www.comune.lucca.it/argomento/trasparenza-amministrativa/",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    },
+    {
+      "comune": "Grosseto",
+      "abitanti": 81969,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "https://grosseto.trasparenza-valutazione-merito.it/",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    },
+    {
+      "comune": "Massa",
+      "abitanti": 66294,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "http://trasparenza.comune.massa.ms.it/struttura-e-numeri-di-telefono",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    },
+    {
+      "comune": "Carrara",
+      "abitanti": 60833,
+      "funzionante": false,
+      "tag": "ALBO_URL_TROVATO",
+      "url_albo": "https://carrara.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio2",
+      "note": "URL albo trovato ma non accessibile automaticamente"
+    }
+  ]
+}

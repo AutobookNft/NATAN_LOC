@@ -1,0 +1,20 @@
+{
+  "timestamp": "2025-11-13T22:33:59.985627",
+  "tests": [
+    {
+      "comune": "Scandicci",
+      "metodo": "SoluzioniPA_FormPOST",
+      "funzionante": true
+    },
+    {
+      "comune": "Sesto Fiorentino",
+      "metodo": "DataTables_API",
+      "funzionante": true
+    },
+    {
+      "comune": "Empoli (esempio TrasparenzaVM)",
+      "metodo": "TrasparenzaVM_Portlet",
+      "funzionante": false
+    }
+  ]
+}

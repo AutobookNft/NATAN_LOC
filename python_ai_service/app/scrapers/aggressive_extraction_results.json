@@ -1,0 +1,32 @@
+[
+  {
+    "comune": "Pisa",
+    "url": "https://albopretorio.comune.pisa.it/",
+    "atti": [],
+    "metodo_funzionante": null,
+    "problema": {
+      "tipo": "no_extraction_method",
+      "dettaglio": "Nessun metodo di estrazione ha trovato atti",
+      "soluzioni": [
+        "API REST pubblica in JSON",
+        "Export CSV risultati ricerca",
+        "Feed RSS atti pubblicati"
+      ]
+    }
+  },
+  {
+    "comune": "Arezzo",
+    "url": "https://servizionline.comune.arezzo.it/jattipubblicazioni/",
+    "atti": [],
+    "metodo_funzionante": null,
+    "problema": {
+      "tipo": "form_post_no_results",
+      "dettaglio": "Form POST funziona ma risposta non contiene atti parsabili",
+      "soluzioni": [
+        "API endpoint JSON: GET /api/atti?anno=2024",
+        "Migliorare HTML risultati con classi semantic (class=\"atto-row\")",
+        "Export CSV risultati ricerca"
+      ]
+    }
+  }
+]

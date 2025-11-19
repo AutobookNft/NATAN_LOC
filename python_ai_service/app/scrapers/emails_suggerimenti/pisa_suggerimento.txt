@@ -1,0 +1,64 @@
+Spett.le Comune di Pisa,
+
+Durante l'analisi tecnica del vostro Albo Pretorio per il progetto NATAN, abbiamo riscontrato alcune criticità nell'accesso automatizzato ai dati pubblici che vorremmo segnalarvi in modo costruttivo.
+
+## 📋 Problema Identificato
+
+
+Il vostro Albo Pretorio **non espone API** per l'accesso automatizzato.
+
+Problema: I dati sono disponibili solo tramite interfaccia web HTML, senza endpoint API per il recupero in formato strutturato (JSON, XML, CSV).
+
+Limitazione: Impossibile creare servizi digitali che utilizzino i vostri dati pubblici.
+
+Dettagli tecnici: Nessuna API pubblica per accesso dati strutturati
+
+## ✅ Soluzione Proposta
+
+
+**Soluzione Ideale**: API RESTful Completa
+- GET /api/albo/atti?anno=2025&tipo=delibera
+- GET /api/albo/atti/{id}
+- Paginazione, filtri, ordinamento
+- Documentazione OpenAPI/Swagger
+- Implementazione: 5-7 giorni
+- Costo: ~€2.000-3.000
+
+**Soluzione Minima Conforme**: Export CSV/JSON
+- Pulsante "Esporta risultati ricerca" → CSV/JSON
+- Già soddisfa obbligo formato aperto
+- Implementazione: 1-2 giorni
+- Costo: ~€300-500
+
+## 🎯 Benefici della Soluzione
+
+✅ **Conformità normativa**: Aderenza all'Art. 35 D.lgs 33/2013 (formato aperto)
+✅ **Migliore servizio cittadini**: Accesso facilitato alle informazioni
+✅ **Riduzione carico URP**: Meno richieste manuali di documentazione
+✅ **Interoperabilità**: Dati utilizzabili da altri servizi digitali
+✅ **Trasparenza proattiva**: Il Comune come esempio di PA digitale
+
+## 🤝 Nostra Disponibilità
+
+Siamo disponibili a:
+- Fornire consulenza tecnica gratuita
+- Testare la soluzione implementata
+- Documentare il vostro Comune come caso di successo
+- Supportare l'ufficio tecnico nell'implementazione
+
+## 📊 Stima Implementazione
+
+Costo stimato: €500-1.000
+Tempo stimato: 2-3 giorni
+Fattibilità: alta
+Priorità: media
+
+Questo intervento rientra negli obblighi di accessibilità previsti dalla normativa vigente e rappresenta un'opportunità per migliorare il servizio ai cittadini.
+
+Restiamo a disposizione per ogni chiarimento e supporto tecnico.
+
+Cordiali saluti,
+
+Fabio Massacci
+Progetto NATAN
+Email: fabio@natan.it

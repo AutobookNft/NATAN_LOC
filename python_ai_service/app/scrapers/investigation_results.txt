@@ -1,0 +1,127 @@
+🔍 Investigazione automatica comuni rimanenti...
+Risultati in: investigation_results.json
+
+=========================================
+🏛️  Prato (195640 abitanti)
+=========================================
+1️⃣  Cerco link albo...
+   ❌ Nessun link 'albo' trovato
+
+2️⃣  Cerco amministrazione trasparente...
+   ❌ Nessun link trasparenza
+
+3️⃣  Testo API REST...
+   ✅ /rest/albo → HTTP 200
+      ⚠️  Risposta HTML (non API vera)
+   ❌ Nessuna API REST trovata
+
+4️⃣  Detection piattaforma...
+   🟣 TrasparenzaVM (possibile)
+
+✅ Prato completato
+
+=========================================
+🏛️  Pisa (89158 abitanti)
+=========================================
+1️⃣  Cerco link albo...
+   ✅ Link trovati:
+      href="https://albopretorio.comune.pisa.it/"
+
+2️⃣  Cerco amministrazione trasparente...
+   ✅ Link trovati:
+      href="https://www.comune.pisa.it/Amministrazione-Trasparente"
+      href="https://www.comune.pisa.it/Amministrazione-Trasparente/Altri-contenuti/Prevenzione-della-Corruzione/Piano-triennale-per-la-prevenzione-della-corruzione-e-della-trasparenza/Consultazione-degli-stakeholder-per-l-aggiornamento-della-SOTTO-SEZIONE-2.3-DEL-PIAO-RISCHI-CORRUTTIVI-E-TRASPARENZA-2026-2028-presentazione-di-contributi-e-o-suggerimenti"
+      href="https://www.comune.pisa.it/Amministrazione-Trasparente/Altri-contenuti/Dati-ulteriori/Attuazione-misure-PNRR/Attuazione-Misure-PNRR"
+
+3️⃣  Testo API REST...
+   ❌ Nessuna API REST trovata
+
+4️⃣  Detection piattaforma...
+   🟣 TrasparenzaVM (possibile)
+
+5️⃣  Analizzo pagina albo: https://albopretorio.comune.pisa.it/
+   📝 FORM POST trovato
+      action="#"
+   📊 Tabelle HTML: 0
+   📄 Keyword atti: 0 occorrenze
+
+✅ Pisa completato
+
+=========================================
+🏛️  Lucca (88824 abitanti)
+=========================================
+1️⃣  Cerco link albo...
+   ✅ Link trovati:
+      href="https://www.comune.lucca.it/notizia/albo-dei-luoghi-storici-del-commercio-e-delle-botteghe-artigiane-di-lucca/"
+      href="https://www.comune.lucca.it/notizia/aggiornamento-annuale-dellalbo-degli-scrutatori-e-presidenti-di-seggio/"
+      href="https://lucca.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio"
+
+2️⃣  Cerco amministrazione trasparente...
+   ❌ Nessun link trasparenza
+
+3️⃣  Testo API REST...
+   ❌ Nessuna API REST trovata
+
+4️⃣  Detection piattaforma...
+   🔵 WordPress
+
+5️⃣  Analizzo pagina albo: https://www.comune.lucca.it/notizia/albo-dei-luoghi-storici-del-commercio-e-delle-botteghe-artigiane-di-lucca/
+   📊 Tabelle HTML: 0
+   📄 Keyword atti: 0 occorrenze
+
+✅ Lucca completato
+
+=========================================
+🏛️  Massa (66294 abitanti)
+=========================================
+1️⃣  Cerco link albo...
+   ❌ Nessun link 'albo' trovato
+
+2️⃣  Cerco amministrazione trasparente...
+   ❌ Nessun link trasparenza
+
+3️⃣  Testo API REST...
+   ❌ Nessuna API REST trovata
+
+4️⃣  Detection piattaforma...
+   🟠 Drupal
+
+✅ Massa completato
+
+=========================================
+🏛️  Bagno a Ripoli (25095 abitanti)
+=========================================
+1️⃣  Cerco link albo...
+   ✅ Link trovati:
+      href="https://trasparenza.comune.bagno-a-ripoli.fi.it/web/trasparenza/menu-albo-pretorio"
+
+2️⃣  Cerco amministrazione trasparente...
+   ❌ Nessun link trasparenza
+
+3️⃣  Testo API REST...
+   ❌ Nessuna API REST trovata
+
+4️⃣  Detection piattaforma...
+   🟠 Drupal
+
+5️⃣  Analizzo pagina albo: https://trasparenza.comune.bagno-a-ripoli.fi.it/web/trasparenza/menu-albo-pretorio
+   📝 FORM POST trovato
+      action="#"
+   📊 Tabelle HTML: 0
+   📄 Keyword atti: 0 occorrenze
+
+✅ Bagno a Ripoli completato
+
+=========================================
+✅ INVESTIGAZIONE COMPLETATA
+=========================================
+
+Risultati salvati in: investigation_results.json
+
+Prossimi step:
+1. Leggi investigation_results.txt per dettagli
+2. Per ogni comune identificato come scrapable:
+   - Se HTML statico → implementa scraper httpx
+   - Se API REST → implementa scraper API
+   - Se Form POST → testa con curl, poi implementa
+   - Se JavaScript → TAG 'REQUIRES_BROWSER_AUTOMATION'

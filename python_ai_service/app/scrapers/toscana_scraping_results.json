@@ -1,0 +1,127 @@
+{
+  "timestamp": "2025-11-13T21:54:44.098047",
+  "stats": {
+    "totale": 10,
+    "funzionanti": 2,
+    "cloudflare": 1,
+    "albo_non_trovato": 7,
+    "js_required": 0,
+    "atti_totali": 23
+  },
+  "comuni": [
+    {
+      "comune": "Firenze",
+      "url": "https://www.comune.fi.it",
+      "abitanti": 367150,
+      "timestamp": "2025-11-13T21:51:29.608480",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "CLOUDFLARE",
+      "note": "Sito protetto da Cloudflare"
+    },
+    {
+      "comune": "Scandicci",
+      "url": "https://www.comune.scandicci.fi.it",
+      "abitanti": 50592,
+      "timestamp": "2025-11-13T21:51:36.653108",
+      "metodo": "HTTP_STATIC",
+      "funzionante": true,
+      "atti_recuperabili": 8,
+      "tag": null,
+      "note": "",
+      "albo_url": "https://scandicci.soluzionipa.it/openweb/albo/albo_pretorio.php",
+      "atti_stimati": 8
+    },
+    {
+      "comune": "Sesto Fiorentino",
+      "url": "https://www.comune.sesto-fiorentino.fi.it",
+      "abitanti": 48891,
+      "timestamp": "2025-11-13T21:51:37.410187",
+      "metodo": "PLAYWRIGHT",
+      "funzionante": true,
+      "atti_recuperabili": 15,
+      "tag": null,
+      "note": "",
+      "albo_url": "http://servizi.comune.sesto-fiorentino.fi.it/albo/",
+      "atti_stimati": 15
+    },
+    {
+      "comune": "Empoli",
+      "url": "https://www.comune.empoli.fi.it",
+      "abitanti": 48934,
+      "timestamp": "2025-11-13T21:51:47.211171",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "DA_CONTATTARE",
+      "note": "Nessun metodo automatico funzionante - richede indagine manuale"
+    },
+    {
+      "comune": "Campi Bisenzio",
+      "url": "https://www.comune.campi-bisenzio.fi.it",
+      "abitanti": 46966,
+      "timestamp": "2025-11-13T21:51:53.849286",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "DA_CONTATTARE",
+      "note": "Nessun metodo automatico funzionante - richede indagine manuale"
+    },
+    {
+      "comune": "Bagno a Ripoli",
+      "url": "https://www.comune.bagno-a-ripoli.fi.it",
+      "abitanti": 25095,
+      "timestamp": "2025-11-13T21:52:24.288223",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "DA_CONTATTARE",
+      "note": "Nessun metodo automatico funzionante - richede indagine manuale"
+    },
+    {
+      "comune": "Fiesole",
+      "url": "https://www.comune.fiesole.fi.it",
+      "abitanti": 14076,
+      "timestamp": "2025-11-13T21:52:56.571205",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "DA_CONTATTARE",
+      "note": "Nessun metodo automatico funzionante - richede indagine manuale"
+    },
+    {
+      "comune": "Pontassieve",
+      "url": "https://www.comune.pontassieve.fi.it",
+      "abitanti": 20646,
+      "timestamp": "2025-11-13T21:53:29.501593",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "DA_CONTATTARE",
+      "note": "Nessun metodo automatico funzionante - richede indagine manuale"
+    },
+    {
+      "comune": "Borgo San Lorenzo",
+      "url": "https://www.comune.borgo-san-lorenzo.fi.it",
+      "abitanti": 18542,
+      "timestamp": "2025-11-13T21:54:07.386613",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "DA_CONTATTARE",
+      "note": "Nessun metodo automatico funzionante - richede indagine manuale"
+    },
+    {
+      "comune": "Calenzano",
+      "url": "https://www.comune.calenzano.fi.it",
+      "abitanti": 17827,
+      "timestamp": "2025-11-13T21:54:33.402798",
+      "metodo": null,
+      "funzionante": false,
+      "atti_recuperabili": 0,
+      "tag": "DA_CONTATTARE",
+      "note": "Nessun metodo automatico funzionante - richede indagine manuale"
+    }
+  ]
+}

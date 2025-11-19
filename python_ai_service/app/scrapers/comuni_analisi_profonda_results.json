@@ -1,0 +1,104 @@
+{
+  "timestamp": "2025-11-13T22:31:29.672163",
+  "stats": {
+    "totale": 10,
+    "funzionanti": 1,
+    "form_post": 0,
+    "api_trovate": 0,
+    "atti_totali": 415
+  },
+  "comuni": [
+    {
+      "comune": "Firenze",
+      "abitanti": 367150,
+      "funzionante": true,
+      "metodo": "API_REST",
+      "atti_recuperabili": 415,
+      "url": "https://accessoconcertificato.comune.fi.it/trasparenza-atti-cat/searchAtti",
+      "payload": {
+        "oggetto": "",
+        "notLoadIniziale": "ok",
+        "numeroAdozione": "",
+        "competenza": "DG",
+        "annoAdozione": "2025",
+        "tipiAtto": [
+          "DG"
+        ]
+      },
+      "note": "415 delibere 2025 via API verificata"
+    },
+    {
+      "comune": "Scandicci",
+      "abitanti": 50592,
+      "funzionante": false,
+      "tag": "FORM_POST_0_ATTI",
+      "url_post": "https://scandicci.soluzionipa.it/openweb/albo/albo_pretorio.php",
+      "post_data": "------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"tabella_albo[page]\"\r\n\r\n1\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"tabella_albo[start]\"\r\n\r\n0\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[DATA_AFFIS_1]\"\r\n\r\n\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[DATA_AFFIS_2]\"\r\n\r\n\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[OGGETTO]\"\r\n\r\n13/11/2025\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[TIPOATTO]\"\r\n\r\n\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[UFFICIO]\"\r\n\r\n\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[NRATTO]\"\r\n\r\n13/11/2025\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[DATA_ATTO_1]\"\r\n\r\n\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"search_albo[DATA_ATTO_2]\"\r\n\r\n\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"submit\"\r\n\r\nCerca\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT\r\nContent-Disposition: form-data; name=\"CSRF\"\r\n\r\n3833d3ce41339cf6584ed5f3200fa7be\r\n------WebKitFormBoundaryXqNaaN4ZhJJTnmsT--\r\n",
+      "note": "Form funziona ma 0 atti nel periodo 2025 (provare altri anni?)"
+    },
+    {
+      "comune": "Sesto Fiorentino",
+      "abitanti": 48891,
+      "funzionante": false,
+      "tag": "API_TROVATA",
+      "url_api": "http://servizi.comune.sesto-fiorentino.fi.it/albo/search.php?draw=1&columns%5B0%5D%5Bdata%5D=0&columns%5B0%5D%5Bname%5D=&columns%5B0%5D%5Bsearchable%5D=false&columns%5B0%5D%5Borderable%5D=true&columns%5B0%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B0%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B1%5D%5Bdata%5D=1&columns%5B1%5D%5Bname%5D=&columns%5B1%5D%5Bsearchable%5D=false&columns%5B1%5D%5Borderable%5D=true&columns%5B1%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B1%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B2%5D%5Bdata%5D=2&columns%5B2%5D%5Bname%5D=&columns%5B2%5D%5Bsearchable%5D=true&columns%5B2%5D%5Borderable%5D=true&columns%5B2%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B2%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B3%5D%5Bdata%5D=3&columns%5B3%5D%5Bname%5D=&columns%5B3%5D%5Bsearchable%5D=false&columns%5B3%5D%5Borderable%5D=false&columns%5B3%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B3%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B4%5D%5Bdata%5D=4&columns%5B4%5D%5Bname%5D=&columns%5B4%5D%5Bsearchable%5D=true&columns%5B4%5D%5Borderable%5D=true&columns%5B4%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B4%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B5%5D%5Bdata%5D=5&columns%5B5%5D%5Bname%5D=&columns%5B5%5D%5Bsearchable%5D=true&columns%5B5%5D%5Borderable%5D=true&columns%5B5%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B5%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B6%5D%5Bdata%5D=6&columns%5B6%5D%5Bname%5D=&columns%5B6%5D%5Bsearchable%5D=true&columns%5B6%5D%5Borderable%5D=true&columns%5B6%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B6%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B7%5D%5Bdata%5D=7&columns%5B7%5D%5Bname%5D=&columns%5B7%5D%5Bsearchable%5D=false&columns%5B7%5D%5Borderable%5D=true&columns%5B7%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B7%5D%5Bsearch%5D%5Bregex%5D=false&columns%5B8%5D%5Bdata%5D=8&columns%5B8%5D%5Bname%5D=&columns%5B8%5D%5Bsearchable%5D=false&columns%5B8%5D%5Borderable%5D=true&columns%5B8%5D%5Bsearch%5D%5Bvalue%5D=&columns%5B8%5D%5Bsearch%5D%5Bregex%5D=false&order%5B0%5D%5Bcolumn%5D=1&order%5B0%5D%5Bdir%5D=desc&order%5B1%5D%5Bcolumn%5D=1&order%5B1%5D%5Bdir%5D=desc&order%5B2%5D%5Bcolumn%5D=0&order%5B2%5D%5Bdir%5D=desc&start=0&length=25&search%5Bvalue%5D=&search%5Bregex%5D=false&_=1763069380356",
+      "note": "API trovata ma richiede payload - 1 endpoint"
+    },
+    {
+      "comune": "Empoli",
+      "abitanti": 48934,
+      "funzionante": false,
+      "tag": "FORM_NO_DATE",
+      "url_albo": "https://empoli.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "note": "Form trovato ma nessun campo data/anno riconoscibile"
+    },
+    {
+      "comune": "Campi Bisenzio",
+      "abitanti": 46966,
+      "funzionante": false,
+      "tag": "FORM_NO_DATE",
+      "url_albo": "https://campibisenzio.trasparenza-valutazione-merito.it/web/trasparenza/dettaglio-albo-pretorio?p_p_id=jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&p_p_col_id=column-2&p_p_col_count=1&_jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet_current-page-parent=0&_jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet_current-page=10387",
+      "note": "Form trovato ma nessun campo data/anno riconoscibile"
+    },
+    {
+      "comune": "Bagno a Ripoli",
+      "abitanti": 25095,
+      "funzionante": false,
+      "tag": "FORM_NO_DATE",
+      "url_albo": "https://trasparenza.comune.bagno-a-ripoli.fi.it/web/trasparenza/menu-albo-pretorio",
+      "note": "Form trovato ma nessun campo data/anno riconoscibile"
+    },
+    {
+      "comune": "Fiesole",
+      "abitanti": 14076,
+      "funzionante": false,
+      "tag": "FORM_NO_DATE",
+      "url_albo": "https://fiesole.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "note": "Form trovato ma nessun campo data/anno riconoscibile"
+    },
+    {
+      "comune": "Pontassieve",
+      "abitanti": 20646,
+      "funzionante": false,
+      "tag": "FORM_NO_DATE",
+      "url_albo": "https://pubblicazioni.comune.pontassieve.fi.it/web/trasparenza/albo-pretorio",
+      "note": "Form trovato ma nessun campo data/anno riconoscibile"
+    },
+    {
+      "comune": "Borgo San Lorenzo",
+      "abitanti": 18542,
+      "funzionante": false,
+      "tag": "FORM_NO_DATE",
+      "url_albo": "https://borgosanlorenzo.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "note": "Form trovato ma nessun campo data/anno riconoscibile"
+    },
+    {
+      "comune": "Calenzano",
+      "abitanti": 17827,
+      "funzionante": false,
+      "tag": "FORM_NO_DATE",
+      "url_albo": "https://www.comune.calenzano.fi.it/it/page/80188",
+      "note": "Form trovato ma nessun campo data/anno riconoscibile"
+    }
+  ]
+}

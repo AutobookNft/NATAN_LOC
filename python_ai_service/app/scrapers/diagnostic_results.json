@@ -1,0 +1,145 @@
+{
+  "timestamp": "2025-11-13T23:38:23.599309",
+  "totale_comuni": 5,
+  "comuni": {
+    "Pisa": {
+      "comune": "Pisa",
+      "url": "https://albopretorio.comune.pisa.it/",
+      "timestamp": "2025-11-13T23:37:27.549437",
+      "problemi": [
+        {
+          "tipo": "no_api",
+          "dettagli": "Nessuna API pubblica per accesso dati strutturati"
+        }
+      ],
+      "soluzioni": [
+        {
+          "descrizione": "Creare API REST pubblica (GET /api/albo/atti)",
+          "costo_stimato": "€500-1.000",
+          "tempo_implementazione": "2-3 giorni"
+        }
+      ],
+      "suggerimento_email": "Spett.le Comune di Pisa,\n\nDurante l'analisi tecnica del vostro Albo Pretorio per il progetto NATAN, abbiamo riscontrato alcune criticità nell'accesso automatizzato ai dati pubblici che vorremmo segnalarvi in modo costruttivo.\n\n## 📋 Problema Identificato\n\n\nIl vostro Albo Pretorio **non espone API** per l'accesso automatizzato.\n\nProblema: I dati sono disponibili solo tramite interfaccia web HTML, senza endpoint API per il recupero in formato strutturato (JSON, XML, CSV).\n\nLimitazione: Impossibile creare servizi digitali che utilizzino i vostri dati pubblici.\n\nDettagli tecnici: Nessuna API pubblica per accesso dati strutturati\n\n## ✅ Soluzione Proposta\n\n\n**Soluzione Ideale**: API RESTful Completa\n- GET /api/albo/atti?anno=2025&tipo=delibera\n- GET /api/albo/atti/{id}\n- Paginazione, filtri, ordinamento\n- Documentazione OpenAPI/Swagger\n- Implementazione: 5-7 giorni\n- Costo: ~€2.000-3.000\n\n**Soluzione Minima Conforme**: Export CSV/JSON\n- Pulsante \"Esporta risultati ricerca\" → CSV/JSON\n- Già soddisfa obbligo formato aperto\n- Implementazione: 1-2 giorni\n- Costo: ~€300-500\n\n## 🎯 Benefici della Soluzione\n\n✅ **Conformità normativa**: Aderenza all'Art. 35 D.lgs 33/2013 (formato aperto)\n✅ **Migliore servizio cittadini**: Accesso facilitato alle informazioni\n✅ **Riduzione carico URP**: Meno richieste manuali di documentazione\n✅ **Interoperabilità**: Dati utilizzabili da altri servizi digitali\n✅ **Trasparenza proattiva**: Il Comune come esempio di PA digitale\n\n## 🤝 Nostra Disponibilità\n\nSiamo disponibili a:\n- Fornire consulenza tecnica gratuita\n- Testare la soluzione implementata\n- Documentare il vostro Comune come caso di successo\n- Supportare l'ufficio tecnico nell'implementazione\n\n## 📊 Stima Implementazione\n\nCosto stimato: €500-1.000\nTempo stimato: 2-3 giorni\nFattibilità: alta\nPriorità: media\n\nQuesto intervento rientra negli obblighi di accessibilità previsti dalla normativa vigente e rappresenta un'opportunità per migliorare il servizio ai cittadini.\n\nRestiamo a disposizione per ogni chiarimento e supporto tecnico.\n\nCordiali saluti,\n\nFabio Massacci\nProgetto NATAN\nEmail: fabio@natan.it\n",
+      "priorita": "media",
+      "fattibilita_fix": "alta"
+    },
+    "Lucca": {
+      "comune": "Lucca",
+      "url": "https://lucca.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "timestamp": "2025-11-13T23:37:31.747339",
+      "problemi": [
+        {
+          "tipo": "unknown",
+          "dettagli": "Errore connessione: HTTPSConnectionPool(host='lucca.trasparenza-valutazione-merito.it', port=443): Max retries exceeded with url: /web/trasparenza/albo-pretorio (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x7f5405cadbd0>, 'Connection to lucca.trasparenza-valutazione-merito.it timed out. (connect timeout=10)'))"
+        },
+        {
+          "tipo": "unknown",
+          "dettagli": "Errore analisi: Page.goto: Timeout 15000ms exceeded.\nCall log:\n  - navigating to \"https://lucca.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio\", waiting until \"networkidle\"\n"
+        }
+      ],
+      "soluzioni": [],
+      "suggerimento_email": "Spett.le Comune di Lucca,\n\nDurante l'analisi tecnica del vostro Albo Pretorio per il progetto NATAN, abbiamo riscontrato alcune criticità nell'accesso automatizzato ai dati pubblici che vorremmo segnalarvi in modo costruttivo.\n\n## 📋 Problema Identificato\n\nProblema tecnico non classificato nell'accesso ai dati.\n\nDettagli tecnici: Errore connessione: HTTPSConnectionPool(host='lucca.trasparenza-valutazione-merito.it', port=443): Max retries exceeded with url: /web/trasparenza/albo-pretorio (Caused by ConnectTimeoutError(<urllib3.connection.HTTPSConnection object at 0x7f5405cadbd0>, 'Connection to lucca.trasparenza-valutazione-merito.it timed out. (connect timeout=10)'))\n\n## ✅ Soluzione Proposta\n\nContattare progetto NATAN per consulenza specifica.\n\n## 🎯 Benefici della Soluzione\n\n✅ **Conformità normativa**: Aderenza all'Art. 35 D.lgs 33/2013 (formato aperto)\n✅ **Migliore servizio cittadini**: Accesso facilitato alle informazioni\n✅ **Riduzione carico URP**: Meno richieste manuali di documentazione\n✅ **Interoperabilità**: Dati utilizzabili da altri servizi digitali\n✅ **Trasparenza proattiva**: Il Comune come esempio di PA digitale\n\n## 🤝 Nostra Disponibilità\n\nSiamo disponibili a:\n- Fornire consulenza tecnica gratuita\n- Testare la soluzione implementata\n- Documentare il vostro Comune come caso di successo\n- Supportare l'ufficio tecnico nell'implementazione\n\n## 📊 Stima Implementazione\n\nQuesto intervento rientra negli obblighi di accessibilità previsti dalla normativa vigente e rappresenta un'opportunità per migliorare il servizio ai cittadini.\n\nRestiamo a disposizione per ogni chiarimento e supporto tecnico.\n\nCordiali saluti,\n\nFabio Massacci\nProgetto NATAN\nEmail: fabio@natan.it\n",
+      "priorita": "media",
+      "fattibilita_fix": "alta"
+    },
+    "Livorno": {
+      "comune": "Livorno",
+      "url": "https://www.comune.livorno.it/trasparenza-vm/albo-pretorio",
+      "timestamp": "2025-11-13T23:37:59.861860",
+      "problemi": [
+        {
+          "tipo": "captcha",
+          "dettagli": "CAPTCHA rilevato su dati pubblici"
+        },
+        {
+          "tipo": "form_complex",
+          "dettagli": "Form con 25 campi - eccessiva complessità"
+        },
+        {
+          "tipo": "no_api",
+          "dettagli": "Nessuna API pubblica per accesso dati strutturati"
+        }
+      ],
+      "soluzioni": [
+        {
+          "descrizione": "Rimuovere CAPTCHA per accesso Albo Pretorio pubblico",
+          "costo_stimato": "€0 (rimozione configurazione)",
+          "tempo_implementazione": "1 ora"
+        },
+        {
+          "descrizione": "Semplificare form ricerca (solo date + tipo atto)",
+          "costo_stimato": "€500-800",
+          "tempo_implementazione": "2-3 giorni"
+        },
+        {
+          "descrizione": "Creare API REST pubblica (GET /api/albo/atti)",
+          "costo_stimato": "€500-1.000",
+          "tempo_implementazione": "2-3 giorni"
+        }
+      ],
+      "suggerimento_email": "Spett.le Comune di Livorno,\n\nDurante l'analisi tecnica del vostro Albo Pretorio per il progetto NATAN, abbiamo riscontrato alcune criticità nell'accesso automatizzato ai dati pubblici che vorremmo segnalarvi in modo costruttivo.\n\n## 📋 Problema Identificato\n\n\nIl vostro Albo Pretorio utilizza **CAPTCHA** per l'accesso.\n\nProblema: Il CAPTCHA impedisce l'accesso automatizzato e crea barriere per utenti con disabilità visive.\n\nViolazione accessibilità: Contrasta le WCAG 2.1 (Web Content Accessibility Guidelines).\n\nDettagli tecnici: CAPTCHA rilevato su dati pubblici\n\n## ✅ Soluzione Proposta\n\n\n**Soluzione Ideale**: Rimuovere CAPTCHA per dati pubblici\n- Dati già pubblici → non servono protezioni\n- Mantenere CAPTCHA solo per form di invio (se presenti)\n- Implementazione: 1 ora\n- Costo: Zero\n\n**Soluzione Alternativa**: Rate Limiting Intelligente\n- Max 100 richieste/minuto per IP\n- Blocco temporaneo in caso abuso\n- Nessun CAPTCHA per accesso normale\n- Implementazione: 1 giorno\n- Costo: ~€200-400\n\n## 🎯 Benefici della Soluzione\n\n✅ **Conformità normativa**: Aderenza all'Art. 35 D.lgs 33/2013 (formato aperto)\n✅ **Migliore servizio cittadini**: Accesso facilitato alle informazioni\n✅ **Riduzione carico URP**: Meno richieste manuali di documentazione\n✅ **Interoperabilità**: Dati utilizzabili da altri servizi digitali\n✅ **Trasparenza proattiva**: Il Comune come esempio di PA digitale\n\n## 🤝 Nostra Disponibilità\n\nSiamo disponibili a:\n- Fornire consulenza tecnica gratuita\n- Testare la soluzione implementata\n- Documentare il vostro Comune come caso di successo\n- Supportare l'ufficio tecnico nell'implementazione\n\n## 📊 Stima Implementazione\n\nCosto stimato: €0 (rimozione configurazione)\nTempo stimato: 1 ora\nFattibilità: alta\nPriorità: media\n\nQuesto intervento rientra negli obblighi di accessibilità previsti dalla normativa vigente e rappresenta un'opportunità per migliorare il servizio ai cittadini.\n\nRestiamo a disposizione per ogni chiarimento e supporto tecnico.\n\nCordiali saluti,\n\nFabio Massacci\nProgetto NATAN\nEmail: fabio@natan.it\n",
+      "priorita": "media",
+      "fattibilita_fix": "alta"
+    },
+    "Arezzo": {
+      "comune": "Arezzo",
+      "url": "https://servizionline.comune.arezzo.it/jattipubblicazioni/",
+      "timestamp": "2025-11-13T23:38:11.302233",
+      "problemi": [
+        {
+          "tipo": "form_complex",
+          "dettagli": "Form con 13 campi - eccessiva complessità"
+        },
+        {
+          "tipo": "no_api",
+          "dettagli": "Nessuna API pubblica per accesso dati strutturati"
+        }
+      ],
+      "soluzioni": [
+        {
+          "descrizione": "Semplificare form ricerca (solo date + tipo atto)",
+          "costo_stimato": "€500-800",
+          "tempo_implementazione": "2-3 giorni"
+        },
+        {
+          "descrizione": "Creare API REST pubblica (GET /api/albo/atti)",
+          "costo_stimato": "€500-1.000",
+          "tempo_implementazione": "2-3 giorni"
+        }
+      ],
+      "suggerimento_email": "Spett.le Comune di Arezzo,\n\nDurante l'analisi tecnica del vostro Albo Pretorio per il progetto NATAN, abbiamo riscontrato alcune criticità nell'accesso automatizzato ai dati pubblici che vorremmo segnalarvi in modo costruttivo.\n\n## 📋 Problema Identificato\n\n\nIl form di ricerca del vostro Albo Pretorio presenta **complessità tecniche** eccessive.\n\nProblema: Form multi-step, validazioni JavaScript complesse, campi obbligatori non documentati.\n\nImpatto: Difficile accesso anche per cittadini comuni, non solo sistemi automatici.\n\nDettagli tecnici: Form con 13 campi - eccessiva complessità\n\n## ✅ Soluzione Proposta\n\n\n**Soluzione Ideale**: Semplificare Form + Aggiungere API\n- Form con solo campi essenziali (date, tipo atto)\n- Validazioni client-side semplici\n- API GET per bypass form\n- Implementazione: 3 giorni\n- Costo: ~€800-1.200\n\n**Soluzione Rapida**: Documentare API esistente\n- Se backend ha già API, documentarla pubblicamente\n- Implementazione: 1 giorno\n- Costo: ~€200-300\n\n## 🎯 Benefici della Soluzione\n\n✅ **Conformità normativa**: Aderenza all'Art. 35 D.lgs 33/2013 (formato aperto)\n✅ **Migliore servizio cittadini**: Accesso facilitato alle informazioni\n✅ **Riduzione carico URP**: Meno richieste manuali di documentazione\n✅ **Interoperabilità**: Dati utilizzabili da altri servizi digitali\n✅ **Trasparenza proattiva**: Il Comune come esempio di PA digitale\n\n## 🤝 Nostra Disponibilità\n\nSiamo disponibili a:\n- Fornire consulenza tecnica gratuita\n- Testare la soluzione implementata\n- Documentare il vostro Comune come caso di successo\n- Supportare l'ufficio tecnico nell'implementazione\n\n## 📊 Stima Implementazione\n\nCosto stimato: €500-800\nTempo stimato: 2-3 giorni\nFattibilità: alta\nPriorità: media\n\nQuesto intervento rientra negli obblighi di accessibilità previsti dalla normativa vigente e rappresenta un'opportunità per migliorare il servizio ai cittadini.\n\nRestiamo a disposizione per ogni chiarimento e supporto tecnico.\n\nCordiali saluti,\n\nFabio Massacci\nProgetto NATAN\nEmail: fabio@natan.it\n",
+      "priorita": "media",
+      "fattibilita_fix": "alta"
+    },
+    "Siena": {
+      "comune": "Siena",
+      "url": "https://www.comune.siena.it/albo-pretorio",
+      "timestamp": "2025-11-13T23:38:18.743372",
+      "problemi": [
+        {
+          "tipo": "form_complex",
+          "dettagli": "Form con 17 campi - eccessiva complessità"
+        },
+        {
+          "tipo": "no_api",
+          "dettagli": "Nessuna API pubblica per accesso dati strutturati"
+        }
+      ],
+      "soluzioni": [
+        {
+          "descrizione": "Semplificare form ricerca (solo date + tipo atto)",
+          "costo_stimato": "€500-800",
+          "tempo_implementazione": "2-3 giorni"
+        },
+        {
+          "descrizione": "Creare API REST pubblica (GET /api/albo/atti)",
+          "costo_stimato": "€500-1.000",
+          "tempo_implementazione": "2-3 giorni"
+        }
+      ],
+      "suggerimento_email": "Spett.le Comune di Siena,\n\nDurante l'analisi tecnica del vostro Albo Pretorio per il progetto NATAN, abbiamo riscontrato alcune criticità nell'accesso automatizzato ai dati pubblici che vorremmo segnalarvi in modo costruttivo.\n\n## 📋 Problema Identificato\n\n\nIl form di ricerca del vostro Albo Pretorio presenta **complessità tecniche** eccessive.\n\nProblema: Form multi-step, validazioni JavaScript complesse, campi obbligatori non documentati.\n\nImpatto: Difficile accesso anche per cittadini comuni, non solo sistemi automatici.\n\nDettagli tecnici: Form con 17 campi - eccessiva complessità\n\n## ✅ Soluzione Proposta\n\n\n**Soluzione Ideale**: Semplificare Form + Aggiungere API\n- Form con solo campi essenziali (date, tipo atto)\n- Validazioni client-side semplici\n- API GET per bypass form\n- Implementazione: 3 giorni\n- Costo: ~€800-1.200\n\n**Soluzione Rapida**: Documentare API esistente\n- Se backend ha già API, documentarla pubblicamente\n- Implementazione: 1 giorno\n- Costo: ~€200-300\n\n## 🎯 Benefici della Soluzione\n\n✅ **Conformità normativa**: Aderenza all'Art. 35 D.lgs 33/2013 (formato aperto)\n✅ **Migliore servizio cittadini**: Accesso facilitato alle informazioni\n✅ **Riduzione carico URP**: Meno richieste manuali di documentazione\n✅ **Interoperabilità**: Dati utilizzabili da altri servizi digitali\n✅ **Trasparenza proattiva**: Il Comune come esempio di PA digitale\n\n## 🤝 Nostra Disponibilità\n\nSiamo disponibili a:\n- Fornire consulenza tecnica gratuita\n- Testare la soluzione implementata\n- Documentare il vostro Comune come caso di successo\n- Supportare l'ufficio tecnico nell'implementazione\n\n## 📊 Stima Implementazione\n\nCosto stimato: €500-800\nTempo stimato: 2-3 giorni\nFattibilità: alta\nPriorità: media\n\nQuesto intervento rientra negli obblighi di accessibilità previsti dalla normativa vigente e rappresenta un'opportunità per migliorare il servizio ai cittadini.\n\nRestiamo a disposizione per ogni chiarimento e supporto tecnico.\n\nCordiali saluti,\n\nFabio Massacci\nProgetto NATAN\nEmail: fabio@natan.it\n",
+      "priorita": "media",
+      "fattibilita_fix": "alta"
+    }
+  }
+}
