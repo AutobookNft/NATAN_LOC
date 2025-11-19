@@ -87,3 +87,7 @@ Thumbs.db
 
 
 
+
+# Backup files con secrets
+*.env.backup*
+.env.backup.*

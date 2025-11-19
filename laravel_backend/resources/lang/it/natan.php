@@ -77,6 +77,22 @@ return [
             'title' => 'Ultra Semantic Engine (USE)',
             'description' => 'Sistema anti-allucinazione che genera solo risposte verificate con fonti accreditate. Non immagina. Dimostra.',
         ],
+    ],
+
+    'use' => [
+        'no_claims' => 'Nessuna claim verificata disponibile',
+        'inference_badge' => '[Deduzione]',
+        'no_sources' => 'Nessuna fonte disponibile',
+        'sources' => 'Fonti',
+        'unknown_source' => 'Fonte sconosciuta',
+        'source_page' => '(p. :page)',
+        'page_number' => '(p. :page)',
+        'urs_breakdown' => 'Dettaglio URS',
+        'blocked_claims_title' => 'Claim Bloccate',
+        'blocked_claims_explanation' => 'Le seguenti affermazioni sono state bloccate perché non raggiungono il livello minimo di affidabilità (URS < 0.5).',
+    ],
+
+    'explanations' => [
         'urs' => [
             'title' => 'Ultra Reliability Score (URS)',
             'description' => 'Punteggio di affidabilità da A (massima) a X (non verificato) per ogni affermazione, basato su fonti e coerenza logica.',

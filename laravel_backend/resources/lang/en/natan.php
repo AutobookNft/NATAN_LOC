@@ -77,6 +77,22 @@ return [
             'title' => 'Ultra Semantic Engine (USE)',
             'description' => 'Anti-hallucination system that generates only verified responses with accredited sources. It doesn\'t imagine. It proves.',
         ],
+    ],
+
+    'use' => [
+        'no_claims' => 'No verified claims available',
+        'inference_badge' => '[Inference]',
+        'no_sources' => 'No sources available',
+        'sources' => 'Sources',
+        'unknown_source' => 'Unknown source',
+        'source_page' => '(p. :page)',
+        'page_number' => '(p. :page)',
+        'urs_breakdown' => 'URS Breakdown',
+        'blocked_claims_title' => 'Blocked Claims',
+        'blocked_claims_explanation' => 'The following statements were blocked because they do not meet the minimum reliability threshold (URS < 0.5).',
+    ],
+
+    'explanations' => [
         'urs' => [
             'title' => 'Ultra Reliability Score (URS)',
             'description' => 'Reliability score from A (maximum) to X (unverified) for each statement, based on sources and logical consistency.',

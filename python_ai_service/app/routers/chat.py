@@ -1,9 +1,10 @@
-"""Chat router - LLM inference"""
+"""Chat router - LLM inference con RAG-Fortress Zero-Hallucination"""
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from app.services.ai_router import AIRouter
+from app.services.rag_fortress.pipeline import rag_fortress
 import time
 
 router = APIRouter()
@@ -21,21 +22,67 @@ class ChatRequest(BaseModel):
     task_class: str = "chat"  # For policy selection
     temperature: float = None  # Optional override
     max_tokens: int = None  # Optional override
+    use_rag_fortress: bool = True  # Usa RAG-Fortress per default
 
 class ChatResponse(BaseModel):
     message: str
     model: str
     usage: dict
     citations: List[str] = []
+    urs_score: Optional[float] = None
+    urs_explanation: Optional[str] = None
+    claims: List[str] = []
+    sources: List[str] = []
+    hallucinations_found: List[str] = []
+    gaps_detected: List[str] = []
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_inference(request: ChatRequest):
     """
-    LLM inference with persona (Claude/OpenAI/Ollama)
+    LLM inference con RAG-Fortress Zero-Hallucination Pipeline
     
-    Uses Policy Engine to select appropriate chat model based on context.
+    Se use_rag_fortress=True (default), usa la pipeline RAG-Fortress completa.
+    Altrimenti usa il metodo tradizionale con Policy Engine.
     """
     try:
+        # Se RAG-Fortress è abilitato, usa la pipeline completa
+        if request.use_rag_fortress:
+            # Estrai ultimo messaggio utente (domanda)
+            user_messages = [msg for msg in request.messages if msg.role == "user"]
+            if not user_messages:
+                raise HTTPException(status_code=400, detail="Nessun messaggio utente trovato")
+            
+            question = user_messages[-1].content
+            
+            # Esegui pipeline RAG-Fortress
+            start_time = time.time()
+            result = await rag_fortress(
+                question=question,
+                tenant_id=str(request.tenant_id),
+                user_id=None  # TODO: estrai da auth se disponibile
+            )
+            elapsed_ms = int((time.time() - start_time) * 1000)
+            
+            # Costruisci risposta con metadata RAG-Fortress
+            return ChatResponse(
+                message=result.get("answer", ""),
+                model="rag-fortress-pipeline",
+                usage={
+                    "prompt_tokens": 0,  # TODO: calcola da pipeline
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                    "elapsed_ms": elapsed_ms
+                },
+                citations=result.get("claims_used", []),
+                urs_score=result.get("urs_score", 0.0),
+                urs_explanation=result.get("urs_explanation", ""),
+                claims=result.get("claims_used", []),
+                sources=result.get("sources", []),
+                hallucinations_found=result.get("hallucinations_found", []),
+                gaps_detected=result.get("gaps_detected", [])
+            )
+        
+        # Metodo tradizionale (fallback)
         # Build context for policy engine
         context = {
             "tenant_id": request.tenant_id,

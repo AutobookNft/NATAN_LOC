@@ -22,7 +22,7 @@ class RetrieverService:
         self,
         query_embedding: List[float],
         tenant_id: int,
-        limit: int = 10,
+        limit: Optional[int] = None,
         min_score: float = 0.3,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
@@ -32,7 +32,7 @@ class RetrieverService:
         Args:
             query_embedding: Query embedding vector
             tenant_id: Tenant ID for isolation
-            limit: Max results to return
+            limit: Max results to return (None = default 100, STATISTICS RULE)
             min_score: Minimum similarity score
             filters: Optional filters (date_range, document_type, etc.)
         
@@ -40,6 +40,9 @@ class RetrieverService:
             List of chunks with source_ref, metadata, similarity score
             (Empty list if MongoDB unavailable)
         """
+        if limit is None:
+            limit = 100  # Default alto per OS3 STATISTICS RULE
+        
         from app.services.mongodb_service import MongoDBService
         
         # Check if MongoDB is available - force connection attempt

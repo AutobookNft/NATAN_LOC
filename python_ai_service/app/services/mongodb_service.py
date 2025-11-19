@@ -13,6 +13,14 @@ from app.config import (
 import os
 import logging
 
+# Import certifi for MongoDB Atlas SSL support
+try:
+    import certifi
+    CERTIFI_AVAILABLE = True
+except ImportError:
+    CERTIFI_AVAILABLE = False
+    certifi = None
+
 logger = logging.getLogger(__name__)
 
 class MongoDBService:
@@ -28,12 +36,43 @@ class MongoDBService:
         """Get or create MongoDB client (singleton)"""
         if cls._client is None:
             try:
-                cls._client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+                # Support SSL for MongoDB Atlas
+                if "mongodb.net" in MONGODB_URI or "mongodb+srv" in MONGODB_URI:
+                    # MongoDB Atlas connection with SSL
+                    if CERTIFI_AVAILABLE:
+                        cls._client = MongoClient(
+                            MONGODB_URI,
+                            tls=True,
+                            tlsCAFile=certifi.where(),  # Use standard CA certificates
+                            serverSelectionTimeoutMS=5000
+                        )
+                    else:
+                        # Fallback: SSL without certifi (less secure)
+                        logger.warning("certifi not available, using SSL without CA verification")
+                        cls._client = MongoClient(
+                            MONGODB_URI,
+                            tls=True,
+                            tlsAllowInvalidCertificates=False,  # Still validate, just without certifi
+                            serverSelectionTimeoutMS=5000
+                        )
+                else:
+                    # Standard MongoDB connection (local or DocumentDB)
+                    cls._client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+                
                 # Test connection
                 cls._client.admin.command('ping')
-                logger.info("MongoDB connection established")
+                logger.info("MongoDB connection established", {
+                    'host': MONGODB_HOST,
+                    'database': MONGODB_DATABASE,
+                    'log_category': 'MONGODB_CONNECTION_SUCCESS'
+                })
                 cls._connected = True
             except Exception as e:
+                logger.warning("MongoDB connection failed", {
+                    'host': MONGODB_HOST,
+                    'error': str(e),
+                    'log_category': 'MONGODB_CONNECTION_ERROR'
+                })
                 logger.warning(f"MongoDB connection failed: {e}. Service will run without vector search.")
 
                 # Fallback: if running outside Docker, try localhost/127.0.0.1
