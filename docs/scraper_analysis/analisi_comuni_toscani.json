@@ -1,0 +1,546 @@
+{
+  "analysis_date": "2025-11-13T17:43:47.354618",
+  "total_comuni": 12,
+  "comuni": {
+    "arezzo": {
+      "comune": "Arezzo",
+      "provincia": "AR",
+      "popolazione": 99543,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.arezzo.it/albo-pretorio",
+          "final_url": "https://www.comune.arezzo.it/albo-pretorio",
+          "status_code": 200,
+          "accessible": true,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "Apache/2.4.58 (Ubuntu)",
+          "timestamp": "2025-11-13T17:43:47.790140",
+          "platform": {
+            "name": "Drupal",
+            "vendor": null,
+            "version": null,
+            "indicators": [
+              "drupal"
+            ]
+          },
+          "patterns": {
+            "has_table_layout": false,
+            "has_card_layout": true,
+            "has_list_layout": true,
+            "has_pagination": false,
+            "has_search_form": false,
+            "has_pdf_links": false,
+            "pdf_count": 0
+          },
+          "api_endpoints": [],
+          "elements": {
+            "total_links": 83,
+            "total_images": 3,
+            "total_forms": 1,
+            "total_tables": 0,
+            "has_react": false,
+            "has_vue": false,
+            "has_angular": false
+          }
+        },
+        {
+          "url": "https://albo.comune.arezzo.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [
+        "https://www.comune.arezzo.it/albo-pretorio"
+      ],
+      "platforms_detected": [
+        "Drupal"
+      ],
+      "analysis_timestamp": "2025-11-13T17:43:47.355027"
+    },
+    "carrara": {
+      "comune": "Carrara",
+      "provincia": "MS",
+      "popolazione": 62592,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.carrara.ms.it/albo-pretorio",
+          "final_url": "https://www.comune.carrara.ms.it/albo-pretorio",
+          "status_code": 404,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "nginx",
+          "timestamp": "2025-11-13T17:43:53.818937"
+        },
+        {
+          "url": "https://albopretorio.comune.carrara.ms.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [],
+      "platforms_detected": [],
+      "analysis_timestamp": "2025-11-13T17:43:51.995955"
+    },
+    "firenze": {
+      "comune": "Firenze",
+      "provincia": "FI",
+      "popolazione": 382258,
+      "urls_tested": [
+        {
+          "url": "https://accessoconcertificato.comune.fi.it/AOL/Affissione/ComuneFi/Page",
+          "final_url": "https://accessoconcertificato.comune.fi.it/AOL/Affissione/ComuneFi/Page",
+          "status_code": 200,
+          "accessible": true,
+          "redirect": false,
+          "content_type": "text/html; charset=utf-8",
+          "server": "Microsoft-IIS/10.0",
+          "timestamp": "2025-11-13T17:43:58.395960",
+          "platform": {
+            "name": "Drupal",
+            "vendor": null,
+            "version": null,
+            "indicators": [
+              "drupal"
+            ]
+          },
+          "patterns": {
+            "has_table_layout": false,
+            "has_card_layout": true,
+            "has_list_layout": false,
+            "has_pagination": true,
+            "has_search_form": false,
+            "has_pdf_links": false,
+            "pdf_count": 0
+          },
+          "api_endpoints": [],
+          "elements": {
+            "total_links": 105,
+            "total_images": 7,
+            "total_forms": 2,
+            "total_tables": 0,
+            "has_react": false,
+            "has_vue": false,
+            "has_angular": false
+          }
+        },
+        {
+          "url": "https://accessoconcertificato.comune.fi.it/trasparenza-atti/",
+          "final_url": "https://accessoconcertificato.comune.fi.it/trasparenza-atti/",
+          "status_code": 200,
+          "accessible": true,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "Apache/2.4.6 (CentOS) PHP/7.2.34",
+          "timestamp": "2025-11-13T17:43:59.554042",
+          "platform": {
+            "name": "Unknown",
+            "vendor": null,
+            "version": null,
+            "indicators": []
+          },
+          "patterns": {
+            "has_table_layout": false,
+            "has_card_layout": false,
+            "has_list_layout": false,
+            "has_pagination": false,
+            "has_search_form": false,
+            "has_pdf_links": false,
+            "pdf_count": 0
+          },
+          "api_endpoints": [],
+          "elements": {
+            "total_links": 0,
+            "total_images": 0,
+            "total_forms": 0,
+            "total_tables": 0,
+            "has_react": false,
+            "has_vue": false,
+            "has_angular": false
+          }
+        }
+      ],
+      "accessible_urls": [
+        "https://accessoconcertificato.comune.fi.it/AOL/Affissione/ComuneFi/Page",
+        "https://accessoconcertificato.comune.fi.it/trasparenza-atti/"
+      ],
+      "platforms_detected": [
+        "Drupal"
+      ],
+      "analysis_timestamp": "2025-11-13T17:43:57.891925"
+    },
+    "grosseto": {
+      "comune": "Grosseto",
+      "provincia": "GR",
+      "popolazione": 82284,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.grosseto.it/albo-pretorio",
+          "final_url": "https://www.comune.grosseto.it/albo-pretorio",
+          "status_code": 404,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html; charset=iso-8859-1",
+          "server": "Apache",
+          "timestamp": "2025-11-13T17:44:03.291438"
+        },
+        {
+          "url": "https://albopretorio.comune.grosseto.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [],
+      "platforms_detected": [],
+      "analysis_timestamp": "2025-11-13T17:44:02.562188"
+    },
+    "livorno": {
+      "comune": "Livorno",
+      "provincia": "LI",
+      "popolazione": 157139,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.livorno.it/albo-pretorio",
+          "final_url": "https://www.comune.livorno.it/albo-pretorio",
+          "status_code": 404,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "nginx",
+          "timestamp": "2025-11-13T17:44:10.247537"
+        },
+        {
+          "url": "https://albopretorio.comune.livorno.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [],
+      "platforms_detected": [],
+      "analysis_timestamp": "2025-11-13T17:44:07.350115"
+    },
+    "lucca": {
+      "comune": "Lucca",
+      "provincia": "LU",
+      "popolazione": 89046,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.lucca.it/albo-pretorio",
+          "final_url": "https://www.comune.lucca.it/servizio/albo-pretorio-on-line/",
+          "status_code": 200,
+          "accessible": true,
+          "redirect": true,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "Apache/2.4.58 (Unix) OpenSSL/1.1.1w PHP/8.1.25",
+          "timestamp": "2025-11-13T17:44:17.771812",
+          "platform": {
+            "name": "WordPress",
+            "vendor": "WordPress 6.8.2",
+            "version": null,
+            "indicators": [
+              "wp-includes"
+            ]
+          },
+          "patterns": {
+            "has_table_layout": false,
+            "has_card_layout": true,
+            "has_list_layout": true,
+            "has_pagination": false,
+            "has_search_form": true,
+            "has_pdf_links": true,
+            "pdf_count": 1
+          },
+          "api_endpoints": [
+            "search_columns\\",
+            "is_search\\"
+          ],
+          "elements": {
+            "total_links": 100,
+            "total_images": 1,
+            "total_forms": 1,
+            "total_tables": 0,
+            "has_react": false,
+            "has_vue": false,
+            "has_angular": false
+          }
+        },
+        {
+          "url": "https://albopretorio.comune.lucca.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [
+        "https://www.comune.lucca.it/albo-pretorio"
+      ],
+      "platforms_detected": [
+        "WordPress"
+      ],
+      "analysis_timestamp": "2025-11-13T17:44:14.299598"
+    },
+    "massa": {
+      "comune": "Massa",
+      "provincia": "MS",
+      "popolazione": 68511,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.massa.ms.it/albo-pretorio",
+          "final_url": "https://www.comune.massa.ms.it/albo-pretorio",
+          "status_code": 404,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "Apache",
+          "timestamp": "2025-11-13T17:44:22.306982"
+        },
+        {
+          "url": "https://albopretorio.comune.massa.ms.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [],
+      "platforms_detected": [],
+      "analysis_timestamp": "2025-11-13T17:44:22.028879"
+    },
+    "pisa": {
+      "comune": "Pisa",
+      "provincia": "PI",
+      "popolazione": 90745,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.pisa.it/albo-pretorio",
+          "final_url": "https://www.comune.pisa.it/albo-pretorio",
+          "status_code": 410,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html; charset=utf-8",
+          "server": "",
+          "timestamp": "2025-11-13T17:44:27.067571"
+        },
+        {
+          "url": "https://albopretorio.comune.pisa.it/",
+          "final_url": "https://albopretorio.comune.pisa.it/",
+          "status_code": 200,
+          "accessible": true,
+          "redirect": false,
+          "content_type": "text/html;charset=UTF-8",
+          "server": "Apache",
+          "timestamp": "2025-11-13T17:44:28.380300",
+          "platform": {
+            "name": "Unknown",
+            "vendor": null,
+            "version": null,
+            "indicators": []
+          },
+          "patterns": {
+            "has_table_layout": false,
+            "has_card_layout": false,
+            "has_list_layout": false,
+            "has_pagination": true,
+            "has_search_form": false,
+            "has_pdf_links": false,
+            "pdf_count": 0
+          },
+          "api_endpoints": [
+            ").innerHTML;\n\t\t\n\t\t//Main URL della sezione corrente - Utilizzato per capire se utente in homepage(rimane vuoto) o in una sezione specifica(popolato con mainUrl della sezione selezionata) \n\t\tvar mainUrlCurrent = ",
+            ".fa-search"
+          ],
+          "elements": {
+            "total_links": 26,
+            "total_images": 2,
+            "total_forms": 1,
+            "total_tables": 0,
+            "has_react": false,
+            "has_vue": false,
+            "has_angular": false
+          }
+        }
+      ],
+      "accessible_urls": [
+        "https://albopretorio.comune.pisa.it/"
+      ],
+      "platforms_detected": [],
+      "analysis_timestamp": "2025-11-13T17:44:26.365854"
+    },
+    "pistoia": {
+      "comune": "Pistoia",
+      "provincia": "PT",
+      "popolazione": 90363,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.pistoia.it/albo-pretorio",
+          "final_url": "https://www.comune.pistoia.it/albo-pretorio",
+          "status_code": 404,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "nginx",
+          "timestamp": "2025-11-13T17:44:32.464131"
+        },
+        {
+          "url": "https://albopretorio.comune.pistoia.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [],
+      "platforms_detected": [],
+      "analysis_timestamp": "2025-11-13T17:44:31.479300"
+    },
+    "prato": {
+      "comune": "Prato",
+      "provincia": "PO",
+      "popolazione": 195763,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.prato.it/albo/",
+          "final_url": "https://www.comune.prato.it/albo/",
+          "status_code": 404,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html; charset=iso-8859-1",
+          "server": "Apache",
+          "timestamp": "2025-11-13T17:44:36.780629"
+        },
+        {
+          "url": "https://trasparenza.comune.prato.it/",
+          "final_url": "https://trasparenza.comune.prato.it/",
+          "status_code": 200,
+          "accessible": true,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "Apache",
+          "timestamp": "2025-11-13T17:44:38.646624",
+          "platform": {
+            "name": "Istituzionale",
+            "vendor": null,
+            "version": null,
+            "indicators": [
+              "istituzionale"
+            ]
+          },
+          "patterns": {
+            "has_table_layout": false,
+            "has_card_layout": true,
+            "has_list_layout": true,
+            "has_pagination": false,
+            "has_search_form": true,
+            "has_pdf_links": false,
+            "pdf_count": 0
+          },
+          "api_endpoints": [],
+          "elements": {
+            "total_links": 295,
+            "total_images": 4,
+            "total_forms": 1,
+            "total_tables": 0,
+            "has_react": false,
+            "has_vue": false,
+            "has_angular": false
+          }
+        }
+      ],
+      "accessible_urls": [
+        "https://trasparenza.comune.prato.it/"
+      ],
+      "platforms_detected": [
+        "Istituzionale"
+      ],
+      "analysis_timestamp": "2025-11-13T17:44:36.525921"
+    },
+    "siena": {
+      "comune": "Siena",
+      "provincia": "SI",
+      "popolazione": 53903,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.siena.it/albo-pretorio",
+          "final_url": "https://www.comune.siena.it/albo-pretorio",
+          "status_code": 200,
+          "accessible": true,
+          "redirect": false,
+          "content_type": "text/html; charset=UTF-8",
+          "server": "Apache/2.4.65 (Ubuntu)",
+          "timestamp": "2025-11-13T17:44:42.048516",
+          "platform": {
+            "name": "Drupal",
+            "vendor": null,
+            "version": null,
+            "indicators": [
+              "drupal"
+            ]
+          },
+          "patterns": {
+            "has_table_layout": false,
+            "has_card_layout": true,
+            "has_list_layout": true,
+            "has_pagination": false,
+            "has_search_form": false,
+            "has_pdf_links": false,
+            "pdf_count": 0
+          },
+          "api_endpoints": [
+            "Performance cookies collect aggregated information about how our website is used. The purpose of this is to improve its attractiveness, content and functionality. These cookies help us to determine whether, how often and for how long particular sub-pages of our website are accessed and which content users are particularly interested in. Search terms, country, region and (where applicable) the city from which the website is accessed are also recorded, as is the proportion of mobile devices that are used to access the website. We use this information to compile statistical reports that help us tailor the content of our website to your needs and optimize our offer."
+          ],
+          "elements": {
+            "total_links": 78,
+            "total_images": 3,
+            "total_forms": 1,
+            "total_tables": 0,
+            "has_react": false,
+            "has_vue": false,
+            "has_angular": false
+          }
+        },
+        {
+          "url": "https://albopretorio.comune.siena.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [
+        "https://www.comune.siena.it/albo-pretorio"
+      ],
+      "platforms_detected": [
+        "Drupal"
+      ],
+      "analysis_timestamp": "2025-11-13T17:44:41.813838"
+    },
+    "viareggio": {
+      "comune": "Viareggio",
+      "provincia": "LU",
+      "popolazione": 62467,
+      "urls_tested": [
+        {
+          "url": "https://www.comune.viareggio.lu.it/albo-pretorio",
+          "final_url": "https://www.comune.viareggio.lu.it/albo-pretorio",
+          "status_code": 404,
+          "accessible": false,
+          "redirect": false,
+          "content_type": "text/html;charset=UTF-8",
+          "server": "Apache/2.4.37 (rocky) mod_jk/1.2.48",
+          "timestamp": "2025-11-13T17:44:51.480685"
+        },
+        {
+          "url": "https://albopretorio.comune.viareggio.lu.it/",
+          "accessible": false,
+          "error": "connection_error"
+        }
+      ],
+      "accessible_urls": [],
+      "platforms_detected": [],
+      "analysis_timestamp": "2025-11-13T17:44:51.219656"
+    }
+  },
+  "statistics": {
+    "total_urls_tested": 24,
+    "total_accessible": 7,
+    "platforms_summary": {
+      "Drupal": 3,
+      "WordPress": 1,
+      "Istituzionale": 1
+    }
+  }
+}
