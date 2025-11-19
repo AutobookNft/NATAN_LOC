@@ -1,0 +1,126 @@
+{
+  "timestamp": "2025-11-14T00:50:34.120709",
+  "stats": {
+    "totale": 10,
+    "funzionanti": 1,
+    "atti_totali": 415
+  },
+  "comuni": [
+    {
+      "comune": "Firenze",
+      "abitanti": 382808,
+      "funzionante": true,
+      "metodo": "API_REST",
+      "atti": 415,
+      "url": "https://accessoconcertificato.comune.fi.it/trasparenza-atti-cat/searchAtti"
+    },
+    {
+      "comune": "Sesto Fiorentino",
+      "abitanti": 48855,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "timeout_connection",
+      "soluzione_suggerita": "Timeout connessione (possibile sovraccarico server). SOLUZIONI: 1) Ottimizzare infrastruttura server (costo variabile). 2) CDN per contenuti statici (€50-200/mese).",
+      "priorita": "media",
+      "costo_stimato": "variabile",
+      "tempo_stimato": "da valutare"
+    },
+    {
+      "comune": "Scandicci",
+      "abitanti": 50527,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "no_api",
+      "soluzione_suggerita": "Nessuna API pubblica rilevata. SOLUZIONI: 1) API REST: GET /api/albo/atti?anno=2025 (€500-1.000, 2-3 giorni). 2) Export CSV risultati ricerca (€300-500, 1-2 giorni). 3) Feed RSS atti (€300-500, 1-2 giorni).",
+      "priorita": "media",
+      "costo_stimato": "€300-1.000",
+      "tempo_stimato": "1-3 giorni"
+    },
+    {
+      "comune": "Empoli",
+      "abitanti": 48711,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "error",
+      "soluzione_suggerita": "Errore tecnico: HTTPSConnectionPool(host='www.empoli.gov.it', port=443): Max retries exceeded with url: / (Caused by. Necessaria analisi manuale approfondita.",
+      "priorita": "media",
+      "costo_stimato": "da valutare",
+      "tempo_stimato": "da valutare"
+    },
+    {
+      "comune": "Campi Bisenzio",
+      "abitanti": 47296,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "no_api",
+      "soluzione_suggerita": "Nessuna API pubblica rilevata. SOLUZIONI: 1) API REST: GET /api/albo/atti?anno=2025 (€500-1.000, 2-3 giorni). 2) Export CSV risultati ricerca (€300-500, 1-2 giorni). 3) Feed RSS atti (€300-500, 1-2 giorni).",
+      "priorita": "media",
+      "costo_stimato": "€300-1.000",
+      "tempo_stimato": "1-3 giorni"
+    },
+    {
+      "comune": "Bagno a Ripoli",
+      "abitanti": 25815,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "no_api",
+      "soluzione_suggerita": "Nessuna API pubblica rilevata. SOLUZIONI: 1) API REST: GET /api/albo/atti?anno=2025 (€500-1.000, 2-3 giorni). 2) Export CSV risultati ricerca (€300-500, 1-2 giorni). 3) Feed RSS atti (€300-500, 1-2 giorni).",
+      "priorita": "media",
+      "costo_stimato": "€300-1.000",
+      "tempo_stimato": "1-3 giorni"
+    },
+    {
+      "comune": "Fiesole",
+      "abitanti": 14175,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "no_api",
+      "soluzione_suggerita": "Nessuna API pubblica rilevata. SOLUZIONI: 1) API REST: GET /api/albo/atti?anno=2025 (€500-1.000, 2-3 giorni). 2) Export CSV risultati ricerca (€300-500, 1-2 giorni). 3) Feed RSS atti (€300-500, 1-2 giorni).",
+      "priorita": "media",
+      "costo_stimato": "€300-1.000",
+      "tempo_stimato": "1-3 giorni"
+    },
+    {
+      "comune": "Pontassieve",
+      "abitanti": 21161,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "no_api",
+      "soluzione_suggerita": "Nessuna API pubblica rilevata. SOLUZIONI: 1) API REST: GET /api/albo/atti?anno=2025 (€500-1.000, 2-3 giorni). 2) Export CSV risultati ricerca (€300-500, 1-2 giorni). 3) Feed RSS atti (€300-500, 1-2 giorni).",
+      "priorita": "media",
+      "costo_stimato": "€300-1.000",
+      "tempo_stimato": "1-3 giorni"
+    },
+    {
+      "comune": "Borgo San Lorenzo",
+      "abitanti": 18556,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "captcha",
+      "soluzione_suggerita": "CAPTCHA su dati pubblici (viola accessibilità WCAG 2.1). SOLUZIONI: 1) Rimuovere CAPTCHA per albo pubblico (€0, 1 ora). 2) Rate limiting intelligente invece di CAPTCHA (€200-400, 1 giorno).",
+      "priorita": "alta",
+      "costo_stimato": "€0-400",
+      "tempo_stimato": "1 ora - 1 giorno"
+    },
+    {
+      "comune": "Calenzano",
+      "abitanti": 17638,
+      "funzionante": false,
+      "tag": "DA_INVESTIGARE_MANUALMENTE",
+      "note": "Richiede analisi manuale approfondita",
+      "diagnosi": "captcha",
+      "soluzione_suggerita": "CAPTCHA su dati pubblici (viola accessibilità WCAG 2.1). SOLUZIONI: 1) Rimuovere CAPTCHA per albo pubblico (€0, 1 ora). 2) Rate limiting intelligente invece di CAPTCHA (€200-400, 1 giorno).",
+      "priorita": "alta",
+      "costo_stimato": "€0-400",
+      "tempo_stimato": "1 ora - 1 giorno"
+    }
+  ]
+}
