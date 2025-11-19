@@ -1,0 +1,211 @@
+{
+  "timestamp": "2025-11-13T21:06:02.221243",
+  "total_comuni": 12,
+  "successful": 3,
+  "detected": 7,
+  "failed": 5,
+  "coverage_pct": 38.30323033175627,
+  "results": [
+    {
+      "comune": "Firenze",
+      "code": "firenze",
+      "url": "https://accessoconcertificato.comune.fi.it/AOL/Affissione/ComuneFi/Page",
+      "platform": "custom_api",
+      "popolazione": 382258,
+      "timestamp": "2025-11-13T21:05:52.720878",
+      "scraper_used": "FirenzeAPIScraper",
+      "detection_ok": true,
+      "scraping_ok": true,
+      "atti_count": 415,
+      "error": null,
+      "sample_atti": [
+        {
+          "numero": "00002/2025",
+          "oggetto": "Avviso Pubblico “BICI IN COMUNE” emesso da Sport e Salute s.p.a - Approvazione proposta progettuale ",
+          "data": 1736722800000,
+          "tipo": "DG"
+        },
+        {
+          "numero": "00003/2025",
+          "oggetto": "Musei Civici – Museo Novecento - Ciclo di incontri dal titolo “Impalestra tra Museo e Accademia” pro",
+          "data": 1736722800000,
+          "tipo": "DG"
+        },
+        {
+          "numero": "00001/2025",
+          "oggetto": "107° edizione Pitti immagine Uomo - evento collaterale MM6 Maison Margiela -13-16gennaio 2025-Dichia",
+          "data": 1736290800000,
+          "tipo": "DG"
+        }
+      ]
+    },
+    {
+      "comune": "Arezzo",
+      "code": "arezzo",
+      "url": "https://www.comune.arezzo.it/albo-pretorio",
+      "platform": "drupal",
+      "popolazione": 99543,
+      "timestamp": "2025-11-13T21:06:00.046106",
+      "scraper_used": "DrupalAlboScraper",
+      "detection_ok": true,
+      "scraping_ok": true,
+      "atti_count": 1,
+      "error": null,
+      "sample_atti": [
+        {
+          "numero": "atto_1763064360",
+          "oggetto": "Albo Pretorio on line:",
+          "data": "2025-11-13T21:06:00.584925",
+          "tipo": "atto"
+        }
+      ]
+    },
+    {
+      "comune": "Siena",
+      "code": "siena",
+      "url": "https://www.comune.siena.it/albo-pretorio",
+      "platform": "drupal",
+      "popolazione": 53903,
+      "timestamp": "2025-11-13T21:06:00.585458",
+      "scraper_used": "DrupalAlboScraper",
+      "detection_ok": true,
+      "scraping_ok": true,
+      "atti_count": 1,
+      "error": null,
+      "sample_atti": [
+        {
+          "numero": "atto_1763064360",
+          "oggetto": "Albo p",
+          "data": "2025-11-13T21:06:00.943609",
+          "tipo": "atto"
+        }
+      ]
+    },
+    {
+      "comune": "Lucca",
+      "code": "lucca",
+      "url": "https://www.comune.lucca.it/albo-pretorio",
+      "platform": "wordpress",
+      "popolazione": 89046,
+      "timestamp": "2025-11-13T21:06:00.945364",
+      "scraper_used": null,
+      "detection_ok": false,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Livorno",
+      "code": "livorno",
+      "url": "https://livorno.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "platform": "trasparenza_vm",
+      "popolazione": 157139,
+      "timestamp": "2025-11-13T21:06:00.945479",
+      "scraper_used": "TrasparenzaVMScraper",
+      "detection_ok": true,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Grosseto",
+      "code": "grosseto",
+      "url": "https://grosseto.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "platform": "trasparenza_vm",
+      "popolazione": 82284,
+      "timestamp": "2025-11-13T21:06:00.946833",
+      "scraper_used": "TrasparenzaVMScraper",
+      "detection_ok": true,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Pistoia",
+      "code": "pistoia",
+      "url": "https://pistoia.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "platform": "trasparenza_vm",
+      "popolazione": 90363,
+      "timestamp": "2025-11-13T21:06:00.947544",
+      "scraper_used": "TrasparenzaVMScraper",
+      "detection_ok": true,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Carrara",
+      "code": "carrara",
+      "url": "https://carrara.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio",
+      "platform": "trasparenza_vm",
+      "popolazione": 62997,
+      "timestamp": "2025-11-13T21:06:00.947990",
+      "scraper_used": "TrasparenzaVMScraper",
+      "detection_ok": true,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Prato",
+      "code": "prato",
+      "url": "https://trasparenza.comune.prato.it/",
+      "platform": "custom",
+      "popolazione": 195763,
+      "timestamp": "2025-11-13T21:06:00.948145",
+      "scraper_used": "DrupalAlboScraper",
+      "detection_ok": false,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Pisa",
+      "code": "pisa",
+      "url": "https://albopretorio.comune.pisa.it/",
+      "platform": "unknown",
+      "popolazione": 90745,
+      "timestamp": "2025-11-13T21:06:01.915213",
+      "scraper_used": "DrupalAlboScraper",
+      "detection_ok": false,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Bagno a Ripoli",
+      "code": "bagno_a_ripoli",
+      "url": "https://trasparenza.comune.bagno-a-ripoli.fi.it/web/trasparenza/menu-albo-pretorio",
+      "platform": "custom_js",
+      "popolazione": 26035,
+      "timestamp": "2025-11-13T21:06:02.221050",
+      "scraper_used": null,
+      "detection_ok": false,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": null,
+      "sample_atti": []
+    },
+    {
+      "comune": "Massa",
+      "code": "massa",
+      "url": null,
+      "platform": "unknown",
+      "popolazione": 68511,
+      "timestamp": "2025-11-13T21:06:02.221077",
+      "scraper_used": null,
+      "detection_ok": false,
+      "scraping_ok": false,
+      "atti_count": 0,
+      "error": "URL not available",
+      "sample_atti": []
+    }
+  ]
+}
