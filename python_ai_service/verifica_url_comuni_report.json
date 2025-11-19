@@ -1,0 +1,240 @@
+{
+  "timestamp": "2025-11-14 09:56:56",
+  "totale_comuni": 10,
+  "raggiungibili": 8,
+  "con_redirect": 9,
+  "con_subdomain_albo": 8,
+  "risultati": [
+    {
+      "comune": "Firenze",
+      "url_dichiarato": "https://www.comune.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.firenze.it/",
+      "redirect": true,
+      "subdomain_albo": [],
+      "link_albo_trovati": [
+        {
+          "text": "bandi di gara e contrattisezione di amministrazione trasparente",
+          "url": "https://amministrazionetrasparente.comune.firenze.it/pagina/amministrazione-trasparente/bandi-di-gara-e-contratti"
+        },
+        {
+          "text": "bandi di gara e contratti",
+          "url": "https://amministrazionetrasparente.comune.firenze.it/pagina/amministrazione-trasparente/bandi-di-gara-e-contratti"
+        },
+        {
+          "text": "albo pretorio",
+          "url": "https://www.comune.firenze.it/albo-pretorio"
+        },
+        {
+          "text": "albo on line",
+          "url": "https://www.comune.firenze.it/albo-pretorio"
+        }
+      ]
+    },
+    {
+      "comune": "Sesto Fiorentino",
+      "url_dichiarato": "https://www.sestofiorentino.it",
+      "url_raggiungibile": false,
+      "status_code": 403,
+      "url_reale": "https://www.sestofiorentino.it/",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.sesto-fiorentino.fi.it"
+      ],
+      "link_albo_trovati": []
+    },
+    {
+      "comune": "Scandicci",
+      "url_dichiarato": "https://www.comune.scandicci.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.scandicci.fi.it/",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.fi.it",
+        "https://servizi.comune.fi.it"
+      ],
+      "link_albo_trovati": [
+        {
+          "text": "albo pretorio on-line",
+          "url": "https://scandicci.soluzionipa.it/openweb/albo/albo_pretorio.php"
+        },
+        {
+          "text": "richiesta accesso ai documenti del servizio gare e contratti",
+          "url": "https://www.comune.scandicci.fi.it/amministrazione/documenti-e-dati/istanza/richiesta-accesso-ai-documenti-del-servizio-gare-e"
+        },
+        {
+          "text": "albo presidenti di seggio elettorale",
+          "url": "https://www.comune.scandicci.fi.it/servizi/anagrafe-e-stato-civile/albo-presidenti-di-seggio-elettorale-0"
+        },
+        {
+          "text": "albo scrutatori seggio elettorale",
+          "url": "https://www.comune.scandicci.fi.it/servizi/anagrafe-e-stato-civile/albo-scrutatori-seggio-elettorale"
+        },
+        {
+          "text": "archivio atti fino al 2023",
+          "url": "https://www.comune.scandicci.fi.it/node/65644"
+        }
+      ]
+    },
+    {
+      "comune": "Empoli",
+      "url_dichiarato": "https://www.empoli.gov.it",
+      "url_raggiungibile": false,
+      "status_code": "CONNECTION_ERROR",
+      "url_reale": null,
+      "redirect": false,
+      "subdomain_albo": [],
+      "link_albo_trovati": []
+    },
+    {
+      "comune": "Campi Bisenzio",
+      "url_dichiarato": "https://www.comune.campi-bisenzio.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.campi-bisenzio.fi.it/",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.fi.it",
+        "https://servizi.comune.fi.it"
+      ],
+      "link_albo_trovati": [
+        {
+          "text": "ricerca atti\n                                        \n\n                                            r",
+          "url": "https://campibisenzio.trasparenza-valutazione-merito.it/web/trasparenza/dettaglio-albo-pretorio?p_p_id=jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&p_p_col_id=column-2&p_p_col_count=1&_jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet_current-page-parent=0&_jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet_current-page=10387"
+        },
+        {
+          "text": "albo pretorio\n                                        \n\n                                            ",
+          "url": "https://campibisenzio.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio"
+        },
+        {
+          "text": "f.i.d.o.\n                                        \n\n                                            forma",
+          "url": "https://fido.comune.campi-bisenzio.fi.it/SuperEngine.php?modulo=DOMANDA#!"
+        },
+        {
+          "text": "pubblicazioni di matrimonio",
+          "url": "https://www.comune.campi-bisenzio.fi.it/servizi/anagrafe-e-stato-civile/richiedere-una-pubblicazione-di-matrimonio"
+        }
+      ]
+    },
+    {
+      "comune": "Bagno a Ripoli",
+      "url_dichiarato": "https://www.comune.bagno-a-ripoli.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.bagno-a-ripoli.fi.it/",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.fi.it",
+        "https://servizi.comune.fi.it"
+      ],
+      "link_albo_trovati": [
+        {
+          "text": "albo pretorio",
+          "url": "https://trasparenza.comune.bagno-a-ripoli.fi.it/web/trasparenza/menu-albo-pretorio"
+        },
+        {
+          "text": "evento alluvionale marzo 2025, attivo il portale della regione toscana per la ricognizione dei danni",
+          "url": "https://www.comune.bagno-a-ripoli.fi.it/novita/notizie/evento-alluvionale-marzo-2025-attivo-il-portale-della-regione-toscana-la"
+        },
+        {
+          "text": "“muoviti con afa”, da settembre i corsi di attività fisica adattata per adulti e anziani",
+          "url": "https://www.comune.bagno-a-ripoli.fi.it/novita/comunicati/muoviti-con-afa-da-settembre-i-corsi-di-attivita-fisica-adattata-adulti-e-anziani"
+        }
+      ]
+    },
+    {
+      "comune": "Fiesole",
+      "url_dichiarato": "https://www.comune.fiesole.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.fiesole.fi.it/",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.fi.it",
+        "https://servizi.comune.fi.it"
+      ],
+      "link_albo_trovati": [
+        {
+          "text": "albo pretorio",
+          "url": "https://fiesole.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio"
+        }
+      ]
+    },
+    {
+      "comune": "Pontassieve",
+      "url_dichiarato": "https://www.comune.pontassieve.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.pontassieve.fi.it/",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.fi.it",
+        "https://servizi.comune.fi.it"
+      ],
+      "link_albo_trovati": [
+        {
+          "text": "albo pretorio",
+          "url": "https://pubblicazioni.comune.pontassieve.fi.it/web/trasparenza/albo-pretorio"
+        },
+        {
+          "text": "e fu sera e fu mattina",
+          "url": "https://www.comune.pontassieve.fi.it/vivere-il-comune/eventi/e-fu-sera-e-fu-mattina-4"
+        },
+        {
+          "text": "avviso pubblico per la concessione di contributi per l’abbattimento dei costi tpl a.s.2023/2024",
+          "url": "https://www.comune.pontassieve.fi.it/novita/avvisi/avviso-pubblico-la-concessione-di-contributi-labbattimento-dei-costi-tpl-as2023-2024"
+        }
+      ]
+    },
+    {
+      "comune": "Borgo San Lorenzo",
+      "url_dichiarato": "https://www.comune.borgo-san-lorenzo.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.borgo-san-lorenzo.fi.it/it",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.fi.it",
+        "https://servizi.comune.fi.it"
+      ],
+      "link_albo_trovati": [
+        {
+          "text": "iscrizione all'albo degli scrutatori di seggio elettorale",
+          "url": "https://www.comune.borgo-san-lorenzo.fi.it/it/news/iscrizione-all-albo-degli-scrutatori-di-seggio-elettorale"
+        },
+        {
+          "text": "albo pretorio",
+          "url": "https://borgosanlorenzo.trasparenza-valutazione-merito.it/web/trasparenza/albo-pretorio"
+        },
+        {
+          "text": "pubblicazioni di matrimonio",
+          "url": "https://borgosanlorenzo.trasparenza-valutazione-merito.it/web/trasparenza/dettaglio-albo-pretorio?p_p_id=jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet&p_p_lifecycle=0&p_p_state=normal&p_p_mode=view&p_p_col_id=column-2&p_p_col_count=1&_jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet_current-page-parent=0&_jcitygovmenutrasversaleleftcolumn_WAR_jcitygovalbiportlet_current-page=7898"
+        }
+      ]
+    },
+    {
+      "comune": "Calenzano",
+      "url_dichiarato": "https://www.comune.calenzano.fi.it",
+      "url_raggiungibile": true,
+      "status_code": 200,
+      "url_reale": "https://www.comune.calenzano.fi.it/it",
+      "redirect": true,
+      "subdomain_albo": [
+        "http://servizi.comune.fi.it",
+        "https://servizi.comune.fi.it"
+      ],
+      "link_albo_trovati": [
+        {
+          "text": "albo pretorio\n                \n\n                    raccolta atti e provvedimenti amministrativi e p",
+          "url": "https://www.comune.calenzano.fi.it/it/page/80188"
+        },
+        {
+          "text": "suap - sportello unico per le attività produttive\n                \n\n                    trova il pro",
+          "url": "https://sportellotelematico.comune.calenzano.fi.it/page%3Ac_b406%3Aattivita.produttive"
+        }
+      ]
+    }
+  ]
+}
