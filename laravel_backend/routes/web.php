@@ -68,7 +68,7 @@ Route::middleware('auth')->group(function () {
 
 // NATAN Chat Interface (accessibile a ruoli PA/autorizzati)
 Route::middleware(['auth', 'natan.access'])->group(function () {
-    Route::get('/natan/chat', [NatanChatController::class, 'index'])
+    Route::get('/natan/chat', [\App\Http\Controllers\NatanChatController::class, 'index'])
         ->name('natan.chat');
 });
 
@@ -106,6 +106,12 @@ Route::get('/api/session', function () {
         ] : null,
     ]);
 })->name('api.session');
+
+// NATAN PRO Routes (New Bureaucratic Chic Design)
+Route::middleware(['auth', 'natan.access'])->prefix('natan-pro')->name('natan-pro.')->group(function () {
+    Route::get('/chat', [\App\Http\Controllers\NatanChatController::class, 'index'])->name('chat');
+    Route::view('/workspace', 'natan-pro.workspace')->name('workspace');
+});
 
 // NATAN Routes (accessibili a ruoli PA/autorizzati)
 // I controlli di permesso specifici sono gestiti nei controller e nei menu items

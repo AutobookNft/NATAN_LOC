@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\ApiController;
 use App\Http\Controllers\NatanConversationController;
 use App\Http\Controllers\NatanUseProxyController;
 use App\Http\Controllers\NatanDiagnosticController;
@@ -16,6 +17,10 @@ use App\Http\Controllers\NatanDiagnosticController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
+// Context switching endpoint (requires authentication)
+Route::middleware(['auth:web'])->post('/context/switch', [ApiController::class, 'switchContext'])
+    ->name('api.context.switch');
 
 // API Session endpoint (no auth required for session check)
 Route::get('/session', function () {
