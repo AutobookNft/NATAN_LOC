@@ -1,8 +1,8 @@
 # 📊 NATAN_LOC - Stato dell'Arte del Progetto
 
-**Versione**: 2.0.0  
+**Versione**: 2.1.0  
 **Data**: 2025-01-28  
-**Ultimo Aggiornamento**: 2025-01-28  
+**Ultimo Aggiornamento**: 2025-11-20  
 **Autore**: Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici  
 **Contesto**: FlorenceEGI - NATAN_LOC Production System
 
@@ -259,11 +259,16 @@ natan_user_memories
 ```javascript
 // Document storage
 documents
-  - _id, tenant_id, document_id, content, metadata, ...
+  - _id, tenant_id, document_id, protocol_number, content, metadata, embedding, ...
+  - 1199 documenti PA unici (tenant 2) - duplicati rimossi (2025-11-20)
 
-// Vector embeddings
-embeddings
-  - _id, tenant_id, document_id, embedding_vector, ...
+// Scraping tracking
+scraped_comuni
+  - _id, comune_slug, comune_nome, tenant_id, scraped_at, atti_estratti, ...
+  - Tracciamento comuni già scrapati per evitare re-scraping
+
+// Vector embeddings (integrati in documents)
+// Embeddings document-level e chunk-level salvati in documents.content.chunks
 
 // Chat history
 chat_messages
@@ -277,6 +282,8 @@ chat_messages
 - ✅ `tenant_id_document_id` - Query per document ID
 - ✅ `created_at` - Query basate su data
 - ✅ `tenant_id` - Isolamento tenant
+
+**Nota**: Prevenzione duplicati implementata a livello applicativo (controlli preventivi) anche senza indice unico su `document_id`.
 
 ---
 
@@ -442,9 +449,12 @@ chat_messages
   - Multi-strategy scraping (6 strategie)
   - ScraperFactory integration (auto-detection)
   - TrivellaBrutale integration (bruteforce fallback)
-  - API dirette Firenze (2275 documenti) e Sesto Fiorentino (127 documenti)
+  - API dirette Firenze (2297 documenti) e Sesto Fiorentino (127 documenti)
   - Compliance reporting (L.69/2009 + CAD + AgID 2025)
   - PDF generation e email sending
+  - ComuniScrapingTracker per tracking comuni scrapati
+  - Integrazione MongoDB import automatico con embeddings
+  - UI Laravel completa con dry-run e preview
 
 #### **Frontend**
 - [x] ✅ TypeScript setup
@@ -471,6 +481,49 @@ chat_messages
 
 ### **Completato Recentemente** ✅
 
+#### **MongoDB Duplicati Prevention & Cleanup** (2025-11-20)
+- ✅ **Fix Prevenzione Duplicati**: Controlli preventivi in `mongodb_service.py` e `admin.py`
+  - Verifica esistenza documento per `document_id` + `tenant_id` prima di inserire
+  - Skip automatico atti già importati basato su `protocol_number`
+  - Doppio controllo: pre-import + pre-insert
+- ✅ **Script Rimozione Duplicati**: `remove_duplicate_pa_acts.py`
+  - Rimossi 4666 documenti duplicati (da 5865 a 1199)
+  - Mantiene solo documento più recente per `protocol_number` + `tenant_id`
+  - Verifica finale: tutti i documenti ora unici
+- ✅ **Script Test Import**: `test_import_no_duplicates.py`
+  - Test completo prevenzione duplicati
+  - Verifica import multipli non creano duplicati
+  - Test passato: 0 duplicati creati
+- ✅ **Risultati**: Database pulito, 1199 documenti unici, sistema pronto per produzione
+
+#### **UI Chat Sidebar Collassabile** (2025-11-20)
+- ✅ **Sidebar Desktop**: Ultime 3 chat sempre visibili, altre collassabili
+- ✅ **Mobile Drawer**: Stesso comportamento su mobile
+- ✅ **Implementazione**: HTML `<details>` nativo, accessibile senza JS
+- ✅ **UX**: Icona che ruota all'apertura/chiusura, transizioni CSS migliorate
+
+#### **Compliance Scanner Tracking & MongoDB Integration** (2025-11-20)
+- ✅ **ComuniScrapingTracker**: Sistema tracking comuni scrapati in MongoDB
+  - Collection `scraped_comuni` per tracciare stato scraping
+  - Metodi: `mark_comune_scraped`, `is_comune_scraped`, `get_scraped_comuni`
+  - Supporto multi-tenant e status (completed, partial, failed)
+- ✅ **Integrazione MongoDB Import**: Import automatico atti con embeddings
+  - Flag `mongodb_import` nello scanner
+  - Integrazione `PAActMongoDBImporter` per chunking e embeddings
+  - Salvataggio automatico dopo scraping completato
+- ✅ **Laravel UI Integration**: Integrazione completa nell'interfaccia esistente
+  - Rimosso vecchi scrapers, aggiunto Compliance Scanner
+  - Supporto `comune_slug` invece di `year` per preview
+  - Dry-run endpoint con conteggio atti e preview
+  - Estrazione `atti_sample` da response FastAPI
+
+#### **Test Suite Completa** (2025-11-20)
+- ✅ **Test Unitari**: `test_compliance_scanner_unit.py`
+- ✅ **Test Integrazione**: `test_compliance_scanner_integrated.py`
+- ✅ **Test Tracking**: `test_comuni_tracker.py`
+- ✅ **Test Workflow**: `test_scraper_tracking_integration.py`
+- ✅ Tutti i test passati, copertura completa
+
 #### **RAG-Fortress Zero-Hallucination** (2025-01-28)
 - ✅ Tutti i 10 passi implementati e testati
 - ✅ Integrato nel chat router (`/chat` endpoint)
@@ -483,7 +536,7 @@ chat_messages
 - ✅ Scanner completo per Albi Pretori comuni toscani
 - ✅ Integrazione ScraperFactory (auto-detection piattaforme)
 - ✅ Integrazione TrivellaBrutale (bruteforce fallback)
-- ✅ API dirette ottimizzate per Firenze (2275 documenti) e Sesto Fiorentino (127 documenti)
+- ✅ API dirette ottimizzate per Firenze (2297 documenti) e Sesto Fiorentino (127 documenti)
 - ✅ Scraping multi-strategia (requests, httpx, playwright, selenium, RSS, API)
 - ✅ Compliance reporting completo (L.69/2009 + CAD + AgID 2025)
 - ✅ PDF generation e email sending
@@ -675,10 +728,18 @@ chat_messages
 - ✅ Zero allucinazioni garantite tramite multi-layer verification
 
 ### **Compliance Scanner Results**
-- ✅ **Firenze**: 2275 documenti pubblici estratti (API + HTML, tutti gli anni 2018-2025)
+- ✅ **Firenze**: 2297 documenti pubblici estratti (API + HTML, tutti gli anni 2018-2025)
 - ✅ **Sesto Fiorentino**: 127 documenti pubblici estratti (API + HTML, tutti gli anni disponibili)
 - ✅ Strategia multi-layer: API dirette → ScraperFactory → TrivellaBrutale → Fallback base
 - ✅ Compliance reporting completo (L.69/2009 + CAD + AgID 2025)
+- ✅ Tracking comuni scrapati in MongoDB (`scraped_comuni` collection)
+
+### **MongoDB Database Status**
+- ✅ **Documenti PA in MongoDB Atlas**: 1199 documenti unici (tenant 2)
+- ✅ **Duplicati rimossi**: 4666 documenti eliminati (2025-11-20)
+- ✅ **Prevenzione duplicati**: Controlli preventivi attivi, test passati
+- ✅ **Import automatico**: Integrato nello scanner con embeddings
+- ✅ **Database pulito**: Tutti i documenti sono unici, nessun duplicato
 
 ### **Scraping System**
 - ✅ ScraperFactory con auto-detection (TrasparenzaVM, Drupal)
@@ -688,8 +749,36 @@ chat_messages
 
 ---
 
-**Versione**: 2.0.0  
+**Versione**: 2.1.0  
 **Data**: 2025-01-28  
-**Ultimo Aggiornamento**: 2025-01-28  
-**Status**: ✅ **PRODUCTION-READY** - RAG-Fortress attivo, Compliance Scanner operativo, sistema completo e funzionante
+**Ultimo Aggiornamento**: 2025-11-20  
+**Status**: ✅ **PRODUCTION-READY** - RAG-Fortress attivo, Compliance Scanner operativo, MongoDB pulito e ottimizzato, sistema completo e funzionante
+
+---
+
+## 📝 Changelog Recente (2025-11-20)
+
+### **MongoDB Duplicati Prevention & Cleanup**
+- Implementati controlli preventivi duplicati in `mongodb_service.py` e `admin.py`
+- Creato script `remove_duplicate_pa_acts.py` per rimozione duplicati esistenti
+- Rimossi 4666 documenti duplicati, mantenuti 1199 documenti unici
+- Creato script test `test_import_no_duplicates.py` - test passato: 0 duplicati creati
+- Database MongoDB Atlas pulito e ottimizzato
+
+### **UI Chat Sidebar**
+- Implementata sidebar collassabile per chat recenti
+- Ultime 3 chat sempre visibili, altre collassabili
+- Stesso comportamento su desktop e mobile
+- Migliorata UX con transizioni CSS
+
+### **Compliance Scanner Enhancements**
+- Aggiunto `ComuniScrapingTracker` per tracking comuni scrapati
+- Integrazione MongoDB import automatico con embeddings
+- UI Laravel completa con dry-run e preview atti
+- Test suite completa (unit, integration, workflow)
+
+### **Documentazione**
+- Aggiornato stato dell'arte con tutte le modifiche recenti
+- Aggiunta documentazione `COMUNI_SCRAPING_TRACKER.md`
+- Aggiunta documentazione `TEST_SCRAPER_UNITARI.md`
 
