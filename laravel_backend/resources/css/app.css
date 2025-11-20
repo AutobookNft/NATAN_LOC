@@ -6,18 +6,29 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Source Sans Pro', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
-    --font-institutional: 'IBM Plex Sans', 'Inter', sans-serif;
-    --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+    /* Bureaucratic Chic Palette (New) */
+    --color-paper: #F9F9F7;
+    --color-ink: #1A202C;
+    --color-border-tech: #CBD5E1;
+    --color-alert-red: #B91C1C;
+    --color-status-emerald: #047857;
 
-    /* NATAN Blue Trust */
+    /* Typography (New) */
+    --font-sans: 'Inter', 'sans-serif';
+    --font-serif: 'Lora', 'serif';
+    --font-mono: 'IBM Plex Mono', 'monospace';
+
+    /* Legacy fonts preserved (remapped if needed or kept as aliases) */
+    --font-institutional: 'IBM Plex Sans', 'Inter', sans-serif;
+    --font-legacy-body: 'Source Sans Pro', sans-serif;
+
+    /* NATAN Blue Trust (Legacy preserved) */
     --color-natan-blue: #1B365D;
     --color-natan-blue-light: #2C4A7C;
     --color-natan-blue-dark: #0F1E36;
     --color-natan-blue-extra-light: #E8EDF4;
 
-    /* NATAN Gray Structural */
+    /* NATAN Gray Structural (Legacy preserved) */
     --color-natan-gray-900: #2D3748;
     --color-natan-gray-700: #4A5568;
     --color-natan-gray-500: #718096;

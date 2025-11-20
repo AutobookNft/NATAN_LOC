@@ -7,51 +7,63 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        // NATAN Blue Trust (Istituzionale - 60% superficie)
-        "natan-blue": {
-          DEFAULT: "#1B365D", // Blu Trust principale
-          light: "#2C4A7C",   // Hover, backgrounds chiari
-          dark: "#0F1E36",    // Testi su backgrounds chiari
-          "extra-light": "#E8EDF4", // Backgrounds sezioni
-        },
-        
-        // NATAN Gray Structural (30% superficie)
-        "natan-gray": {
-          900: "#2D3748", // Headings secondari
-          700: "#4A5568", // Body text principale
-          500: "#718096", // Testi secondari
-          300: "#CBD5E0", // Bordi, separatori
-          100: "#EDF2F7", // Backgrounds chiari
-          50: "#F7FAFC",  // Backgrounds sezioni alternate
-        },
-        
-        // NATAN Trust & Certificazione
-        "natan-trust": "#0F4C75",      // Blu Sicurezza (inviolabilità)
-        "natan-green": "#2D5016",      // Verde Certificazione
-        "natan-green-light": "#3D6B22", // Verde Certificazione light
-        "natan-green-extra-light": "#E8F4E3", // Verde backgrounds
-        "natan-gold": "#B89968",       // Oro Sobrio (accenti 10%)
-        
-        // URS Colors (Ultra Reliability Score)
-        "urs-a": "#10b981", // Emerald-500 (0.85-1.0)
-        "urs-b": "#3b82f6", // Blue-500 (0.70-0.84)
-        "urs-c": "#f59e0b", // Amber-500 (0.50-0.69)
-        "urs-x": "#ef4444", // Red-500 (0.0-0.49)
-        
-        // Functional Colors
-        "natan-red": "#C13120",     // Rosso Urgenza
-        "natan-orange": "#E67E22",  // Arancio Attenzione
-        "natan-info": "#3B82F6",    // Blu Info
-        "natan-disabled": "#A0AEC0", // Grigio Disabilitato
-      },
-      
       fontFamily: {
+        sans: ['Inter', 'sans-serif'],       // UI generale
+        serif: ['Lora', 'serif'],            // Titoli, Intestazioni, Documenti
+        mono: ['IBM Plex Mono', 'monospace'], // Dati, Log, Claim ID, URS Scores
+        // Legacy fonts preserved
         institutional: ['IBM Plex Sans', 'Inter', 'sans-serif'],
         body: ['Source Sans Pro', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
       },
-      
+      colors: {
+        // Bureaucratic Chic Palette
+        paper: '#F9F9F7',          // Sfondo principale (non bianco puro)
+        ink: '#1A202C',            // Testo principale (quasi nero)
+        'border-tech': '#CBD5E1',  // Bordi strutturali
+        'alert-red': '#B91C1C',    // Errori critici
+        'status-emerald': '#047857',// Successi / URS Alto
+
+        // Legacy Colors preserved
+        "natan-blue": {
+          DEFAULT: "#1B365D",
+          light: "#2C4A7C",
+          dark: "#0F1E36",
+          "extra-light": "#E8EDF4",
+        },
+        "natan-gray": {
+          900: "#2D3748",
+          700: "#4A5568",
+          500: "#718096",
+          300: "#CBD5E0",
+          100: "#EDF2F7",
+          50: "#F7FAFC",
+        },
+        "natan-trust": "#0F4C75",
+        "natan-green": "#2D5016",
+        "natan-green-light": "#3D6B22",
+        "natan-green-extra-light": "#E8F4E3",
+        "natan-gold": "#B89968",
+        "urs-a": "#10b981",
+        "urs-b": "#3b82f6",
+        "urs-c": "#f59e0b",
+        "urs-x": "#ef4444",
+        "natan-red": "#C13120",
+        "natan-orange": "#E67E22",
+        "natan-info": "#3B82F6",
+        "natan-disabled": "#A0AEC0",
+      },
+      boxShadow: {
+        'sm': '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // Ombre minime
+        'none': 'none' // Preferire i bordi alle ombre
+      },
+      borderRadius: {
+        DEFAULT: '0.125rem', // 2px (rounded-sm) - Look squadrato
+        'md': '0.25rem',      // 4px - Massimo arrotondamento consentito
+        'lg': '0.5rem',
+        'xl': '0.75rem',
+        '2xl': '1rem',
+        'full': '9999px',
+      },
       spacing: {
         'xs': '8px',
         'sm': '16px',
