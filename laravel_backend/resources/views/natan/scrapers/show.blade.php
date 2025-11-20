@@ -69,14 +69,35 @@
 
                             <form id="previewForm"
                                 class="flex flex-col items-stretch gap-2 sm:flex-row sm:items-end sm:gap-3">
-                                <div class="flex-1">
-                                    <label for="preview_year"
-                                        class="mb-1.5 block text-xs font-semibold text-gray-700">Anno</label>
-                                    <input type="number" id="preview_year" name="year" value="{{ date('Y') }}"
-                                        min="2000" max="{{ date('Y') + 1 }}"
-                                        class="w-full rounded-lg border-2 border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                                        placeholder="2024">
-                                </div>
+                                @if(($scraper['type'] ?? '') === 'compliance_scanner')
+                                    {{-- Campo comune_slug per Compliance Scanner --}}
+                                    <div class="flex-1">
+                                        <label for="comune_slug"
+                                            class="mb-1.5 block text-xs font-semibold text-gray-700">Comune</label>
+                                        <input type="text" id="comune_slug" name="comune_slug" 
+                                            value="{{ $scraper['comuni_supportati'][0] ?? 'firenze' }}"
+                                            list="comuni_list"
+                                            class="w-full rounded-lg border-2 border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                            placeholder="firenze">
+                                        <datalist id="comuni_list">
+                                            @if(isset($scraper['comuni_supportati']))
+                                                @foreach($scraper['comuni_supportati'] as $comune)
+                                                    <option value="{{ $comune }}">
+                                                @endforeach
+                                            @endif
+                                        </datalist>
+                                    </div>
+                                @else
+                                    {{-- Campo anno per scraper tradizionali --}}
+                                    <div class="flex-1">
+                                        <label for="preview_year"
+                                            class="mb-1.5 block text-xs font-semibold text-gray-700">Anno</label>
+                                        <input type="number" id="preview_year" name="year" value="{{ date('Y') }}"
+                                            min="2000" max="{{ date('Y') + 1 }}"
+                                            class="w-full rounded-lg border-2 border-gray-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                            placeholder="2024">
+                                    </div>
+                                @endif
                                 <button type="submit" id="previewBtn"
                                     class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700 sm:text-sm">
                                     <span class="material-symbols-outlined text-base">search</span>
@@ -90,8 +111,11 @@
                                     <div
                                         class="mb-2 flex flex-col gap-2 border-b border-gray-200 pb-2 sm:flex-row sm:items-center sm:justify-between">
                                         <h4 class="text-sm font-bold text-[#1B365D]">
-                                            <span id="previewCount">0</span> atti trovati per l'anno <span
-                                                id="previewYear">-</span>
+                                            @if(($scraper['type'] ?? '') === 'compliance_scanner')
+                                                <span id="previewCount">0</span> atti trovati per <span id="previewYear">-</span>
+                                            @else
+                                                <span id="previewCount">0</span> atti trovati per l'anno <span id="previewYear">-</span>
+                                            @endif
                                         </h4>
                                         <button id="importBtn" data-year="" data-scraper-id="{{ $scraper['id'] }}"
                                             class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2D5016] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#1F3810]">
@@ -193,11 +217,21 @@
                                         <dd class="mt-0.5 break-all text-xs text-blue-600">{{ $scraper['base_url'] }}
                                         </dd>
                                     </div>
-                                    <div>
-                                        <dt class="font-semibold text-gray-600">Script Python</dt>
-                                        <dd class="mt-0.5 font-mono text-xs text-gray-700">{{ $scraper['script'] }}
-                                        </dd>
-                                    </div>
+                                    @if(isset($scraper['script']))
+                                        <div>
+                                            <dt class="font-semibold text-gray-600">Script Python</dt>
+                                            <dd class="mt-0.5 font-mono text-xs text-gray-700">{{ $scraper['script'] }}
+                                            </dd>
+                                        </div>
+                                    @endif
+                                    @if(($scraper['type'] ?? '') === 'compliance_scanner' && isset($scraper['comuni_supportati']))
+                                        <div>
+                                            <dt class="font-semibold text-gray-600">Comuni Supportati</dt>
+                                            <dd class="mt-0.5 text-xs text-gray-700">
+                                                {{ implode(', ', array_map('ucfirst', $scraper['comuni_supportati'])) }}
+                                            </dd>
+                                        </div>
+                                    @endif
                                 </dl>
                             </div>
                         </details>
@@ -830,13 +864,22 @@
 
                     function executeScraperFromForm() {
                         const form = document.getElementById('runScraperForm');
+                        const scraperType = '{{ $scraper['type'] ?? '' }}';
+                        
                         // "Esegui" importa in MongoDB (stessa cosa di "Importa")
                         // Solo "Testa" fa dry run senza importare
                         const params = {
                             mongodb_import: true, // Importa in MongoDB
-                            tenant_id: {{ Auth::user()?->tenant_id ?? (app('currentTenantId') ?? 2) }},
-                            year_single: '{{ date('Y') }}' // Anno corrente di default
+                            tenant_id: {{ Auth::user()?->tenant_id ?? (app('currentTenantId') ?? 2) }}
                         };
+                        
+                        // Se è Compliance Scanner, aggiungi comune_slug invece di year_single
+                        if (scraperType === 'compliance_scanner') {
+                            const comuneSlug = document.getElementById('comune_slug')?.value || 'firenze';
+                            params.comune_slug = comuneSlug;
+                        } else {
+                            params.year_single = '{{ date('Y') }}'; // Anno corrente di default
+                        }
 
                         console.log('[SCRAPER] Execute button clicked (executeScraperFromForm)', {
                             scraperId: '{{ $scraper['id'] }}',
@@ -1465,7 +1508,18 @@
                     previewForm.addEventListener('submit', async (e) => {
                         e.preventDefault();
 
-                        const year = document.getElementById('preview_year').value;
+                        const scraperType = '{{ $scraper['type'] ?? '' }}';
+                        const isComplianceScanner = scraperType === 'compliance_scanner';
+                        
+                        // Prepara payload in base al tipo di scraper
+                        let payload = {};
+                        if (isComplianceScanner) {
+                            const comuneSlug = document.getElementById('comune_slug')?.value || 'firenze';
+                            payload.comune_slug = comuneSlug;
+                        } else {
+                            const year = document.getElementById('preview_year')?.value;
+                            payload.year = year;
+                        }
 
                         previewResults.classList.add('hidden');
                         previewError.classList.add('hidden');
@@ -1479,9 +1533,7 @@
                                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                                     'Accept': 'application/json'
                                 },
-                                body: JSON.stringify({
-                                    year: year
-                                })
+                                body: JSON.stringify(payload)
                             });
 
                             const data = await response.json();
@@ -1489,8 +1541,23 @@
 
                             if (data.success) {
                                 document.getElementById('previewCount').textContent = data.count || 0;
-                                document.getElementById('previewYear').textContent = data.year || year;
-                                importBtn.dataset.year = data.year || year;
+                                
+                                // Aggiorna visualizzazione in base al tipo di scraper
+                                if (isComplianceScanner) {
+                                    // Per Compliance Scanner, mostra comune invece di anno
+                                    const comuneSlug = payload.comune_slug || 'N/A';
+                                    document.getElementById('previewYear').textContent = comuneSlug;
+                                    // Aggiorna titolo se esiste
+                                    const previewTitle = document.querySelector('#previewResults h4');
+                                    if (previewTitle) {
+                                        previewTitle.innerHTML = `<span id="previewCount">${data.count || 0}</span> atti trovati per <span id="previewYear">${comuneSlug}</span>`;
+                                    }
+                                } else {
+                                    // Per scraper tradizionali, mostra anno
+                                    const year = payload.year || 'N/A';
+                                    document.getElementById('previewYear').textContent = data.year || year;
+                                    importBtn.dataset.year = data.year || year;
+                                }
 
                                 if (data.first_act) {
                                     document.getElementById('firstActNumero').textContent = data.first_act.numero || '-';

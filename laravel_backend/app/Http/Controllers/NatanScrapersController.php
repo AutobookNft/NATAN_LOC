@@ -194,6 +194,7 @@ class NatanScrapersController extends Controller
             'mongodb_import' => 'nullable|boolean',
             'download_pdfs' => 'nullable|boolean',
             'tenant_id' => 'nullable|integer|min:1',
+            'comune_slug' => 'nullable|string|max:100', // Per Compliance Scanner
         ]);
 
         $scrapers = $this->getAvailableScrapers();
@@ -407,15 +408,28 @@ class NatanScrapersController extends Controller
         }
         $request->merge($input);
 
-        $validated = $request->validate([
-            'year_single' => 'nullable|integer|min:2000|max:2030',
-            'year_range' => 'nullable|string|regex:/^\d{4}-\d{4}$/',
-            'year' => 'nullable|integer|min:2000|max:2030', // Accetta anche 'year' dal frontend
-        ]);
+        // Verifica se è Compliance Scanner
+        $scrapers = $this->getAvailableScrapers();
+        $scraper = collect($scrapers)->firstWhere('id', $scraperId);
+        $isComplianceScanner = ($scraper['type'] ?? '') === 'compliance_scanner';
 
-        // Se arriva 'year' senza 'year_single', usa 'year'
-        if (isset($validated['year']) && !isset($validated['year_single'])) {
-            $validated['year_single'] = $validated['year'];
+        if ($isComplianceScanner) {
+            // Per Compliance Scanner, valida comune_slug invece di year
+            $validated = $request->validate([
+                'comune_slug' => 'required|string|max:100',
+            ]);
+        } else {
+            // Per scraper tradizionali, valida year
+            $validated = $request->validate([
+                'year_single' => 'nullable|integer|min:2000|max:2030',
+                'year_range' => 'nullable|string|regex:/^\d{4}-\d{4}$/',
+                'year' => 'nullable|integer|min:2000|max:2030', // Accetta anche 'year' dal frontend
+            ]);
+
+            // Se arriva 'year' senza 'year_single', usa 'year'
+            if (isset($validated['year']) && !isset($validated['year_single'])) {
+                $validated['year_single'] = $validated['year'];
+            }
         }
 
         // ULM: Log validated input
@@ -426,9 +440,6 @@ class NatanScrapersController extends Controller
             'tenant_id' => $tenantId,
             'log_category' => 'SCRAPER_CONTROLLER'
         ]);
-
-        $scrapers = $this->getAvailableScrapers();
-        $scraper = collect($scrapers)->firstWhere('id', $scraperId);
 
         if (!$scraper) {
             // UEM: Handle scraper not found
@@ -481,81 +492,106 @@ class NatanScrapersController extends Controller
 
             // Estrai dati per il frontend (count, first_act, last_act)
             $responseData = $result;
-            $responseData['count'] = $result['stats']['processed'] ?? 0;
-            $responseData['year'] = $validated['year_single'] ?? $validated['year'] ?? null;
-
-            // Estrai primo e ultimo atto dall'output JSON (se disponibile)
-            $firstAct = null;
-            $lastAct = null;
-
-            // Cerca file JSON salvati dallo scraper per estrarre atti
-            if (preg_match('/Backup JSON salvato:\s*([^\n]+)/i', $result['output'] ?? '', $jsonMatches)) {
-                $rawJsonPath = trim($jsonMatches[1]);
+            
+            // Per Compliance Scanner, usa direttamente stats (non cerca JSON in dry-run)
+            $isComplianceScanner = ($scraper['type'] ?? '') === 'compliance_scanner';
+            
+            if ($isComplianceScanner) {
+                // Compliance Scanner: usa direttamente stats['atti_estratti'] e stats['atti_sample']
+                $responseData['count'] = $result['stats']['atti_estratti'] ?? $result['stats']['processed'] ?? 0;
+                $responseData['comune_slug'] = $validated['comune_slug'] ?? null;
                 
-                $resolvedJsonPath = null;
-                $candidatePaths = [];
-                
-                if (str_starts_with($rawJsonPath, '/')) {
-                    $candidatePaths[] = $rawJsonPath;
-                } else {
-                    $relativePath = ltrim($rawJsonPath, '/');
-                    // Percorso rispetto alla root del progetto (come generato originariamente)
-                    $candidatePaths[] = base_path('../' . $relativePath);
-                    // Percorso rispetto alla cartella scripts (dove vengono salvati i file)
-                    $candidatePaths[] = base_path('../scripts/' . $relativePath);
-                    // Percorso rispetto alla root della repository (fallback generico)
-                    $candidatePaths[] = base_path('../../' . $relativePath);
-                }
-                
-                foreach ($candidatePaths as $candidatePath) {
-                    if (file_exists($candidatePath)) {
-                        $resolvedJsonPath = realpath($candidatePath);
-                        break;
+                // Estrai primo e ultimo atto da atti_sample se disponibile
+                $attiSample = $result['stats']['atti_sample'] ?? [];
+                if (is_array($attiSample) && count($attiSample) > 0) {
+                    $responseData['first_act'] = $this->formatActForResponse($attiSample[0]);
+                    if (count($attiSample) > 1) {
+                        $responseData['last_act'] = $this->formatActForResponse($attiSample[count($attiSample) - 1]);
                     }
                 }
-                
-                if ($resolvedJsonPath && file_exists($resolvedJsonPath)) {
-                    try {
-                        $jsonContent = json_decode(file_get_contents($resolvedJsonPath), true);
-                        if (is_array($jsonContent)) {
-                            // Se è un array di atti, prendi primo e ultimo
-                            if (isset($jsonContent[0]) && is_array($jsonContent[0])) {
-                                $firstAct = $this->formatActForResponse($jsonContent[0]);
-                            }
-                            if (count($jsonContent) > 1 && is_array($jsonContent[count($jsonContent) - 1])) {
-                                $lastAct = $this->formatActForResponse($jsonContent[count($jsonContent) - 1]);
-                            }
-                        } elseif (is_array($jsonContent) && count($jsonContent) > 0) {
-                            // Se è un oggetto con chiavi tipo (DG, DC, etc.), prendi da tutti i tipi
-                            $allAtti = [];
-                            foreach ($jsonContent as $tipoAtti) {
-                                if (is_array($tipoAtti)) {
-                                    $allAtti = array_merge($allAtti, $tipoAtti);
+            } else {
+                // Scraper tradizionali: cerca JSON salvato
+                $firstAct = null;
+                $lastAct = null;
+
+                // Cerca file JSON salvati dallo scraper per estrarre atti
+                if (preg_match('/Backup JSON salvato:\s*([^\n]+)/i', $result['output'] ?? '', $jsonMatches)) {
+                    $rawJsonPath = trim($jsonMatches[1]);
+                    
+                    $resolvedJsonPath = null;
+                    $candidatePaths = [];
+                    
+                    if (str_starts_with($rawJsonPath, '/')) {
+                        $candidatePaths[] = $rawJsonPath;
+                    } else {
+                        $relativePath = ltrim($rawJsonPath, '/');
+                        // Percorso rispetto alla root del progetto (come generato originariamente)
+                        $candidatePaths[] = base_path('../' . $relativePath);
+                        // Percorso rispetto alla cartella scripts (dove vengono salvati i file)
+                        $candidatePaths[] = base_path('../scripts/' . $relativePath);
+                        // Percorso rispetto alla root della repository (fallback generico)
+                        $candidatePaths[] = base_path('../../' . $relativePath);
+                    }
+                    
+                    foreach ($candidatePaths as $candidatePath) {
+                        if (file_exists($candidatePath)) {
+                            $resolvedJsonPath = realpath($candidatePath);
+                            break;
+                        }
+                    }
+                    
+                    if ($resolvedJsonPath && file_exists($resolvedJsonPath)) {
+                        try {
+                            $jsonContent = json_decode(file_get_contents($resolvedJsonPath), true);
+                            if (is_array($jsonContent)) {
+                                // Se è un array di atti, prendi primo e ultimo
+                                if (isset($jsonContent[0]) && is_array($jsonContent[0])) {
+                                    $firstAct = $this->formatActForResponse($jsonContent[0]);
+                                }
+                                if (count($jsonContent) > 1 && is_array($jsonContent[count($jsonContent) - 1])) {
+                                    $lastAct = $this->formatActForResponse($jsonContent[count($jsonContent) - 1]);
+                                }
+                            } elseif (is_array($jsonContent) && count($jsonContent) > 0) {
+                                // Se è un oggetto con chiavi tipo (DG, DC, etc.), prendi da tutti i tipi
+                                $allAtti = [];
+                                foreach ($jsonContent as $tipoAtti) {
+                                    if (is_array($tipoAtti)) {
+                                        $allAtti = array_merge($allAtti, $tipoAtti);
+                                    }
+                                }
+                                if (!empty($allAtti)) {
+                                    $firstAct = $this->formatActForResponse($allAtti[0]);
+                                    $lastAct = $this->formatActForResponse($allAtti[count($allAtti) - 1]);
                                 }
                             }
-                            if (!empty($allAtti)) {
-                                $firstAct = $this->formatActForResponse($allAtti[0]);
-                                $lastAct = $this->formatActForResponse($allAtti[count($allAtti) - 1]);
-                            }
+                        } catch (\Exception $e) {
+                            $this->logger->warning('[NatanScrapersController] Failed to parse JSON file', [
+                                'json_path' => $resolvedJsonPath,
+                                'error' => $e->getMessage(),
+                                'log_category' => 'SCRAPER_PREVIEW'
+                            ]);
                         }
-                    } catch (\Exception $e) {
-                        $this->logger->warning('[NatanScrapersController] Failed to parse JSON file', [
-                            'json_path' => $resolvedJsonPath,
-                            'error' => $e->getMessage(),
+                    } else {
+                        $this->logger->warning('[NatanScrapersController] JSON file not found for preview', [
+                            'raw_path' => $rawJsonPath,
+                            'candidate_paths' => $candidatePaths,
                             'log_category' => 'SCRAPER_PREVIEW'
                         ]);
                     }
-                } else {
-                    $this->logger->warning('[NatanScrapersController] JSON file not found for preview', [
-                        'raw_path' => $rawJsonPath,
-                        'candidate_paths' => $candidatePaths,
-                        'log_category' => 'SCRAPER_PREVIEW'
-                    ]);
                 }
-            }
 
-            $responseData['first_act'] = $firstAct;
-            $responseData['last_act'] = $lastAct;
+                // Usa atti estratti dal JSON se disponibili (sistema esistente)
+                if ($firstAct) {
+                    $responseData['first_act'] = $firstAct;
+                }
+                if ($lastAct) {
+                    $responseData['last_act'] = $lastAct;
+                }
+                
+                // Per scraper tradizionali, usa processed e year
+                $responseData['count'] = $result['stats']['processed'] ?? 0;
+                $responseData['year'] = $validated['year_single'] ?? $validated['year'] ?? null;
+            }
 
             return response()->json($responseData);
         } catch (\Exception $e) {
@@ -590,34 +626,28 @@ class NatanScrapersController extends Controller
     {
         return [
             [
-                'id' => 'firenze_deliberazioni',
-                'name' => 'Deliberazioni Comune di Firenze',
-                'script' => 'scrape_firenze_deliberazioni.py',
-                'type' => 'api',
-                'source_entity' => 'Comune di Firenze',
-                'description' => 'Scraper per deliberazioni di giunta e consiglio, determinazioni dirigenziali dal portale trasparenza',
-                'base_url' => 'https://accessoconcertificato.comune.fi.it',
-                'legal_basis' => 'D.Lgs 33/2013 - Trasparenza Amministrativa',
-            ],
-            [
-                'id' => 'albo_firenze_v2',
-                'name' => 'Albo Pretorio Firenze (v2)',
-                'script' => 'scrape_albo_firenze_v2.py',
-                'type' => 'html',
-                'source_entity' => 'Comune di Firenze',
-                'description' => 'Scraper HTML per atti dall\'albo pretorio online',
-                'base_url' => 'https://accessoconcertificato.comune.fi.it',
-                'legal_basis' => 'D.Lgs 33/2013 - Trasparenza Amministrativa',
-            ],
-            [
-                'id' => 'albo_pretorio_firenze',
-                'name' => 'Albo Pretorio Firenze',
-                'script' => 'scrape_albo_pretorio_firenze.py',
-                'type' => 'html',
-                'source_entity' => 'Comune di Firenze',
-                'description' => 'Scraper alternativo per albo pretorio online',
-                'base_url' => 'https://albopretorionline.comune.fi.it',
-                'legal_basis' => 'D.Lgs 33/2013 - Trasparenza Amministrativa',
+                'id' => 'compliance_scanner',
+                'name' => 'Compliance Scanner Albi Pretori',
+                'type' => 'compliance_scanner',
+                'source_entity' => 'Comuni Toscani',
+                'description' => 'Scanner completo conformità Albi Pretori per comuni toscani - L.69/2009 + CAD + AgID 2025. Estrae documenti pubblici e genera report di compliance.',
+                'base_url' => 'Multi-comune',
+                'legal_basis' => 'L.69/2009 - Trasparenza Amministrativa + CAD + AgID 2025',
+                'comuni_supportati' => [
+                    'firenze',
+                    'sesto_fiorentino',
+                    'sesto-fiorentino',
+                    'empoli',
+                    'pisa',
+                    'prato',
+                    'arezzo',
+                    'livorno',
+                    'pistoia',
+                    'grosseto',
+                    'massa',
+                    'lucca',
+                    'siena',
+                ],
             ],
         ];
     }

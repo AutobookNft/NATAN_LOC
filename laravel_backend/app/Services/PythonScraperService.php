@@ -8,6 +8,7 @@ use App\Services\Gdpr\AuditLogService;
 use App\Enums\Gdpr\GdprActivityCategory;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Ultra\UltraLogManager\UltraLogManager;
 use Ultra\ErrorManager\Interfaces\ErrorManagerInterface;
 
@@ -51,13 +52,29 @@ class PythonScraperService
             // 1. ULM: Log start operation
             $this->logger->info('[PythonScraperService] Scraper execution started', [
                 'scraper_id' => $scraper['id'] ?? 'unknown',
+                'scraper_type' => $scraper['type'] ?? 'unknown',
                 'user_id' => $user?->id,
                 'tenant_id' => $tenantId,
                 'options' => $options,
                 'log_category' => 'SCRAPER_OPERATION'
             ]);
 
-            $script = $scraper['script'];
+            // Se è un Compliance Scanner, chiama FastAPI invece di eseguire script Python
+            if (($scraper['type'] ?? '') === 'compliance_scanner') {
+                return $this->executeComplianceScanner($scraper, $options, $user, $tenantId);
+            }
+
+            // Altrimenti esegui script Python come prima
+            $script = $scraper['script'] ?? null;
+            if (!$script) {
+                return [
+                    'success' => false,
+                    'error' => 'Script Python non specificato per questo scraper',
+                    'output' => '',
+                    'error_output' => 'Script non specificato',
+                ];
+            }
+
             $scriptsPath = base_path('../scripts');
             $scriptPath = $scriptsPath . '/' . $script;
 
@@ -717,6 +734,219 @@ class PythonScraperService
         }
 
         return $costs;
+    }
+
+    /**
+     * Esegue Compliance Scanner chiamando FastAPI
+     * 
+     * @param array $scraper Configurazione scraper
+     * @param array $options Opzioni esecuzione (deve contenere 'comune_slug')
+     * @param User|null $user Utente che esegue
+     * @param int $tenantId Tenant ID
+     * @return array Risultato esecuzione
+     */
+    protected function executeComplianceScanner(array $scraper, array $options, ?User $user, int $tenantId): array
+    {
+        try {
+            // Estrai comune_slug dalle opzioni
+            $comuneSlug = $options['comune_slug'] ?? $options['comune'] ?? null;
+            
+            if (!$comuneSlug) {
+                // UEM: Log error
+                $this->errorManager->handle('COMPLIANCE_SCANNER_MISSING_COMUNE', [
+                    'scraper_id' => $scraper['id'] ?? 'unknown',
+                    'user_id' => $user?->id,
+                    'tenant_id' => $tenantId,
+                    'options' => $options,
+                ], new \Exception('comune_slug non specificato per Compliance Scanner'));
+                
+                return [
+                    'success' => false,
+                    'error' => 'comune_slug non specificato',
+                    'output' => '',
+                    'error_output' => 'Devi specificare il comune da scansionare (campo comune_slug)',
+                ];
+            }
+
+            // Normalizza comune_slug (rimuovi spazi, converti in lowercase)
+            $comuneSlug = strtolower(trim(str_replace(' ', '_', $comuneSlug)));
+
+            // ULM: Log start
+            $this->logger->info('[PythonScraperService] Compliance Scanner execution started', [
+                'scraper_id' => $scraper['id'] ?? 'unknown',
+                'comune_slug' => $comuneSlug,
+                'user_id' => $user?->id,
+                'tenant_id' => $tenantId,
+                'log_category' => 'COMPLIANCE_SCANNER_START'
+            ]);
+
+            // GDPR: Log user action
+            $this->auditService->logUserAction(
+                $user,
+                'compliance_scanner_executed',
+                [
+                    'scraper_id' => $scraper['id'] ?? 'unknown',
+                    'comune_slug' => $comuneSlug,
+                    'tenant_id' => $tenantId,
+                ],
+                GdprActivityCategory::GDPR_ACTIONS
+            );
+
+            // Verifica se è dry_run
+            $isDryRun = $options['dry_run'] ?? false;
+            
+            // Chiama FastAPI Compliance Scanner endpoint
+            $pythonApiUrl = config('services.python_ai.url', 'http://localhost:8000');
+            
+            // Per dry_run, chiama endpoint dry-run che restituisce solo report senza PDF/email
+            // Per esecuzione normale, usa endpoint completo
+            // NOTA: Gli endpoint admin sono registrati con prefisso /api/v1
+            if ($isDryRun) {
+                $endpoint = rtrim($pythonApiUrl, '/') . '/api/v1/admin/compliance-scan/' . urlencode($comuneSlug) . '/dry-run';
+            } else {
+                $endpoint = rtrim($pythonApiUrl, '/') . '/api/v1/admin/compliance-scan/' . urlencode($comuneSlug);
+                
+                // Aggiungi parametri query per mongodb_import e tenant_id
+                $queryParams = [];
+                if (!empty($options['mongodb_import']) && $options['mongodb_import'] !== false) {
+                    $queryParams[] = 'mongodb_import=true';
+                }
+                if (!empty($tenantId)) {
+                    $queryParams[] = 'tenant_id=' . urlencode($tenantId);
+                }
+                if (!empty($queryParams)) {
+                    $endpoint .= '?' . implode('&', $queryParams);
+                }
+            }
+            
+            // Bearer token per autenticazione (per ora usa un token semplice)
+            // TODO: Implementare autenticazione JWT vera
+            $bearerToken = 'Bearer ' . ($options['api_token'] ?? 'admin-token');
+
+            $this->logger->info('[PythonScraperService] Calling FastAPI Compliance Scanner', [
+                'endpoint' => $endpoint,
+                'comune_slug' => $comuneSlug,
+                'dry_run' => $isDryRun,
+                'log_category' => 'COMPLIANCE_SCANNER_API'
+            ]);
+
+            // Timeout lungo per compliance scanner (può richiedere molto tempo)
+            $response = Http::timeout(1800) // 30 minuti
+                ->withHeaders([
+                    'Authorization' => $bearerToken,
+                    'Accept' => 'application/json',
+                ])
+                ->post($endpoint);
+
+            if (!$response->successful()) {
+                $errorBody = $response->body();
+                $statusCode = $response->status();
+                
+                // UEM: Log error
+                $this->errorManager->handle('COMPLIANCE_SCANNER_API_ERROR', [
+                    'scraper_id' => $scraper['id'] ?? 'unknown',
+                    'comune_slug' => $comuneSlug,
+                    'status_code' => $statusCode,
+                    'error_body' => substr($errorBody, 0, 500),
+                    'user_id' => $user?->id,
+                    'tenant_id' => $tenantId,
+                ], new \Exception("FastAPI error: HTTP {$statusCode} - {$errorBody}"));
+                
+                return [
+                    'success' => false,
+                    'error' => "Errore FastAPI: HTTP {$statusCode}",
+                    'output' => '',
+                    'error_output' => $errorBody,
+                ];
+            }
+
+            $result = $response->json();
+            
+            // ULM: Log success
+            $this->logger->info('[PythonScraperService] Compliance Scanner execution completed', [
+                'scraper_id' => $scraper['id'] ?? 'unknown',
+                'comune_slug' => $comuneSlug,
+                'compliance_score' => $result['compliance_score'] ?? null,
+                'violations_count' => $result['violations_count'] ?? null,
+                'user_id' => $user?->id,
+                'tenant_id' => $tenantId,
+                'log_category' => 'COMPLIANCE_SCANNER_SUCCESS'
+            ]);
+
+            // Formatta output come gli altri scraper
+            // IMPORTANTE: Include "Backup JSON salvato" se disponibile (pattern che Laravel cerca)
+            $jsonBackupPath = $result['json_backup_path'] ?? null;
+            $jsonBackupLine = '';
+            if ($jsonBackupPath) {
+                $jsonBackupLine = "\n   💾 Backup JSON salvato: {$jsonBackupPath}";
+            }
+            
+            if ($isDryRun) {
+                // Dry run: mostra solo info base senza PDF/email
+                $output = sprintf(
+                    "✅ Compliance Scanner (DRY RUN) completato per %s\n" .
+                    "📊 Score conformità: %.2f%%\n" .
+                    "⚠️ Violazioni rilevate: %d\n" .
+                    "📄 Atti estratti: %d%s\n",
+                    ucfirst($comuneSlug),
+                    ($result['compliance_score'] ?? 0) * 100,
+                    $result['violations_count'] ?? 0,
+                    $result['atti_estratti'] ?? 0,
+                    $jsonBackupLine
+                );
+            } else {
+                // Esecuzione normale: mostra tutto incluso PDF/email
+                $output = sprintf(
+                    "✅ Compliance Scanner completato per %s\n" .
+                    "📊 Score conformità: %.2f%%\n" .
+                    "⚠️ Violazioni rilevate: %d\n" .
+                    "📄 PDF generato: %s\n" .
+                    "📧 Email inviata: %s\n" .
+                    "🔗 Landing page: %s%s\n",
+                    ucfirst($comuneSlug),
+                    ($result['compliance_score'] ?? 0) * 100,
+                    $result['violations_count'] ?? 0,
+                    $result['pdf_path'] ?? 'N/A',
+                    ($result['email_sent'] ?? false) ? 'Sì' : 'No',
+                    $result['landing_page_url'] ?? 'N/A',
+                    $jsonBackupLine
+                );
+            }
+
+            return [
+                'success' => true,
+                'output' => $output,
+                'error_output' => '',
+                'result' => $result,
+                'stats' => [
+                    'compliance_score' => $result['compliance_score'] ?? 0,
+                    'violations_count' => $result['violations_count'] ?? 0,
+                    'atti_estratti' => $result['atti_estratti'] ?? 0,
+                    'processed' => $result['atti_estratti'] ?? 0, // Per compatibilità con preview
+                    'pdf_path' => $result['pdf_path'] ?? null,
+                    'email_sent' => $result['email_sent'] ?? false,
+                    'landing_page_url' => $result['landing_page_url'] ?? null,
+                    'atti_sample' => $result['atti_sample'] ?? null, // Per preview
+                ],
+            ];
+
+        } catch (\Exception $e) {
+            // UEM: Log error
+            $this->errorManager->handle('COMPLIANCE_SCANNER_EXECUTION_FAILED', [
+                'scraper_id' => $scraper['id'] ?? 'unknown',
+                'comune_slug' => $options['comune_slug'] ?? 'unknown',
+                'error_message' => $e->getMessage(),
+                'user_id' => $user?->id,
+                'tenant_id' => $tenantId,
+            ], $e);
+            
+            return [
+                'success' => false,
+                'error' => 'Errore esecuzione Compliance Scanner',
+                'output' => '',
+                'error_output' => $e->getMessage(),
+            ];
+        }
     }
 }
 
