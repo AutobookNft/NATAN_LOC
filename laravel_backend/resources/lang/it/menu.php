@@ -11,9 +11,13 @@
 return [
     // === Chat Section (Main Feature) ===
     'natan_chat' => 'Chat',
-    
-    // === NATAN Management Group ===
+    'infraufficio_chat' => 'Chat Infraufficio',
+    'infraufficio_bacheca' => 'Bacheca Infraufficio',
+
+    // === Management Groups ===
     'natan_management' => 'Gestione NATAN',
+    'infraufficio_management' => 'Gestione Infraufficio',
+    'management' => 'Gestione',
 
     // === Documents Section ===
     'natan_documents' => 'Lista Documenti',

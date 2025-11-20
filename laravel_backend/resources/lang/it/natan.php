@@ -1,6 +1,13 @@
 <?php
 
 return [
+    // System & UI Labels
+    'system_title' => 'NATAN_LOC',
+    'tenant_label' => 'TENANT',
+    'no_tenant' => 'NESSUN TENANT',
+    'rag_status_label' => 'RAG-FORTRESS',
+    'rag_status_active' => 'ACTIVE',
+
     'chat' => [
         'input_placeholder' => 'Scrivi un messaggio...',
         'send_button' => 'Invia',
@@ -9,6 +16,15 @@ return [
 
     'sidebar' => [
         'chat' => 'Chat',
+        'natan_chat' => 'CHAT NATAN',
+        'infraufficio_chat' => 'CHAT INFRAUFFICIO',
+        'infraufficio_bacheca' => 'BACHECA INFRA COMUNE',
+    ],
+
+    'context' => [
+        'natan_chat' => 'Chat Natan',
+        'infraufficio_chat' => 'Chat Infraufficio',
+        'infraufficio_bacheca' => 'Bacheca Infra Comune',
     ],
 
     'history' => [
