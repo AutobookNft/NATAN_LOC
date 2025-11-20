@@ -88,7 +88,7 @@ class DocumentController extends Controller
         $tenantId = Auth::user()?->tenant_id ?? app('currentTenantId') ?? 2;
         $stats = $this->resolveDocumentStats($tenantId);
         
-        return view('natan.documents.index', [
+        return view('natan-pro.documents.index', [
             'documents' => $documents,
             'stats' => $stats,
             'filters' => $request->only(['search', 'document_type', 'act_category', 'status', 'sort_by', 'sort_dir', 'per_page']),
@@ -103,7 +103,7 @@ class DocumentController extends Controller
      */
     public function show(PaAct $document): View
     {
-        return view('natan.documents.show', [
+        return view('natan-pro.documents.show', [
             'document' => $document,
         ]);
     }

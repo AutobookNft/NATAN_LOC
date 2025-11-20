@@ -69,7 +69,7 @@ class NatanScrapersController extends Controller
             'log_category' => 'SCRAPER_STATS'
         ]);
 
-        return view('natan.scrapers.index', [
+        return view('natan-pro.scrapers.index', [
             'scrapers' => $scrapers,
             'stats' => $stats,
         ]);
@@ -105,7 +105,7 @@ class NatanScrapersController extends Controller
             'log_category' => 'SCRAPER_STATS'
         ]);
 
-        return view('natan.scrapers.show', [
+        return view('natan-pro.scrapers.show', [
             'scraper' => $scraper,
             'stats' => $stats,
         ]);

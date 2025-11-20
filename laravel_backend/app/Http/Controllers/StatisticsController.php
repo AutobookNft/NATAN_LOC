@@ -80,7 +80,7 @@ class StatisticsController extends Controller
             'log_category' => 'STATISTICS_DASHBOARD'
         ]);
         
-        return view('natan.statistics.dashboard', [
+        return view('natan-pro.statistics.dashboard', [
             'generalStats' => $generalStats,
             'documentsStats' => $documentsStats,
             'conversationsStats' => $conversationsStats,

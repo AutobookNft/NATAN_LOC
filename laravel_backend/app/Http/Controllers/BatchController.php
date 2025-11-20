@@ -43,7 +43,7 @@ class BatchController extends Controller
             'failed' => 0,
         ];
         
-        return view('natan.batch.index', [
+        return view('natan-pro.batch.index', [
             'batches' => [],
             'stats' => $stats,
             'filters' => $request->only(['search', 'status', 'sort_by', 'sort_dir', 'per_page']),

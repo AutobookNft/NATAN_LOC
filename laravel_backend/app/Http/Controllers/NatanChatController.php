@@ -95,7 +95,7 @@ class NatanChatController extends Controller
                 ->count('session_id');
         }
 
-        return view('natan.chat', [
+        return view('natan-pro.chat', [
             'chatHistory' => $chatHistory,
             'suggestedQuestions' => $suggestedQuestions,
             'strategicQuestionsLibrary' => $strategicQuestionsLibrary, // All 63 questions organized by category

@@ -40,7 +40,7 @@ class EmbeddingController extends Controller
             'by_collection' => [],
         ];
         
-        return view('natan.embeddings.index', [
+        return view('natan-pro.embeddings.index', [
             'embeddings' => [],
             'stats' => $stats,
             'filters' => $request->only(['search', 'collection', 'sort_by', 'sort_dir', 'per_page']),
