@@ -22,14 +22,14 @@
                         </p>
                     @endforelse
 
-                    {{-- Chat precedenti: collassabili --}}
+                    {{-- Chat precedenti: collassabili (chiuso di default) --}}
                     @if (count($chatHistory) > 3)
-                        <details class="group">
+                        <details class="group" data-chat-collapsible>
                             <summary
-                                class="flex items-center justify-between px-2 py-2 text-xs rounded-lg cursor-pointer text-natan-blue-extra-light hover:bg-white/10">
+                                class="flex items-center justify-between px-2 py-2 text-xs rounded-lg cursor-pointer text-natan-blue-extra-light hover:bg-white/10 transition-colors">
                                 <span>{{ __('natan.history.previous', ['count' => count($chatHistory) - 3]) }}</span>
                                 <x-natan.icon name="chevron-down"
-                                    class="w-4 h-4 transition-transform group-open:rotate-180" />
+                                    class="w-4 h-4 transition-transform duration-200 group-open:rotate-180" />
                             </summary>
                             <div class="pl-2 mt-2 space-y-1 border-l border-white/10">
                                 @foreach (array_slice($chatHistory, 3) as $chat)

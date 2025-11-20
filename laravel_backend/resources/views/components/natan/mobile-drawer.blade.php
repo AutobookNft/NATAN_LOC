@@ -41,13 +41,31 @@
                     {{ __('natan.history.title') }}
                 </h3>
                 <div class="space-y-2">
-                    @forelse(array_slice($chatHistory, 0, 5) as $chat)
+                    {{-- Ultime 3 chat: sempre espanse --}}
+                    @forelse(array_slice($chatHistory, 0, 3) as $chat)
                         <x-natan.chat-history-item :chat="$chat" :expanded="false" />
                     @empty
                         <p class="px-2 text-xs text-natan-blue-extra-light/70">
                             {{ __('natan.history.empty') }}
                         </p>
                     @endforelse
+
+                    {{-- Chat precedenti: collassabili (chiuso di default) --}}
+                    @if (count($chatHistory) > 3)
+                        <details class="group" data-chat-collapsible>
+                            <summary
+                                class="flex items-center justify-between px-2 py-2 text-xs rounded-lg cursor-pointer text-natan-blue-extra-light hover:bg-white/10 transition-colors">
+                                <span>{{ __('natan.history.previous', ['count' => count($chatHistory) - 3]) }}</span>
+                                <x-natan.icon name="chevron-down"
+                                    class="w-4 h-4 transition-transform duration-200 group-open:rotate-180" />
+                            </summary>
+                            <div class="pl-2 mt-2 space-y-1 border-l border-white/10">
+                                @foreach (array_slice($chatHistory, 3) as $chat)
+                                    <x-natan.chat-history-item :chat="$chat" :expanded="false" />
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
                 </div>
             </div>
             <hr class="border-white/10 my-4" />
