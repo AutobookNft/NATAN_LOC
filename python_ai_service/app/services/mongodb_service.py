@@ -149,7 +149,9 @@ class MongoDBService:
     def insert_document(cls, collection_name: str, document: Dict[str, Any]) -> Optional[str]:
         """
         Insert document into collection (returns None if MongoDB unavailable)
-        Returns 'duplicate' if document already exists (E11000 error)
+        Returns 'duplicate' if document already exists (E11000 error or found by document_id)
+        
+        CRITICAL: Checks for existing document by document_id BEFORE insert to prevent duplicates
         """
         if not cls.is_connected():
             logger.debug(f"MongoDB not available, skipping insert into {collection_name}")
@@ -159,6 +161,22 @@ class MongoDBService:
             collection = cls.get_collection(collection_name)
             if collection is None:
                 return None
+            
+            # CRITICAL: Check if document already exists by document_id BEFORE insert
+            # This prevents duplicates even if unique index is missing
+            document_id = document.get('document_id')
+            tenant_id = document.get('tenant_id')
+            
+            if document_id:
+                existing = collection.find_one({
+                    "document_id": document_id,
+                    "tenant_id": tenant_id
+                })
+                
+                if existing:
+                    logger.debug(f"MongoDB document already exists (pre-check): {document_id}")
+                    return 'duplicate'  # Return duplicate BEFORE attempting insert
+            
             result = collection.insert_one(document)
             return str(result.inserted_id)
         except Exception as e:
