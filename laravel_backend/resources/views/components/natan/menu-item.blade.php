@@ -36,13 +36,13 @@
     @foreach($attributes as $key => $value)
         {{ $key }}="{{ $value }}"
     @endforeach
-    class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white transition-colors hover:bg-white/10 {{ $isActive ? 'bg-natan-blue-light border-l-3 border-natan-gold' : '' }}"
+    class="flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors hover:bg-slate-100 {{ $isActive ? 'bg-slate-200 text-slate-900 font-semibold border-l-3 border-slate-900' : '' }}"
     @if($isActive)
         aria-current="page"
     @endif
 >
     @if($iconName)
-        <x-natan.icon name="{{ $iconName }}" class="w-5 h-5 flex-shrink-0" />
+        <x-natan.icon name="{{ $iconName }}" class="w-4 h-4 flex-shrink-0 {{ $isActive ? 'text-slate-900' : 'text-slate-600' }}" />
     @endif
     <span>{{ $item->name }}</span>
 </a>

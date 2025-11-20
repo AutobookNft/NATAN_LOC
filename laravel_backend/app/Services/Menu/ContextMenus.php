@@ -31,7 +31,7 @@ class ContextMenus
     /**
      * Get menu groups for NATAN_LOC context
      *
-     * @param string $context The current application context
+     * @param string $context The current application context (natan.chat, infraufficio.chat, infraufficio.bacheca)
      * @return array Array of MenuGroup objects
      */
     public static function getMenusForContext(string $context): array
@@ -42,11 +42,10 @@ class ContextMenus
             'context' => $context,
         ]);
 
-        // NATAN context: always show the same menu structure
-        // Chat is the dashboard, sidebar shows supporting features
+        // Context-aware menu structure
         switch ($context) {
-            case 'natan':
             case 'natan.chat':
+            case 'natan':
             case 'natan.dashboard':
             default:
                 // Chat menu (main feature - shown first)
@@ -89,6 +88,46 @@ class ContextMenus
                     new NatanAdminConfigMenu(),
                 ]);
                 $menus[] = $adminMenu;
+                break;
+
+            case 'infraufficio.chat':
+                // Infraufficio Chat context - focused on internal communication
+                $chatMenu = new MenuGroup(__('menu.infraufficio_chat'), null, [
+                    new NatanChatMenu(), // Reuse chat interface
+                ]);
+                $menus[] = $chatMenu;
+
+                // Infraufficio specific features
+                $infraufficioMenu = new MenuGroup(__('menu.infraufficio_management'), null, [
+                    new NatanDocumentsMenu(),
+                    new NatanProjectsMenu(),
+                    new NatanStatisticsMenu(),
+                ]);
+                $menus[] = $infraufficioMenu;
+
+                // Admin section (for tenant-specific configurations)
+                $adminMenu = new MenuGroup(__('menu.admin'), 'cog-6-tooth', [
+                    new NatanUsersMenu(),
+                ]);
+                $menus[] = $adminMenu;
+                break;
+
+            case 'infraufficio.bacheca':
+                // Infraufficio Bacheca context - announcement board
+                $bachecaMenu = new MenuGroup(__('menu.infraufficio_bacheca'), null, [
+                    // Bacheca-specific features would go here
+                    // For now, reuse existing features
+                    new NatanDocumentsMenu(),
+                    new NatanProjectsMenu(),
+                ]);
+                $menus[] = $bachecaMenu;
+
+                // Management tools
+                $managementMenu = new MenuGroup(__('menu.management'), null, [
+                    new NatanUsersMenu(),
+                    new NatanStatisticsMenu(),
+                ]);
+                $menus[] = $managementMenu;
                 break;
         }
 
