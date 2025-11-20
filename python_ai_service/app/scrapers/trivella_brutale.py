@@ -503,9 +503,7 @@ class TrivellaBrutale:
                 print(f"  🔧 URL corretto: {url_base} → {url_corretto}")
                 url_base = url_corretto
         
-        # URL e metodi noti (verific
-
-ati)
+        # URL e metodi noti (verificati)
         metodi_noti = {
             'Firenze': {
                 'url': 'https://accessoconcertificato.comune.fi.it/trasparenza-atti-cat/searchAtti',
