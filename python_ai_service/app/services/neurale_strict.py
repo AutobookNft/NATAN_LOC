@@ -7,6 +7,14 @@ from typing import List, Dict, Any, Optional
 import json
 from app.services.retriever_service import RetrieverService
 from app.services.ai_router import AIRouter
+try:
+    from toon_utils import ToonConverter
+except ImportError:
+    # Fallback for when running tests or different path structure
+    import sys
+    import os
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+    from toon_utils import ToonConverter
 
 
 class NeuraleStrict:
@@ -129,36 +137,30 @@ class NeuraleStrict:
     
     def _build_context(self, chunks: List[Dict[str, Any]]) -> str:
         """
-        Build context string from chunks
+        Build context string from chunks using TOON format for token optimization
         
         Args:
             chunks: List of chunk dicts
         
         Returns:
-            Context string for LLM
+            Context string in TOON format
         """
-        context_parts = []
+        toon_data = []
         for i, chunk in enumerate(chunks, 1):
             source_ref = chunk.get("source_ref", {})
-            url = source_ref.get("url", "")
-            page = source_ref.get("page_number") or source_ref.get("page")
-            title = source_ref.get("title", "")
             
-            # Get chunk text - retriever uses 'chunk_text', but also check 'text' for compatibility
-            chunk_text = chunk.get("chunk_text") or chunk.get("text", "")
+            # Prepare data for TOON
+            # Use chunk_N as ID to maintain compatibility with existing referencing system
+            item = {
+                "id": f"chunk_{i}",
+                "title": source_ref.get("title", ""),
+                "url": source_ref.get("url", ""),
+                "page": str(source_ref.get("page_number") or source_ref.get("page") or ""),
+                "text": chunk.get("chunk_text") or chunk.get("text", "")
+            }
+            toon_data.append(item)
             
-            context_part = f"[Source {i}]"
-            if title:
-                context_part += f" {title}"
-            if url:
-                context_part += f" ({url})"
-            if page:
-                context_part += f" - page {page}"
-            context_part += f"\n{chunk_text}\n"
-            
-            context_parts.append(context_part)
-        
-        return "\n---\n".join(context_parts)
+        return ToonConverter.to_toon(toon_data, "sources")
     
     async def _generate_natural_answer(
         self,
@@ -192,7 +194,7 @@ class NeuraleStrict:
 
 Question: {question}
 
-Relevant information from sources:
+Relevant information from sources (in TOON format):
 {context}
 
 🚨 REGOLA ZERO - LA PIÙ IMPORTANTE 🚨
@@ -201,7 +203,7 @@ NON dire MAI "non ho informazioni" se hai ricevuto documenti sopra.
 
 CRITICAL INSTRUCTIONS - READ CAREFULLY:
 1. **IF YOU RECEIVED DOCUMENTS ABOVE (sources are provided), YOU MUST ANSWER USING THOSE DOCUMENTS.**
-   - You have received sources - this means there IS relevant information available
+   - You have received sources in TOON format (Token-Oriented Object Notation) - this means there IS relevant information available
    - Your job is to synthesize an answer from the provided sources
    - DO NOT say "no data" or "non ho informazioni" if sources are provided above
    - The fact that sources were provided means they contain relevant information - USE IT
@@ -248,13 +250,13 @@ Generate your final answer strictly following these instructions."""
             {"role": "system", "content": f"""You are NATAN, a {persona} assistant for Public Administration analysis.
 
 REGOLA ZERO: 
-- If sources are provided in the user message, you MUST answer using those sources. DO NOT say "no data" if sources are provided.
+- If sources are provided in the user message (in TOON format), you MUST answer using those sources. DO NOT say "no data" if sources are provided.
 - If NO sources are provided (context is empty), then you can say you don't have information.
 - DO NOT invent information that is not in the sources, but DO extract and synthesize what IS in the sources.
 
 Your responses MUST be based ONLY on the provided sources. Never use general knowledge or assumptions.
 
-CRITICAL: If the user message includes "Relevant information from sources:" followed by content, this means sources ARE available. You MUST synthesize an answer from those sources. DO NOT respond with "no data" message if sources are provided.
+CRITICAL: If the user message includes "Relevant information from sources (in TOON format):" followed by content, this means sources ARE available. You MUST synthesize an answer from those sources. DO NOT respond with "no data" message if sources are provided.
 
 This is a legal requirement for PA systems - false information can have serious consequences. Only state facts from sources, but if sources are provided, USE THEM."""},
             {"role": "user", "content": prompt}
@@ -362,7 +364,7 @@ This is a legal requirement for PA systems - false information can have serious 
 
 Question: {question}
 
-Context from sources:
+Context from sources (in TOON format):
 {context}
 
 🚨 REGOLA ZERO - LA PIÙ IMPORTANTE 🚨
@@ -373,7 +375,7 @@ CRITICAL INSTRUCTIONS - ANTI-HALLUCINATION MODE:
 2. If the sources do NOT contain information relevant to answer the question, return an EMPTY array: []
 3. DO NOT invent, assume, infer, or generate claims not directly supported by the sources
 4. DO NOT fill gaps with "logical" deductions or assumptions
-5. Each claim MUST be directly traceable to a specific source using chunk_N format (e.g., chunk_1, chunk_2) matching [Source N]
+5. Each claim MUST be directly traceable to a specific source using the 'id' from the sources table (e.g., chunk_1, chunk_2)
 6. DO NOT create statistics, numbers, dates, or facts that are not explicitly stated in the sources
 7. DO NOT combine information to create new facts unless explicitly stated in sources
 8. If a source mentions partial data, state that explicitly in the claim (e.g., "I dati disponibili indicano parzialmente...")
@@ -391,7 +393,7 @@ Return a JSON array of claims with this structure (or [] if no relevant data):
    ]
 
 ANTI-HALLUCINATION CHECK:
-- Before creating each claim, verify it can be directly traced to a specific [Source N] above
+- Before creating each claim, verify it can be directly traced to a specific source 'id' in the table above
 - If you cannot trace a claim to a source, DO NOT include it
 - If sources are not relevant, return empty array: []
 - If you're unsure, return []
