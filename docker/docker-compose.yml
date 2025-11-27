@@ -69,6 +69,9 @@ services:
     container_name: natan_python_fastapi
     restart: unless-stopped
     environment:
+      # MongoDB Atlas connection (priority over separate variables)
+      MONGODB_URI: ${MONGODB_URI:-}
+      # Fallback to local MongoDB if MONGODB_URI not set
       MONGO_DB_HOST: mongodb
       MONGO_DB_PORT: 27017
       MONGO_DB_DATABASE: natan_ai_core
