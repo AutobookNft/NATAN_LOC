@@ -393,10 +393,75 @@ def _build_rag_hint(text: str, count: int) -> Dict[str, Any]:
         "consiglia",
         "proponi",
         "indica",
+        # Aggiunte: creazione e generazione
+        "crea",
+        "creare",
+        "genera",
+        "generare",
+        "costruisci",
+        "costruire",
+        "sviluppa",
+        "sviluppare",
+        "progetta",
+        "progettare",
+        "elabora",
+        "elaborare",
+        "formula",
+        "formulare",
+        # Matrici e strutture complesse
+        "matrice",
+        "matrici",
+        "tabella",
+        "tabelle",
+        "grafico",
+        "grafici",
+        "schema",
+        "schemi",
+        "diagramma",
+        "diagrammi",
+        "modello",
+        "modelli",
+        # Prioritizzazione
+        "prioritizza",
+        "prioritizzare",
+        "priorità",
+        "prioritizzazione",
+        "ordina",
+        "ordinare",
+        "classifica",
+        "classificare",
+        # Calcoli complessi
+        "calcola",
+        "calcolare",
+        "calcolo",
+        "sroi",
+        "roi",
+        "impatto",
+        "impatti",
+        "fattibilità",
+        "fattibilita",
+        "fattibile",
     )
 
     if any(keyword in lowered for keyword in analysis_keywords):
         return {"should_run": True, "reason": "analysis_intent"}
+
+    # Pattern specifici che richiedono AI anche se non ci sono keyword
+    import re
+    ai_patterns = [
+        r"crea.*matrice",
+        r"crea.*tabella",
+        r"crea.*grafico",
+        r"matrice.*decision",
+        r"matrice.*priorit",
+        r"prioritizza.*progetti",
+        r"analizza.*impatto",
+        r"calcola.*sroi",
+        r"calcola.*roi",
+    ]
+    
+    if any(re.search(pattern, lowered) for pattern in ai_patterns):
+        return {"should_run": True, "reason": "analysis_intent_pattern"}
 
     if count == 0:
         return {"should_run": False, "reason": "no_results"}

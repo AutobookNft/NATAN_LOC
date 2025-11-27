@@ -36,6 +36,7 @@ class UsePipeline:
         self,
         question: str,
         tenant_id: int,
+        user_id: Optional[int] = None,
         persona: str = "strategic",
         model: str = "anthropic.sonnet-3.5",
         query_embedding: Optional[list] = None,
@@ -47,6 +48,7 @@ class UsePipeline:
         Args:
             question: User question
             tenant_id: Tenant ID
+            user_id: User ID for personalized memories (optional)
             persona: Persona name
             model: LLM model
             query_embedding: Optional pre-computed query embedding
@@ -129,6 +131,7 @@ class UsePipeline:
             chunks = self.retriever.retrieve(
                 query_embedding=query_embedding,
                 tenant_id=tenant_id,
+                user_id=user_id,
                 limit=20,  # Increased limit for better coverage
                 min_score=0.15,  # Lower minimum score for generic queries
                 filters=constraints

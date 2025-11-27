@@ -11,7 +11,8 @@ from app.services.question_classifier import QueryIntent
 class RouterAction(str, Enum):
     """Router action types"""
     DIRECT_QUERY = "direct_query"       # Query diretta MongoDB (no AI)
-    RAG_STRICT = "rag_strict"          # RAG con USE pipeline
+    RAG_STRICT = "rag_strict"          # RAG con USE pipeline + verifica rigorosa
+    RAG_GENERATIVE = "rag_generative"  # RAG + AI generativo (no verifica URS rigorosa)
     BLOCK = "block"                    # Blocca query (non verificabile)
 
 
@@ -24,6 +25,7 @@ class ExecutionRouter:
     # Intent -> Action mapping
     INTENT_ACTION_MAP = {
         QueryIntent.CONVERSATIONAL: RouterAction.DIRECT_QUERY,  # Conversational queries don't need RAG
+        QueryIntent.GENERATIVE: RouterAction.RAG_GENERATIVE,    # Generative queries use RAG + generative AI (no strict verification)
         QueryIntent.FACT_CHECK: RouterAction.RAG_STRICT,
         QueryIntent.NUMERICAL: RouterAction.RAG_STRICT,
         QueryIntent.COMPARISON: RouterAction.RAG_STRICT,
@@ -104,13 +106,14 @@ class ExecutionRouter:
             # Standard routing
             reason_map = {
                 RouterAction.DIRECT_QUERY: "Query semplice, risposta diretta possibile",
-                RouterAction.RAG_STRICT: "Richiede RAG con verifica USE pipeline",
+                RouterAction.RAG_STRICT: "Richiede RAG con verifica USE pipeline rigorosa",
+                RouterAction.RAG_GENERATIVE: "Query generativa, usa RAG + AI generativo (no verifica URS rigorosa)",
                 RouterAction.BLOCK: f"Query {intent} non verificabile o troppo aperta"
             }
             reason = reason_map.get(action, "Unknown routing decision")
         
         # Determine requirements
-        requires_ai = action == RouterAction.RAG_STRICT
+        requires_ai = action in [RouterAction.RAG_STRICT, RouterAction.RAG_GENERATIVE]
         can_respond_directly = action == RouterAction.DIRECT_QUERY
         
         return {

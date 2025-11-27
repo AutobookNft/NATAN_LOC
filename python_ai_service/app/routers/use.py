@@ -10,6 +10,7 @@ router = APIRouter()
 class UseQueryRequest(BaseModel):
     question: str
     tenant_id: int
+    user_id: Optional[int] = None
     persona: str = "strategic"
     model: str = "anthropic.sonnet-3.5"
     query_embedding: Optional[List[float]] = None
@@ -42,6 +43,7 @@ async def process_use_query(request: UseQueryRequest):
         result = await pipeline.process_query(
             question=request.question,
             tenant_id=request.tenant_id,
+            user_id=request.user_id,
             persona=request.persona,
             model=request.model,
             query_embedding=request.query_embedding,

@@ -41,6 +41,7 @@ from app.routers import (
     diagnostic,
     commands,
     admin,
+    memories,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,4 +73,5 @@ app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
 app.include_router(diagnostic.router, prefix="/api/v1", tags=["diagnostic"])
 app.include_router(commands.router, prefix="/api/v1", tags=["commands"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+app.include_router(memories.router, prefix="/api/v1", tags=["memories"])
 

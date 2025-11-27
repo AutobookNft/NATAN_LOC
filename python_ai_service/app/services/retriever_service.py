@@ -22,24 +22,33 @@ class RetrieverService:
         self,
         query_embedding: List[float],
         tenant_id: int,
+        user_id: Optional[int] = None,
         limit: Optional[int] = None,
         min_score: float = 0.3,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
+        include_memories: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        Retrieve chunks by vector similarity
+        Retrieve chunks by vector similarity + user memories
         
         Args:
             query_embedding: Query embedding vector
             tenant_id: Tenant ID for isolation
+            user_id: User ID for personalized memories (optional)
             limit: Max results to return (None = default 100, STATISTICS RULE)
             min_score: Minimum similarity score
             filters: Optional filters (date_range, document_type, etc.)
+            include_memories: Whether to include user memories in results
         
         Returns:
             List of chunks with source_ref, metadata, similarity score
             (Empty list if MongoDB unavailable)
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"🔍 Retriever called with: tenant_id={tenant_id}, user_id={user_id}, include_memories={include_memories}")
+        
         if limit is None:
             limit = 100  # Default alto per OS3 STATISTICS RULE
         
@@ -326,6 +335,9 @@ class RetrieverService:
                     return fallback_results
                 else:
                     logger.error(f"❌ Retriever: Fallback also failed - no chunks found even with threshold {fallback_threshold:.3f}")
+        
+        # NOTE: User memories are now handled in RAG-Fortress HybridRetriever, not here
+        # This retriever_service is for legacy USE pipeline only
         
         # Limit results
         return results[:limit]
