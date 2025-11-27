@@ -7,6 +7,18 @@ from typing import Dict, Any, Optional
 from enum import Enum
 import json
 from app.services.ai_router import AIRouter
+from app.services.personal_query_patterns import PERSONAL_QUERY_PATTERNS
+from app.services.conversational_query_patterns import CONVERSATIONAL_QUERY_PATTERNS
+from app.services.generative_query_patterns import GENERATIVE_QUERY_PATTERNS
+from app.services.fact_check_query_patterns import FACT_CHECK_QUERY_PATTERNS
+from app.services.numerical_query_patterns import NUMERICAL_QUERY_PATTERNS
+from app.services.comparison_query_patterns import COMPARISON_QUERY_PATTERNS
+from app.services.definition_query_patterns import DEFINITION_QUERY_PATTERNS
+from app.services.procedure_query_patterns import PROCEDURE_QUERY_PATTERNS
+from app.services.temporal_query_patterns import TEMPORAL_QUERY_PATTERNS
+from app.services.interpretation_query_patterns import INTERPRETATION_QUERY_PATTERNS
+from app.services.spatial_query_patterns import SPATIAL_QUERY_PATTERNS
+from app.services.pattern_weights import get_weighted_confidence
 
 
 class QueryIntent(str, Enum):
@@ -20,6 +32,7 @@ class QueryIntent(str, Enum):
     TEMPORAL = "temporal"               # Query temporale
     SPATIAL = "spatial"                 # Query geografica/spaziale
     CONVERSATIONAL = "conversational"   # Domande conversazionali/saluti
+    GENERATIVE = "generative"           # Query generative/creative (no retrieval)
     BLOCKED = "blocked"                 # Query non verificabile/bloccata
 
 
@@ -33,53 +46,38 @@ class QuestionClassifier:
     
     # Keywords patterns per classification rapida (fallback)
     KEYWORD_PATTERNS = {
-        QueryIntent.CONVERSATIONAL: [
-            # Saluti e cortesie
-            "ci sei", "ciao", "salve", "buongiorno", "buonasera", "buonanotte",
-            "grazie", "prego", "ok", "va bene", "perfetto", "okay",
-            "come stai", "come va", "tutto bene", "aiuto", "help",
-            # Domande personali/relazionali (non documentali)
-            "sai", "puoi", "vuoi", "fai", "conosci", "ti piace", "ti piacciono",
-            "sai fare", "sai ballare", "sai cantare", "sai suonare", "sai guidare",
-            "puoi fare", "puoi ballare", "puoi cantare", "puoi suonare",
-            "ti va", "vorresti", "potresti", "saresti",
-            # Domande su capacità/conoscenze personali
-            "che fai", "cosa fai", "dove sei", "chi sei", "cosa sei",
-            "cosa ti piace", "cosa non ti piace", "preferisci",
-            # Domande generiche non documentali
-            "che ne pensi", "cosa ne pensi", "qual è la tua opinione",
-            "scusa", "scusami", "perdono", "mi dispiace",
-            # Frasi comuni conversazionali
-            "dimmi", "raccontami", "parlami", "dimmi tu",
-            "non so", "non capisco", "spiegami", "cosa significa per te",
-            # Metafore e frasi idiomatiche
-            "ago in un pagliaio", "ago nel pagliaio", "ago in pagliaio",
-            "cercare un ago", "troppo difficile", "impossibile trovare",
-            "come cercare", "è come", "sembra impossibile"
-        ],
-        QueryIntent.FACT_CHECK: [
-            "quando", "dove", "chi", "cosa", "quale", "quanti", "quante",
-            "importo", "costo", "prezzo", "valore", "numero"
-        ],
-        QueryIntent.NUMERICAL: [
-            "quanto", "quantità", "somma", "totale", "percentuale",
-            "€", "euro", "dollari"
-        ],
-        QueryIntent.COMPARISON: [
-            "confronta", "differenza", "vs", "rispetto", "meglio", "peggio"
-        ],
-        QueryIntent.DEFINITION: [
-            "cos'è", "cosa significa", "definizione", "significato"
-        ],
-        QueryIntent.PROCEDURE: [
-            "come", "procedura", "processo", "step", "fasi"
-        ],
-        QueryIntent.TEMPORAL: [
-            "quando", "data", "periodo", "dal", "al", "anno", "mese"
-        ],
-        QueryIntent.INTERPRETATION: [
-            "perché", "motivo", "ragione", "opinione", "ritieni", "pensi"
-        ]
+        QueryIntent.CONVERSATIONAL: 
+            # Query personali utente (importate da file separato) - PRIORITÀ MASSIMA
+            PERSONAL_QUERY_PATTERNS +
+            # Query conversazionali (importate da file separato)
+            CONVERSATIONAL_QUERY_PATTERNS,
+        QueryIntent.GENERATIVE:
+            # Query generative/creative (importate da file separato)
+            GENERATIVE_QUERY_PATTERNS,
+        QueryIntent.FACT_CHECK:
+            # Query di fact checking (importate da file separato)
+            FACT_CHECK_QUERY_PATTERNS,
+        QueryIntent.NUMERICAL:
+            # Query numeriche (importate da file separato)
+            NUMERICAL_QUERY_PATTERNS,
+        QueryIntent.COMPARISON:
+            # Query di comparazione (importate da file separato)
+            COMPARISON_QUERY_PATTERNS,
+        QueryIntent.DEFINITION:
+            # Query di definizione (importate da file separato)
+            DEFINITION_QUERY_PATTERNS,
+        QueryIntent.PROCEDURE:
+            # Query procedurali (importate da file separato)
+            PROCEDURE_QUERY_PATTERNS,
+        QueryIntent.TEMPORAL:
+            # Query temporali (importate da file separato)
+            TEMPORAL_QUERY_PATTERNS,
+        QueryIntent.INTERPRETATION:
+            # Query interpretative (importate da file separato)
+            INTERPRETATION_QUERY_PATTERNS,
+        QueryIntent.SPATIAL:
+            # Query spaziali (importate da file separato)
+            SPATIAL_QUERY_PATTERNS,
     }
     
     @staticmethod
@@ -99,6 +97,26 @@ class QuestionClassifier:
                 - constraints: Dict[str, Any] (filters, date ranges, etc.)
         """
         question_lower = question.lower().strip()
+        
+        # PRE-CHECK: Pattern ad altissima specificità (nome, età, professione, nascita)
+        # Questi hanno PRIORITÀ ASSOLUTA e bypassano tutti gli altri controlli
+        high_priority_personal_patterns = [
+            "mi chiamo", "il mio nome è", "sono nato", "sono nata",
+            "ho ", "anni", "lavoro come", "faccio il", "la mia professione",
+            "vivo a", "abito a", "risiedo a", "la mia città",
+            "mia moglie", "mio marito", "mia figlia", "mio figlio",
+        ]
+        
+        matched_high_priority = [p for p in high_priority_personal_patterns if p in question_lower]
+        if matched_high_priority:
+            # Pattern personale ad alta priorità → CONVERSATIONAL con confidence 0.95
+            intent = QueryIntent.CONVERSATIONAL
+            confidence = get_weighted_confidence(matched_high_priority, 'PERSONAL')
+            return {
+                "intent": intent,
+                "confidence": confidence,
+                "constraints": {}
+            }
         
         # TODO: Implementare con AI leggero (es. fine-tuned model)
         # Per ora: keyword-based classification
@@ -129,10 +147,14 @@ class QuestionClassifier:
         # Conversational keywords
         conv_keywords = QuestionClassifier.KEYWORD_PATTERNS.get(QueryIntent.CONVERSATIONAL, [])
         
+        # Trova pattern che matchano per calcolare confidenza pesata
+        matched_conv_patterns = [kw for kw in conv_keywords if kw in question_lower]
+        
         # Check for exact keyword matches, BUT skip if it's a document request
-        if not has_document_request and any(keyword in question_lower for keyword in conv_keywords):
+        if not has_document_request and matched_conv_patterns:
             intent = QueryIntent.CONVERSATIONAL
-            confidence = 0.9
+            # Usa sistema pesi per determinare confidenza
+            confidence = get_weighted_confidence(matched_conv_patterns, 'PERSONAL')
         # Check for metafore/frasi idiomatiche comuni
         elif any(idiom in question_lower for idiom in [
             "ago in un pagliaio", "ago nel pagliaio", "ago in pagliaio",
@@ -164,6 +186,15 @@ class QuestionClassifier:
                 # Simple conversational pattern without document keywords
                 intent = QueryIntent.CONVERSATIONAL
                 confidence = 0.85
+        # Check for GENERATIVE queries (create, generate, suggest, etc.)
+        # IMPORTANT: Check BEFORE document_request logic - GENERATIVE has HIGHER priority
+        # Query generative possono (e devono) usare documenti tenant come contesto
+        elif any(
+            keyword in question_lower 
+            for keyword in QuestionClassifier.KEYWORD_PATTERNS.get(QueryIntent.GENERATIVE, [])
+        ):
+            intent = QueryIntent.GENERATIVE
+            confidence = 0.85
         else:
             # If it's a document request, prioritize fact_check or interpretation
             if has_document_request:
@@ -265,6 +296,7 @@ Classify this question into ONE of these intent types:
 - spatial: Questions about locations, geography, places
 - interpretation: Questions asking why, reasons, analysis, opinions (ONLY if asking about documents/data)
 - conversational: Greetings, casual chat, personal questions (NOT about documents)
+- generative: Creative/generative requests (create, generate, suggest, design, plan) that DON'T require document retrieval
 - blocked: Queries that cannot be verified or are inappropriate
 
 Question: "{question}"
@@ -272,9 +304,10 @@ Question: "{question}"
 IMPORTANT RULES:
 1. If the question asks about documents, data, or information retrieval → use fact_check, numerical, or interpretation
 2. If it's a greeting or casual chat without document context → conversational
-3. If it asks for general knowledge not in documents → blocked
-4. If it's asking about "why" or "reason" regarding documents/data → interpretation
-5. If it's a simple factual question (who/what/when/where) → fact_check
+3. If it's a creative/generative request (create, generate, suggest, plan) that doesn't need documents → generative
+4. If it asks for general knowledge not in documents → blocked
+5. If it's asking about "why" or "reason" regarding documents/data → interpretation
+6. If it's a simple factual question (who/what/when/where) → fact_check
 
 Return ONLY a JSON object with this structure:
 {{
@@ -288,6 +321,7 @@ Example responses:
 - "Ciao, come stai?" → {{"intent": "conversational", "confidence": 0.95, "constraints": {{}}}}
 - "Quando è stata approvata la delibera?" → {{"intent": "fact_check", "confidence": 0.9, "constraints": {{}}}}
 - "Perché è stata presa questa decisione?" → {{"intent": "interpretation", "confidence": 0.85, "constraints": {{}}}}
+- "Crea una matrice decisionale per prioritizzare i progetti" → {{"intent": "generative", "confidence": 0.9, "constraints": {{}}}}
 
 Classify this question:"""
 
