@@ -91,3 +91,12 @@ Thumbs.db
 # Backup files con secrets
 *.env.backup*
 .env.backup.*
+
+# External repos (cloned)
+WrenAI-repo/
+EGI_Documentation/
+
+# Backup files
+*- Copia*
+*.Zone.Identifier
+python_ai_service/storage/
