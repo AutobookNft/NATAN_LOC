@@ -45,13 +45,16 @@
 @layer base {
   /* Typography defaults */
   body {
-    @apply font-sans text-gray-700 bg-gray-50;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #374151;
+    background-color: #f9fafb;
     font-size: 14px;
     line-height: 1.6;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-institutional font-bold text-gray-900;
+    font-weight: 700;
+    color: #111827;
   }
 
   h1 {
@@ -79,17 +82,20 @@
   }
 
   code {
-    @apply font-mono text-sm;
+    font-family: monospace;
+    font-size: 0.875rem;
     color: #2D3748;
   }
 
   /* Accessibility improvements */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-natan-blue;
+    outline: 2px solid #1B365D;
+    outline-offset: 2px;
   }
 
   button:disabled {
-    @apply opacity-50 cursor-not-allowed;
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
@@ -191,11 +197,168 @@
   .btn-secondary:hover {
     @apply bg-natan-blue-extra-light;
   }
+
+  /* AI Message Content - Enterprise Grade Formatting */
+  .message-content a {
+    @apply text-natan-blue font-semibold underline;
+    transition: color 0.2s ease;
+  }
+
+  .message-content a:hover {
+    @apply text-natan-blue-light no-underline;
+  }
+
+  /* Tables - Professional Formatting */
+  .message-content table {
+    @apply w-full border-collapse my-6;
+    font-size: 0.875rem;
+  }
+
+  .message-content thead {
+    @apply bg-natan-gray-100 border-b-2 border-natan-blue;
+  }
+
+  .message-content thead th {
+    @apply px-4 py-3 text-left font-bold text-natan-blue-dark uppercase tracking-wider text-xs;
+  }
+
+  .message-content tbody tr {
+    @apply border-b border-natan-gray-300 transition-colors;
+  }
+
+  .message-content tbody tr:hover {
+    @apply bg-natan-gray-50;
+  }
+
+  .message-content tbody td {
+    @apply px-4 py-3 text-natan-gray-700;
+    vertical-align: top;
+  }
+
+  .message-content tbody td:first-child {
+    @apply font-semibold text-natan-gray-900;
+  }
+
+  .message-content tbody td a {
+    @apply inline-block;
+  }
+
+  /* Lists - Better Spacing */
+  .message-content ul {
+    @apply space-y-3 my-4;
+  }
+
+  .message-content ul li {
+    @apply leading-relaxed;
+  }
+
+  .message-content ol {
+    @apply space-y-3 my-4;
+  }
+
+  .message-content ol li {
+    @apply leading-relaxed;
+  }
+
+  /* Sources Section - Distinct Styling */
+  .sources-section {
+    @apply mt-8 pt-6 border-t-2 border-natan-gray-300;
+  }
+
+  .sources-section ul {
+    @apply space-y-4;
+  }
+
+  .sources-section li {
+    @apply leading-relaxed;
+  }
+
+  .sources-section a {
+    @apply text-natan-blue font-bold underline text-base;
+  }
+
+  .sources-section a:hover {
+    @apply text-natan-blue-light no-underline;
+  }
+
+  /* ===== NATAN PROJECTS COMPONENTS ===== */
+  
+  /* Button Styles */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center justify-center;
+  }
+
+  .btn-primary {
+    @apply bg-natan-blue text-white hover:bg-natan-blue-dark shadow-md hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
+  }
+
+  .btn-icon-sm {
+    @apply p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors;
+  }
+
+  /* Project Card */
+  .project-card {
+    @apply cursor-pointer transition-all duration-200;
+  }
+
+  .project-card:hover {
+    @apply shadow-lg transform translate-y-[-2px];
+  }
+
+  /* Document Card */
+  .document-card {
+    @apply transition-shadow duration-200;
+  }
+
+  /* Upload Zone */
+  #upload-dropzone {
+    @apply transition-all duration-200;
+  }
+
+  #upload-dropzone:hover {
+    @apply bg-blue-50;
+  }
+
+  /* Utility Classes */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .text-natan-dark {
+    color: #0F1E36;
+  }
+
+  .bg-natan-blue-light {
+    background-color: rgba(27, 54, 93, 0.1);
+  }
+
+  /* Processing Notice Animation */
+  .processing-notice .animate-progress {
+    animation: progress-grow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes progress-grow {
+    0% { width: var(--progress-width, 0%); }
+    100% { width: calc(var(--progress-width, 0%) + 5%); }
+  }
+
+  /* Processing Notice Pulse */
+  .processing-notice {
+    animation: notice-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes notice-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+  }
 }
-
-
-
-
 
 
 

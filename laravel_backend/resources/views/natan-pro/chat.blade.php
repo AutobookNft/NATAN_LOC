@@ -1,7 +1,34 @@
-<x-natan-pro.layout>
+@php
+    $chatHistory = $chatHistory ?? [];
+    $suggestedQuestions = $suggestedQuestions ?? [];
+    $strategicQuestionsLibrary = $strategicQuestionsLibrary ?? [];
+    $totalConversations = $totalConversations ?? 0;
+@endphp
+
+<x-natan-pro.layout :chatHistory="$chatHistory">
     {{-- Chat Interface (Main Content Area) --}}
     <div class="flex-1 flex flex-col bg-paper relative z-10 min-w-0">
         
+        {{-- Indicatore Conversazione Attiva --}}
+        <div 
+            id="active-conversation-indicator" 
+            class="hidden bg-slate-100 border-b border-slate-200 px-4 py-2 text-xs font-mono text-slate-700"
+        >
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                    <span class="font-bold">Conversazione Attiva:</span>
+                    <span id="active-conversation-title" class="text-slate-900"></span>
+                </div>
+                <button 
+                    id="close-conversation-btn"
+                    type="button"
+                    class="text-slate-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-sm transition-colors"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
 
         <!-- Chat Messages Container (Target for JS) -->
         <div 
@@ -17,7 +44,7 @@
                 </div>
                 <h3 class="font-serif text-xl text-slate-700 font-bold mb-2">{{ __('natan.system_response_title') }}</h3>
                 <p class="font-sans text-sm text-slate-500 text-center max-w-md mb-8">
-                    {{ __('natan.welcome_message') ?? "Sistema pronto per l'analisi. Inserisci un quesito o seleziona un prompt strategico." }}
+                    {{ __('natan.welcome_message') }}
                 </p>
                 
                 <!-- Quick Suggestions (Visible in empty state) -->
@@ -69,7 +96,7 @@
             </div>
 
             <!-- Main Form -->
-            <form id="chat-form" class="relative">
+            <form id="chat-form" class="relative" method="POST" action="">
                 @csrf
                 <div class="relative">
                     <textarea 
@@ -85,7 +112,7 @@
                         type="button" 
                         id="command-helper-toggle"
                         class="absolute right-3 top-3 text-slate-400 hover:text-blue-600 transition-colors p-1"
-                        aria-label="Comandi"
+                        aria-label="{{ __('natan.commands.helper.toggle_label') }}"
                     >
                         <span class="font-mono font-bold text-lg">@</span>
                     </button>
@@ -105,12 +132,12 @@
             <div class="mt-2 flex justify-between items-center px-1">
                 <span class="text-[10px] font-mono text-slate-400">{{ __('natan.shift_enter_hint') }}</span>
                 <div class="flex gap-3 text-[10px] font-mono text-slate-500">
-                    <span class="flex items-center gap-1" title="Conversazioni in memoria">
+                    <span class="flex items-center gap-1" title="{{ __('natan.memory_tooltip') }}">
                         <span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span> 
-                        Memoria: {{ $totalConversations ?? 0 }}
+                        {{ __('natan.memory_label') }}: {{ $totalConversations ?? 0 }}
                     </span>
-                    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> Secure</span>
-                    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> Zero-Leak</span>
+                    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> {{ __('natan.secure_label') }}</span>
+                    <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> {{ __('natan.zero_leak_label') }}</span>
                 </div>
             </div>
         </div>
@@ -129,7 +156,7 @@
         <!-- Panel Header & Tabs -->
         <div class="bg-white border-b border-slate-200">
             <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                <span class="font-serif font-bold text-sm text-slate-800 uppercase tracking-wide">{{ __('natan.panel.title') ?? 'Archivio Tecnico' }}</span>
+                <span class="font-serif font-bold text-sm text-slate-800 uppercase tracking-wide">{{ __('natan.panel.title') }}</span>
                 <button id="right-panel-toggle" class="text-slate-400 hover:text-slate-700">
                     <x-natan.icon name="chevron-down" id="right-panel-chevron" class="w-4 h-4" />
                 </button>
@@ -152,7 +179,7 @@
             
             <!-- TAB: SUGGESTIONS -->
             <div id="tab-content-questions" class="tab-content active space-y-4">
-                <div class="text-[10px] font-mono text-slate-400 uppercase mb-2">Prompt Consigliati</div>
+                <div class="text-[10px] font-mono text-slate-400 uppercase mb-2">{{ __('natan.suggestions.prompt_recommended') }}</div>
                 @foreach($suggestedQuestions as $question)
                     <button 
                         type="button"
@@ -171,7 +198,7 @@
 
             <!-- TAB: ALL QUESTIONS (Library) -->
             <div id="tab-content-all-questions" class="tab-content hidden space-y-2">
-                <div class="text-[10px] font-mono text-slate-400 uppercase mb-2">Libreria Strategica</div>
+                <div class="text-[10px] font-mono text-slate-400 uppercase mb-2">{{ __('natan.questions.strategic_library') }}</div>
                 @foreach($strategicQuestionsLibrary as $categoryKey => $questions)
                     <details class="group border border-slate-200 bg-white rounded-sm open:border-slate-300 open:shadow-sm">
                         <summary class="flex justify-between items-center p-3 cursor-pointer hover:bg-slate-50 select-none">
@@ -215,7 +242,7 @@
                 <span class="text-emerald-500 flex items-center gap-1"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> LIVE</span>
             </div>
             <div id="console-log" class="flex-1 overflow-y-auto space-y-1 font-mono opacity-90">
-                <div class="flex gap-2"><span class="text-slate-500">{{ now()->format('H:i:s.v') }}</span> <span class="text-blue-400">[SYSTEM]</span> Interface ready.</div>
+                <div class="flex gap-2"><span class="text-slate-500">{{ now()->format('H:i:s.v') }}</span> <span class="text-blue-400">[SYSTEM]</span> {{ __('natan.console.interface_ready') }}</div>
             </div>
         </div>
     </div>

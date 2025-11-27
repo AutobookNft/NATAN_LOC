@@ -1,6 +1,19 @@
 <?php
 
 return [
+    // System & UI Labels
+    'system_title' => 'NATAN_LOC',
+    'system_response_title' => 'NATAN Analysis System',
+    'welcome_message' => 'System ready for analysis. Enter a query or select a strategic prompt.',
+    'input_placeholder' => 'Enter a query or select a strategic prompt...',
+    'execute_button' => 'EXECUTE',
+    'shift_enter_hint' => 'Shift+Enter for new line',
+    'process_console_title' => 'Process Console',
+    'tenant_label' => 'TENANT',
+    'no_tenant' => 'NO TENANT',
+    'rag_status_label' => 'RAG-FORTRESS',
+    'rag_status_active' => 'ACTIVE',
+
     'chat' => [
         'input_placeholder' => 'Type a message...',
         'send_button' => 'Send',
@@ -20,6 +33,7 @@ return [
 
     'suggestions' => [
         'title' => 'Suggested questions',
+        'prompt_recommended' => 'Recommended Prompts',
     ],
 
     'persona' => [
@@ -51,6 +65,7 @@ return [
         'all_categories' => 'All Categories',
         'no_suggestions' => 'No suggested questions available',
         'no_questions' => 'No questions available',
+        'strategic_library' => 'Strategic Library',
     ],
 
     'categories' => [
@@ -118,6 +133,15 @@ return [
         'multi_tenant' => 'Multi-Tenant Isolated',
         'verified' => 'Verified',
         'blockchain' => 'Blockchain Anchored',
+    ],
+
+    'memory_label' => 'Memory',
+    'memory_tooltip' => 'Conversations in memory',
+    'secure_label' => 'Secure',
+    'zero_leak_label' => 'Zero-Leak',
+
+    'console' => [
+        'interface_ready' => 'Interface ready.',
     ],
 
     'gdpr' => [

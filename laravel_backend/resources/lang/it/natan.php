@@ -3,6 +3,12 @@
 return [
     // System & UI Labels
     'system_title' => 'NATAN_LOC',
+    'system_response_title' => 'Sistema di Analisi NATAN',
+    'welcome_message' => 'Sistema pronto per l\'analisi. Inserisci un quesito o seleziona un prompt strategico.',
+    'input_placeholder' => 'Inserisci un quesito o seleziona un prompt strategico...',
+    'execute_button' => 'ESEGUI',
+    'shift_enter_hint' => 'Shift+Invio per nuova riga',
+    'process_console_title' => 'Console Processi',
     'tenant_label' => 'TENANT',
     'no_tenant' => 'NESSUN TENANT',
     'rag_status_label' => 'RAG-FORTRESS',
@@ -32,10 +38,23 @@ return [
         'empty' => 'Nessuna conversazione precedente',
         'previous' => 'Precedenti (:count)',
         'untitled' => 'Conversazione senza titolo',
+        'new_chat' => 'Nuova Chat',
+    ],
+
+    'projects' => [
+        'title' => 'Progetti',
+        'empty' => 'Nessun progetto creato',
+        'new_project' => 'Nuovo Progetto',
+        'active' => 'Progetto Attivo',
+        'create_title' => 'Nome Progetto',
+        'create_description' => 'Descrizione (opzionale)',
+        'create_button' => 'Crea',
+        'cancel_button' => 'Annulla',
     ],
 
     'suggestions' => [
         'title' => 'Domande suggerite',
+        'prompt_recommended' => 'Prompt Consigliati',
     ],
 
     'persona' => [
@@ -67,6 +86,7 @@ return [
         'all_categories' => 'Tutte le categorie',
         'no_suggestions' => 'Nessuna domanda suggerita disponibile',
         'no_questions' => 'Nessuna domanda disponibile',
+        'strategic_library' => 'Libreria Strategica',
     ],
 
     'categories' => [
@@ -134,6 +154,15 @@ return [
         'multi_tenant' => 'Multi-Tenant Isolato',
         'verified' => 'Verificato',
         'blockchain' => 'Ancorato Blockchain',
+    ],
+
+    'memory_label' => 'Memoria',
+    'memory_tooltip' => 'Conversazioni in memoria',
+    'secure_label' => 'Secure',
+    'zero_leak_label' => 'Zero-Leak',
+
+    'console' => [
+        'interface_ready' => 'Interfaccia pronta.',
     ],
 
     'gdpr' => [
