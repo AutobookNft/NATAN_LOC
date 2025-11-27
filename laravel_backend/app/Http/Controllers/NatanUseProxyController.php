@@ -243,7 +243,7 @@ class NatanUseProxyController extends Controller
             }
 
             // 5. Check GDPR consent for AI processing
-            if (!$this->consentService->hasConsent($user, 'ai_processing')) {
+            if (!$this->consentService->hasConsent($user, 'allow-ai-processing')) {
                 return response()->json([
                     'status' => 'error',
                     'message' => __('natan.errors.no_ai_consent'),
@@ -252,7 +252,7 @@ class NatanUseProxyController extends Controller
 
             // 6. Call Python FastAPI /chat endpoint directly
             $pythonApiUrl = config('services.python_ai.url', 'http://localhost:8001');
-            
+
             // Build request payload, excluding null values
             $payload = [
                 'messages' => $validated['messages'],
@@ -261,13 +261,13 @@ class NatanUseProxyController extends Controller
                 'persona' => $validated['persona'] ?? 'strategic',
                 'use_rag_fortress' => $validated['use_rag_fortress'] ?? true,
             ];
-            
+
             // Only include model if it's not null
             if (!empty($validated['model'])) {
                 $payload['model'] = $validated['model'];
             }
-            
-            $response = Http::timeout(240) // 4 minuti timeout per RAG-Fortress (ottimizzato per query generative)
+
+            $response = Http::timeout(600) // 10 minuti timeout per RAG-Fortress (query generative multi-step con Ollama locale)
                 ->post("{$pythonApiUrl}/api/v1/chat", $payload);
 
             if (!$response->successful()) {

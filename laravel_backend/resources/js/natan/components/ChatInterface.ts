@@ -181,7 +181,7 @@ export class ChatInterface {
                 }
             });
         });
-        
+
         // Listen for question clicks (from right panel desktop and mobile drawer)
         document.querySelectorAll('[data-question]').forEach((button) => {
             button.addEventListener('click', () => {
@@ -191,7 +191,7 @@ export class ChatInterface {
                 }
             });
         });
-        
+
         // Listen for suggestion-clicked event (from mobile drawer)
         document.addEventListener('suggestion-clicked', ((e: CustomEvent<{ question: string }>) => {
             this.sendMessage(e.detail.question);
@@ -204,7 +204,7 @@ export class ChatInterface {
     private attachEventListeners(): void {
         // Form submit - CRITICAL: prevent default form submission (which would be GET)
         this.inputForm.addEventListener('submit', (e) => {
-            console.log('[Chat][attachEventListeners] Form submit intercepted', { 
+            console.log('[Chat][attachEventListeners] Form submit intercepted', {
                 defaultPrevented: e.defaultPrevented,
                 type: e.type,
                 target: e.target
@@ -276,16 +276,16 @@ export class ChatInterface {
                 // Query che richiedono AI (creazione, analisi, calcoli complessi) → RAG-Fortress diretto
                 console.log('[Chat][handleSubmit] query requires AI, using RAG-Fortress', { question });
                 handledByCommand = true;
-                
+
                 // STEP 1: Pre-flight estimate call (fast, < 1 second)
                 // This shows user feedback BEFORE long processing starts
                 try {
                     console.log('[Chat][handleSubmit] calling estimate endpoint...');
                     const estimate = await apiService.estimateQuery(question);
                     console.log('[Chat][handleSubmit] estimate result:', estimate);
-                    
+
                     if (estimate.will_take_time && estimate.processing_notice) {
-                        // Show processing notice immediately
+                        // Show processing notice with legend immediately (won't be removed)
                         processingNoticeElement = this.showProcessingNotice(
                             estimate.processing_notice,
                             estimate.estimated_seconds
@@ -294,7 +294,7 @@ export class ChatInterface {
                 } catch (estimateError) {
                     console.warn('[Chat][handleSubmit] estimate failed, continuing without notice:', estimateError);
                 }
-                
+
                 // STEP 2: Actual query (may take minutes)
                 const chatMessages = this.messages.map(msg => ({
                     role: msg.role,
@@ -307,19 +307,41 @@ export class ChatInterface {
                     this.persona,
                     true // use_rag_fortress = true
                 );
-                
-                // Remove processing notice after response received
+
+                // DEBUG: Log infographic data
+                console.log('[Chat][handleSubmit] RAG response received:', {
+                    hasInfographic: !!response.infographic,
+                    infographicKeys: response.infographic ? Object.keys(response.infographic) : [],
+                    chartLength: response.infographic?.chart?.length || 0,
+                    chartType: response.infographic?.chart_type || 'none'
+                });
+
+                // Mark processing notice as completed (DON'T remove it - keep for reference)
                 if (processingNoticeElement) {
-                    this.removeProcessingNotice(processingNoticeElement);
+                    this.markProcessingNoticeCompleted(processingNoticeElement);
                 }
 
+                // DEBUG: Log raw response sources
+                console.log('[Chat][handleSubmit] RAG response sources:', {
+                    rawSources: response.sources,
+                    sourcesLength: response.sources?.length || 0,
+                    firstSource: response.sources?.[0]
+                });
+
                 // Converti sources da RAG-Fortress (array di oggetti) in formato Source
-                const sources: Source[] = (response.sources || []).map((src: any) => ({
-                    id: src.document_id || src.url || '',
-                    url: src.url || '',
-                    title: src.title || src.url || 'Senza titolo',
-                    type: src.type || 'internal',
-                }));
+                // Filtra solo fonti con titolo valido (non vuoto, non solo URL)
+                const sources: Source[] = (response.sources || [])
+                    .filter((src: any) => {
+                        // Escludi fonti senza titolo significativo
+                        const title = src.title?.trim();
+                        return title && title.length > 5 && !title.startsWith('http');
+                    })
+                    .map((src: any) => ({
+                        id: src.document_id || src.url || '',
+                        url: src.url || '',
+                        title: src.title,
+                        type: src.type || 'internal',
+                    }));
 
                 const assistantMessage: Message = {
                     id: this.generateId(),
@@ -334,10 +356,12 @@ export class ChatInterface {
                     sources: sources, // Array di oggetti Source per visualizzazione con link
                     gaps_detected: response.gaps_detected || [],
                     hallucinations_found: response.hallucinations_found || [],
+                    // Infographic (generata per query con "matrice", "grafico", NPV, etc.)
+                    infographic: response.infographic || undefined,
                     // Legacy fields (for backward compatibility)
                     avgUrs: response.urs_score,
-                    verificationStatus: response.urs_score && response.urs_score >= 90 ? 'SAFE' : 
-                                       response.urs_score && response.urs_score >= 70 ? 'WARNING' : 'BLOCKED',
+                    verificationStatus: response.urs_score && response.urs_score >= 90 ? 'SAFE' :
+                        response.urs_score && response.urs_score >= 70 ? 'WARNING' : 'BLOCKED',
                     tokensUsed: response.usage ? {
                         input: response.usage.prompt_tokens || 0,
                         output: response.usage.completion_tokens || 0,
@@ -498,56 +522,56 @@ export class ChatInterface {
     private requiresAI(question: string): boolean {
         const lowerQuestion = question.toLowerCase().trim();
         console.log('[Chat][requiresAI] checking query', { question, lowerQuestion });
-        
+
         // Parole chiave che indicano richieste creative/analitiche che richiedono AI
         const aiKeywords = [
             // Creazione e generazione
             'crea', 'creare', 'genera', 'generare', 'costruisci', 'costruire',
             'sviluppa', 'sviluppare', 'progetta', 'progettare', 'disegna', 'disegnare',
             'elabora', 'elaborare', 'formula', 'formulare', 'definisci', 'definire',
-            
+
             // Matrici e strutture complesse
             'matrice', 'matrici', 'tabella', 'tabelle', 'grafico', 'grafici',
             'schema', 'schemi', 'diagramma', 'diagrammi', 'modello', 'modelli',
-            
+
             // Analisi complesse
             'analizza', 'analizzare', 'analisi', 'valuta', 'valutare', 'valutazione',
             'confronta', 'confrontare', 'confronto', 'paragona', 'paragonare',
             'calcola', 'calcolare', 'calcolo', 'misura', 'misurare', 'misurazione',
             'quantifica', 'quantificare', 'quantificazione', 'stima', 'stimare', 'stima',
-            
+
             // Prioritizzazione e decisioni
             'prioritizza', 'prioritizzare', 'priorità', 'prioritizzazione',
             'ordina', 'ordinare', 'ordine', 'classifica', 'classificare', 'classificazione',
             'raccomanda', 'raccomandare', 'raccomandazione', 'suggerisci', 'suggerire',
             'consiglia', 'consigliare', 'consiglio', 'proponi', 'proporre', 'proposta',
-            
+
             // Strategia e pianificazione
             'strategia', 'strategie', 'pianifica', 'pianificare', 'pianificazione',
             'piano', 'piani', 'roadmap', 'roadmap', 'road map',
-            
+
             // Sintesi e riassunti
             'riassumi', 'riassumere', 'riassunto', 'sintetizza', 'sintetizzare', 'sintesi',
             'riepiloga', 'riepilogare', 'riepilogo', 'compendi', 'compendio',
-            
+
             // Spiegazioni complesse
             'spiega', 'spiegare', 'spiegazione', 'illustra', 'illustrare', 'illustrazione',
             'descrivi', 'descrivere', 'descrizione', 'dettaglia', 'dettagliare', 'dettaglio',
             'commenta', 'commentare', 'commento', 'interpreta', 'interpretare', 'interpretazione',
-            
+
             // Calcoli complessi
             'sroi', 'roi', 'npv', 'irr', 'payback', 'break-even', 'break even',
             'impatto', 'impatti', 'beneficio', 'benefici', 'costo', 'costi',
             'fattibilità', 'fattibilita', 'fattibile', 'viabilità', 'viabilita', 'viabile',
-            
+
             // Domande complesse
             'perché', 'perche', 'per quale motivo', 'in che modo', 'come posso',
             'cosa possiamo', 'cosa si può', 'cosa si puo', 'come si può', 'come si puo',
         ];
-        
+
         // Verifica se la query contiene parole chiave che richiedono AI
         const hasAIKeyword = aiKeywords.some(keyword => lowerQuestion.includes(keyword));
-        
+
         // Verifica pattern specifici che richiedono AI
         const aiPatterns = [
             /crea.*matrice/i,
@@ -564,19 +588,19 @@ export class ChatInterface {
             /strategia.*per/i,
             /piano.*per/i,
         ];
-        
+
         const matchesPattern = aiPatterns.some(pattern => pattern.test(question));
-        
+
         const result = hasAIKeyword || matchesPattern;
-        console.log('[Chat][requiresAI] result', { 
-            question, 
-            hasAIKeyword, 
-            matchesPattern, 
+        console.log('[Chat][requiresAI] result', {
+            question,
+            hasAIKeyword,
+            matchesPattern,
             result,
             matchedKeywords: aiKeywords.filter(kw => lowerQuestion.includes(kw)),
             matchedPatterns: aiPatterns.filter(p => p.test(question)).map(p => p.toString())
         });
-        
+
         return result;
     }
 
@@ -617,7 +641,7 @@ export class ChatInterface {
         if (!content.trim() || this.isLoading) {
             return;
         }
-        
+
         // Set input value and trigger submit
         console.log('[Chat][sendMessage] invoked', { content });
         this.inputField.value = content;
@@ -707,12 +731,12 @@ export class ChatInterface {
         const messageElement = MessageComponent.render(message);
         this.messagesContainer.appendChild(messageElement);
         this.scrollToBottom();
-        
+
         // Save conversation after each message (user or assistant)
         // This ensures conversations are saved even if assistant fails to respond
         this.saveMessageToConversation(message);
     }
-    
+
     /**
      * Save message to conversation (create or update conversation in natan_chat_messages)
      * Called after each message (user or assistant) to ensure conversations are always saved
@@ -727,7 +751,7 @@ export class ChatInterface {
                 conversationId = this.createConversationId();
                 this.setCurrentConversationId(conversationId);
             }
-            
+
             // Prepare all messages for saving (include tokens, model, claims, sources, verification_status)
             const messagesToSave = this.messages.map(msg => ({
                 id: msg.id,
@@ -773,10 +797,10 @@ export class ChatInterface {
                 lastMessageRole: message.role,
                 hasTokens: messagesToSave.some(m => m.tokens_used),
             });
-            
+
             // Get current project ID if available
             const projectId = (window as any).natanProjects?.getCurrentProject() || null;
-            
+
             const result = await apiService.saveConversation({
                 conversation_id: conversationId ?? undefined,
                 title,
@@ -816,7 +840,7 @@ export class ChatInterface {
     private async updateMemoryCount(): Promise<void> {
         const memoryBadge = document.getElementById('memory-badge');
         const memoryCount = document.getElementById('memory-count');
-        
+
         if (memoryCount) {
             // TODO: Fetch actual count from API
             // For now, increment if conversation was saved
@@ -896,7 +920,7 @@ export class ChatInterface {
      */
     private async loadConversation(conversationId: string): Promise<void> {
         console.log('📂 Loading conversation:', conversationId);
-        
+
         // Clear current messages
         this.messages = [];
         this.messagesContainer.innerHTML = '';
@@ -1119,68 +1143,126 @@ export class ChatInterface {
      */
     private showProcessingNotice(notice: string, estimatedSeconds: number): HTMLElement {
         console.log('[Chat] Showing processing notice', { estimatedSeconds });
-        
+
         const noticeDiv = document.createElement('div');
-        noticeDiv.className = 'processing-notice flex justify-start mb-4 animate-pulse';
+        noticeDiv.className = 'processing-notice flex justify-start mb-4';
         noticeDiv.setAttribute('role', 'status');
         noticeDiv.setAttribute('aria-live', 'polite');
-        
+
         const bubble = document.createElement('div');
         bubble.className = 'w-full sm:max-w-3xl rounded-xl px-4 py-4 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200';
-        
+
         // Parse markdown-style formatting in notice
         const formattedNotice = notice
             .replace(/\*\*(.*?)\*\*/g, '<strong class="text-blue-900">$1</strong>')
             .replace(/\n/g, '<br>')
             .replace(/- (.*?)(<br>|$)/g, '<li class="ml-4 text-blue-700">$1</li>')
             .replace(/(<li.*<\/li>)+/g, '<ul class="list-disc my-2">$&</ul>');
-        
+
         bubble.innerHTML = `
             <div class="flex items-start gap-3">
-                <div class="flex-shrink-0 mt-1">
+                <div class="shrink-0 mt-1 processing-spinner">
                     <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                 </div>
+                <div class="shrink-0 mt-1 processing-check hidden">
+                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
                 <div class="flex-1">
-                    <div class="text-sm text-blue-800 prose prose-sm max-w-none prose-strong:text-blue-900">
+                    <div class="text-sm text-blue-800 prose prose-sm max-w-none prose-strong:text-blue-900 processing-content">
                         ${formattedNotice}
                     </div>
-                    <div class="mt-3 flex items-center gap-2">
+                    <div class="mt-3 flex items-center gap-2 processing-progress">
                         <div class="h-1.5 flex-1 bg-blue-100 rounded-full overflow-hidden">
                             <div class="h-full bg-blue-500 rounded-full animate-progress" style="width: 0%"></div>
                         </div>
-                        <span class="text-xs text-blue-600 font-mono" id="processing-timer">0s / ~${estimatedSeconds}s</span>
+                        <span class="text-xs text-blue-600 font-mono processing-timer">0s</span>
+                    </div>
+                    <!-- LEGENDA - sempre visibile -->
+                    <div class="mt-3 pt-3 border-t border-blue-200 text-xs text-gray-600">
+                        <span class="font-semibold">📊 LEGENDA:</span>
+                        <span class="inline-flex items-center gap-1 ml-2">🟢 VERIFICATO</span>
+                        <span class="text-gray-400 mx-1">|</span>
+                        <span class="inline-flex items-center gap-1">🟠 STIMATO</span>
+                        <span class="text-gray-400 mx-1">|</span>
+                        <span class="inline-flex items-center gap-1">🔴 PROPOSTA AI</span>
                     </div>
                 </div>
             </div>
         `;
-        
+
         noticeDiv.appendChild(bubble);
         this.messagesContainer.appendChild(noticeDiv);
         this.scrollToBottom();
-        
+
         // Start progress animation and timer
         const progressBar = bubble.querySelector('.animate-progress') as HTMLElement;
-        const timerSpan = bubble.querySelector('#processing-timer') as HTMLElement;
-        
+        const timerSpan = bubble.querySelector('.processing-timer') as HTMLElement;
+
         let elapsed = 0;
         const timerInterval = setInterval(() => {
             elapsed++;
             if (timerSpan) {
-                timerSpan.textContent = `${elapsed}s / ~${estimatedSeconds}s`;
+                timerSpan.textContent = `${elapsed}s`;
             }
             if (progressBar) {
-                const progress = Math.min((elapsed / estimatedSeconds) * 100, 95);
+                // Progress up to 95% max (never reaches 100 until complete)
+                const progress = Math.min((elapsed / 180) * 100, 95); // 180s = 3 min
                 progressBar.style.width = `${progress}%`;
             }
         }, 1000);
-        
+
         // Store interval ID on element for cleanup
         (noticeDiv as any).__timerInterval = timerInterval;
-        
+
         return noticeDiv;
+    }
+
+    /**
+     * Mark processing notice as completed (keep visible, change appearance)
+     */
+    private markProcessingNoticeCompleted(noticeElement: HTMLElement): void {
+        console.log('[Chat] Marking processing notice as completed');
+
+        // Clear timer interval
+        if ((noticeElement as any).__timerInterval) {
+            clearInterval((noticeElement as any).__timerInterval);
+        }
+
+        // Remove pulse animation
+        noticeElement.classList.remove('animate-pulse');
+
+        // Change bubble style to completed
+        const bubble = noticeElement.querySelector('div') as HTMLElement;
+        if (bubble) {
+            bubble.className = 'w-full sm:max-w-3xl rounded-xl px-4 py-3 shadow-sm bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200';
+        }
+
+        // Hide spinner, show checkmark
+        const spinner = noticeElement.querySelector('.processing-spinner');
+        const check = noticeElement.querySelector('.processing-check');
+        if (spinner) spinner.classList.add('hidden');
+        if (check) check.classList.remove('hidden');
+
+        // Complete progress bar
+        const progressBar = noticeElement.querySelector('.animate-progress') as HTMLElement;
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.classList.remove('bg-blue-500');
+            progressBar.classList.add('bg-green-500');
+        }
+
+        // Update timer text
+        const timerSpan = noticeElement.querySelector('.processing-timer') as HTMLElement;
+        if (timerSpan) {
+            timerSpan.textContent = '✓ Completato';
+            timerSpan.classList.remove('text-blue-600');
+            timerSpan.classList.add('text-green-600');
+        }
     }
 
     /**
@@ -1188,16 +1270,16 @@ export class ChatInterface {
      */
     private removeProcessingNotice(noticeElement: HTMLElement): void {
         console.log('[Chat] Removing processing notice');
-        
+
         // Clear timer interval
         if ((noticeElement as any).__timerInterval) {
             clearInterval((noticeElement as any).__timerInterval);
         }
-        
+
         // Fade out animation
         noticeElement.style.transition = 'opacity 0.3s ease-out';
         noticeElement.style.opacity = '0';
-        
+
         setTimeout(() => {
             if (noticeElement.parentNode) {
                 noticeElement.parentNode.removeChild(noticeElement);
@@ -1220,7 +1302,7 @@ export function initRightPanel(): void {
     if (panelToggle && rightPanel && panelContent && panelTabs && chevron) {
         panelToggle.addEventListener('click', () => {
             const isCollapsed = rightPanel.getAttribute('data-collapsed') === 'true';
-            
+
             if (isCollapsed) {
                 // Expand
                 rightPanel.setAttribute('data-collapsed', 'false');
@@ -1260,7 +1342,7 @@ export function initRightPanel(): void {
                 content.classList.add('hidden');
                 content.classList.remove('active');
             });
-            
+
             const activeTabContent = document.querySelector(`#tab-content-${tabName}`);
             if (activeTabContent) {
                 activeTabContent.classList.remove('hidden');

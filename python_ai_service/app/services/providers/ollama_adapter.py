@@ -13,6 +13,8 @@ class OllamaChatAdapter(BaseChatAdapter):
         self.model_map = {
             "ollama.llama3-70b": "llama3:70b",
             "ollama.llama3-8b": "llama3:8b",
+            "ollama.llama3.1:8b": "llama3.1:8b",
+            "llama3.1:8b": "llama3.1:8b",
         }
         self.model = self.model_map.get(model, model)
     

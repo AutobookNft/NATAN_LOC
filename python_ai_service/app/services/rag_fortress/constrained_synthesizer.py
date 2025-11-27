@@ -5,6 +5,7 @@ Stile burocratico italiano perfetto
 """
 
 import logging
+import asyncio
 from typing import List
 import json
 from app.services.ai_router import AIRouter
@@ -171,54 +172,26 @@ class ConstrainedSynthesizer:
                 )
                 max_tokens = 600
             
-            # Prova Ollama locale con LoRA prima
-            try:
-                import ollama
-                import asyncio
-                
-                # Timeout 8 secondi per Ollama
-                response = await asyncio.wait_for(
-                    asyncio.to_thread(
-                        ollama.generate,
-                        model=self.model,
-                        prompt=prompt,
-                        options={
-                            "temperature": 0.3,
-                            "num_predict": max_tokens  # Variabile: 600 per risposte normali, 3000 per matrici
-                        }
-                    ),
-                    timeout=8.0
-                )
-                
-                result = {
-                    "content": response.get("response", ""),
-                    "model": self.model,
-                    "usage": {}
+            # Usa AI Router (Groq o Claude)
+            context = {"task_class": "synthesis"}
+            adapter = self.ai_router.get_chat_adapter(context)
+            
+            messages = [
+                {
+                    "role": "system",
+                    "content": "Sei un assistente formale per la Pubblica Amministrazione italiana. Rispondi sempre in stile burocratico formale."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
                 }
-                logger.info("✅ Risposta generata con Ollama LoRA locale")
-                
-            except (ImportError, asyncio.TimeoutError, Exception) as e:
-                # Fallback a Claude se Ollama non disponibile
-                logger.warning(f"Ollama non disponibile ({e}), uso fallback Claude")
-                context = {"task_class": "synthesis"}
-                adapter = self.ai_router.get_chat_adapter(context)
-                
-                messages = [
-                    {
-                        "role": "system",
-                        "content": "Sei un assistente formale per la Pubblica Amministrazione italiana. Rispondi sempre in stile burocratico formale."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-                
-                result = await adapter.generate(
-                    messages,
-                    temperature=0.3,  # Bassa temperatura per stile formale
-                    max_tokens=max_tokens  # Variabile: 600 per risposte normali, 3000 per matrici
-                )
+            ]
+            
+            result = await adapter.generate(
+                messages,
+                temperature=0.3,  # Bassa temperatura per stile formale
+                max_tokens=max_tokens  # Variabile: 600 per risposte normali, 3000 per matrici
+            )
             
             response = result["content"].strip()
             

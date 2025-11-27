@@ -102,6 +102,18 @@ class HostileFactChecker:
             
             content = result["content"].strip()
             
+            # Frasi standard da ignorare (formule burocratiche comuni)
+            IGNORE_PATTERNS = [
+                "in riferimento alla domanda",
+                "si comunica quanto segue",
+                "non dispongo di informazioni verificate",
+                "si conclude che",
+                "in conclusione",
+                "si segnala che",
+                "si ribadisce che",
+                "le informazioni fornite sono limitate"
+            ]
+            
             # Estrai allucinazioni
             hallucinations = []
             for line in content.split("\n"):
@@ -109,8 +121,24 @@ class HostileFactChecker:
                 if line.startswith("HALLUCINATION:") or line.startswith("HALLUCINATION"):
                     # Estrai testo dopo "HALLUCINATION:"
                     hallucination_text = line.split(":", 1)[1].strip() if ":" in line else line.replace("HALLUCINATION", "").strip()
+                    
                     if hallucination_text:
+                        # Rimuovi virgolette
+                        hallucination_text = hallucination_text.strip('"\'')
+                        
+                        # IGNORA se contiene citazione claim (CLAIM_XXX)
+                        if "(CLAIM_" in hallucination_text:
+                            logger.debug(f"Ignorata 'hallucination' con citazione claim: {hallucination_text[:80]}")
+                            continue
+                        
+                        # IGNORA se è formula standard
+                        is_standard = any(pattern in hallucination_text.lower() for pattern in IGNORE_PATTERNS)
+                        if is_standard:
+                            logger.debug(f"Ignorata formula standard: {hallucination_text[:80]}")
+                            continue
+                        
                         hallucinations.append(f"HALLUCINATION: {hallucination_text}")
+                        
                 elif line == "NESSUNA_ALLUCINAZIONE" or line == '["NESSUNA_ALLUCINAZIONE"]':
                     return ["NESSUNA_ALLUCINAZIONE"]
             
@@ -121,7 +149,7 @@ class HostileFactChecker:
                 # Se non trova esplicitamente, assume che tutto sia ok
                 return ["NESSUNA_ALLUCINAZIONE"]
             
-            logger.warning(f"Trovate {len(hallucinations)} allucinazioni nella risposta")
+            logger.warning(f"Trovate {len(hallucinations)} allucinazioni reali nella risposta")
             
             return hallucinations
             

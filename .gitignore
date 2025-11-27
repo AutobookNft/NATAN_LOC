@@ -100,3 +100,7 @@ EGI_Documentation/
 *- Copia*
 *.Zone.Identifier
 python_ai_service/storage/
+python_ai_service/phyton.env
+python_ai_service/.env__
+laravel_backend/laravel.env
+laravel_backend/.env__

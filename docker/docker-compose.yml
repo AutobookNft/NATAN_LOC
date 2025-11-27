@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # MongoDB (Cognitivo - embeddings, chat, logs)
@@ -68,6 +68,8 @@ services:
       dockerfile: Dockerfile
     container_name: natan_python_fastapi
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # MongoDB Atlas connection (priority over separate variables)
       MONGODB_URI: ${MONGODB_URI:-}
@@ -79,6 +81,8 @@ services:
       MONGO_DB_PASSWORD: ${MONGO_ROOT_PASSWORD:-secret_password}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     volumes:
       - ../python_ai_service:/app
     ports:
@@ -106,23 +110,3 @@ volumes:
 networks:
   natan_network:
     driver: bridge
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

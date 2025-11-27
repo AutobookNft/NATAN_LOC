@@ -2,11 +2,12 @@
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any
 from app.services.ai_router import AIRouter
 from app.services.rag_fortress.pipeline import rag_fortress
 from app.services.question_classifier import QuestionClassifier
 from app.services.execution_router import ExecutionRouter, RouterAction
+from app.config.rag_config import get_rag_config
 import time
 import logging
 
@@ -40,10 +41,11 @@ class ChatResponse(BaseModel):
     urs_score: Optional[float] = None
     urs_explanation: Optional[str] = None
     claims: List[str] = []
-    sources: List[str] = []
+    sources: List[Any] = []  # Lista di oggetti {url, title, document_id, type} per frontend
     hallucinations_found: List[str] = []
     gaps_detected: List[str] = []
     processing_notice: Optional[str] = None  # Messaggio di progresso per operazioni lunghe
+    infographic: Optional[dict] = None  # Infografica generata (chart HTML, tipo, titolo)
 
 class ProcessingEstimate(BaseModel):
     """Stima della complessità del processamento per mostrare notice anticipato"""
@@ -99,6 +101,9 @@ async def estimate_processing(request: ChatRequest):
         
         is_generative = pipeline._is_generative_query(question)
         
+        # Carica configurazione RAG per stime accurate
+        rag_config = get_rag_config()
+        
         # Stima documenti: conta reale dal database per il tenant
         if is_generative or action == RouterAction.RAG_GENERATIVE.value:
             # Query veloce per contare documenti disponibili per questo tenant
@@ -110,21 +115,25 @@ async def estimate_processing(request: ChatRequest):
             except Exception:
                 total_available = 100  # Fallback se conteggio fallisce
             
-            # Flusso REALE del retrieval:
-            # 1. Vector Search estrae top_k=100 più simili alla query
-            # 2. Filtro rilevanza (score >= 0.5)
-            # 3. Limit a 50 documenti (evidences[:50])
-            # Quindi: da total_available -> estrai 100 -> processa max 50
+            # Usa configurazione centralizzata per stime
             retrieval_top_k = 100  # Documenti estratti da vector search
-            max_processing = 50    # Limite massimo per processing
+            max_processing = rag_config.max_evidences  # Da configurazione
+            batch_size = rag_config.batch_size  # Da configurazione
             
             # Se abbiamo meno documenti del top_k, estraiamo tutti quelli disponibili
             docs_retrieved = min(total_available, retrieval_top_k)
             docs_to_process = min(docs_retrieved, max_processing)
             
             # Calcola tempo in base ai documenti da processare
-            num_batches = (docs_to_process + 9) // 10
-            estimated_seconds = (num_batches * 15) + 20  # ~15 sec per batch + 20 sec aggregazione
+            num_batches = (docs_to_process + batch_size - 1) // batch_size
+            
+            # Stima tempo basata sul profilo (local è più lento)
+            if rag_config.profile_name in ["local", "local_high_end"]:
+                sec_per_batch = 45  # Ollama locale più lento
+            else:
+                sec_per_batch = 15  # Cloud più veloce
+            
+            estimated_seconds = (num_batches * sec_per_batch) + 20
             query_type = "generative_deep"
             
             # Genera processing notice con numeri REALI del flusso
@@ -234,6 +243,10 @@ async def chat_inference(request: ChatRequest):
             )
             elapsed_ms = int((time.time() - start_time) * 1000)
             
+            # Pass sources as-is (dict objects with url, title, document_id)
+            # Frontend expects: { url: string, title: string, document_id: string, type: string }
+            sources_data = result.get("sources", [])
+            
             return ChatResponse(
                 message=result.get("answer", ""),
                 model="rag-fortress-pipeline",
@@ -247,9 +260,10 @@ async def chat_inference(request: ChatRequest):
                 urs_score=result.get("urs_score", 0.0),
                 urs_explanation=result.get("urs_explanation", ""),
                 claims=result.get("claims_used", []),
-                sources=result.get("sources", []),
+                sources=sources_data,  # Passa direttamente gli oggetti dict
                 hallucinations_found=result.get("hallucinations_found", []),
-                gaps_detected=result.get("gaps_detected", [])
+                gaps_detected=result.get("gaps_detected", []),
+                infographic=result.get("infographic")  # Infografica se generata
             )
         
         elif action == RouterAction.RAG_GENERATIVE.value:
@@ -266,23 +280,9 @@ async def chat_inference(request: ChatRequest):
             )
             elapsed_ms = int((time.time() - start_time) * 1000)
             
-            # Convert sources dict to string format with URL for Pydantic validation
-            # Format: "Title | URL | document_id | protocol"
+            # Pass sources as-is (dict objects with url, title, document_id)
+            # Frontend expects: { url: string, title: string, document_id: string, type: string }
             sources_data = result.get("sources", [])
-            sources_str = []
-            for src in sources_data:
-                if isinstance(src, dict):
-                    title = src.get("title", "Documento")
-                    doc_id = src.get("document_id", "unknown")
-                    url = src.get("url", "")
-                    protocol = src.get("protocol_number", "")
-                    
-                    # Format with URL for frontend parsing: "Title|URL|doc_id|protocol"
-                    # Frontend can split by "|" and create clickable links
-                    source_entry = f"{title}|{url}|{doc_id}|{protocol}"
-                    sources_str.append(source_entry)
-                elif isinstance(src, str):
-                    sources_str.append(src)
             
             return ChatResponse(
                 message=result.get("answer", ""),
@@ -293,14 +293,15 @@ async def chat_inference(request: ChatRequest):
                     "total_tokens": 0,
                     "elapsed_ms": elapsed_ms
                 },
-                citations=sources_str,  # Sources del tenant usate (convertite a stringhe)
+                citations=[],  # Sources del tenant usate
                 urs_score=None,  # No URS rigoroso per query generative
                 urs_explanation=result.get("urs_explanation", "Query generativa - usa contesto tenant senza verifica URS rigorosa"),
                 claims=[],
-                sources=sources_str,  # Same as citations
+                sources=sources_data,  # Passa direttamente gli oggetti dict
                 hallucinations_found=[],
                 gaps_detected=[],
-                processing_notice=result.get("processing_notice")  # Messaggio di progresso se presente
+                processing_notice=result.get("processing_notice"),  # Messaggio di progresso se presente
+                infographic=result.get("infographic")  # Infografica se generata
             )
         
         elif action == RouterAction.DIRECT_QUERY.value:

@@ -73,26 +73,35 @@ class ClaimExtractor:
             return ["[NO_CLAIMS]"]
         
         # Filtra solo evidenze direttamente rilevanti
+        # Soglia 5.0 (da 7.0) per essere meno restrittivi con modelli free-tier
         relevant_evidences = [
             ev for ev in verified_evidences
-            if ev.get("is_directly_relevant", False) and ev.get("relevance_score", 0) >= 7.0
+            if ev.get("is_directly_relevant", False) and ev.get("relevance_score", 0) >= 5.0
         ]
         
         if not relevant_evidences:
             logger.info("Nessuna evidenza direttamente rilevante, ritorno [NO_CLAIMS]")
             return ["[NO_CLAIMS]"]
         
+        # Limita evidenze per rispettare rate limits
+        MAX_EVIDENCES = 10
+        MAX_CONTENT_LENGTH = 400
+        relevant_evidences = relevant_evidences[:MAX_EVIDENCES]
+        
         try:
             # Prepara evidenze per il prompt
-            evidences_for_prompt = [
-                {
+            evidences_for_prompt = []
+            for ev in relevant_evidences:
+                content = ev.get("content", "")
+                # Assicurati che content sia una stringa
+                if not isinstance(content, str):
+                    content = str(content) if content else ""
+                evidences_for_prompt.append({
                     "evidence_id": ev.get("evidence_id", ""),
-                    "content": ev.get("content", "")[:800],  # Limita lunghezza
-                    "exact_quote": ev.get("exact_quote", ""),
+                    "content": content[:MAX_CONTENT_LENGTH],  # Limita lunghezza
+                    "exact_quote": ev.get("exact_quote", "") or "",
                     "relevance_score": ev.get("relevance_score", 0.0)
-                }
-                for ev in relevant_evidences
-            ]
+                })
             
             # Costruisci prompt
             prompt = CLAIM_EXTRACTION_PROMPT.format(

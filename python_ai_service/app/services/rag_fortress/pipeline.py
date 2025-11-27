@@ -4,7 +4,7 @@ Coordina tutti i componenti per generare risposta zero-allucinazione
 """
 
 import logging
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Any
 from .retriever import HybridRetriever
 from .evidence_verifier import EvidenceVerifier
 from .claim_extractor import ClaimExtractor
@@ -14,6 +14,7 @@ from .hostile_factchecker import HostileFactChecker
 from .urs_calculator import URSCalculator
 from app.services.ai_router import AIRouter
 from app.services.providers.api_errors import APIError, APIErrorType
+from app.config.rag_config import get_rag_config
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,283 @@ class RAGFortressPipeline:
         self.fact_checker = HostileFactChecker()
         self.urs_calculator = URSCalculator()
         self.ai_router = AIRouter()
+        
+    # Pattern per rilevare query che richiedono visualizzazione
+    # Derivati dalle 63 domande strategiche del frontend
+    VISUALIZATION_KEYWORDS = [
+        # Grafici e visualizzazioni esplicite
+        "matrice", "grafico", "chart", "visualizza", "mostra graficamente",
+        "diagramma", "istogramma", "torta", "barre", "linee", "trend",
+        "tabella comparativa", "confronto visivo", "mappa", "infografica",
+        "dashboard", "report visivo", "schema", "timeline", "grafo",
+        
+        # Modelli finanziari (categoria 'financial')
+        "npv", "irr", "break-even", "breakeven", "modello finanziario",
+        "analisi finanziaria", "roi", "payback", "cash flow", "flusso di cassa",
+        "van", "tir", "punto di pareggio", "ritorno investimento", "sroi",
+        "budget variance", "costo per cittadino",
+        
+        # Analisi comparative e ranking (categoria 'strategic', 'decision_support')
+        "ranking", "classifica", "priorità", "scoring", "punteggio",
+        "benchmark", "comparazione", "analisi multi-criterio", "prioritization",
+        "matrice decisionale", "confronta le performance", "gap e opportunità",
+        
+        # Statistiche e distribuzioni (categoria 'search_classification', 'temporal_analysis')
+        "distribuzione", "statistiche", "statistiche aggregate", "frequenza",
+        "mostra la distribuzione", "quanti atti", "totale atti per",
+        
+        # Timeline e analisi temporale (categoria 'temporal_analysis')
+        "evoluzione", "timeline dei progetti", "grafico temporale",
+        "attività per trimestre", "trend emergono", "catena temporale",
+        
+        # Mapping e relazioni (categoria 'relationships_links')
+        "mappa tutti", "crea un grafo", "dipendenze tra progetti",
+        "quadro sinottico", "roadmap", "critical path",
+        
+        # Report strutturati (categoria 'synthesis_reporting')
+        "sintesi esecutiva", "report sui", "quadro sinottico",
+        "early warning", "kpi più critici",
+        
+        # Scenari e simulazioni (categoria 'power_questions')
+        "simula", "scenari futuri", "scenario ottimistico",
+        "scenario pessimistico", "scenario realistico"
+    ]
+    
+    def _requires_visualization(self, question: str) -> bool:
+        """
+        Rileva se la query richiede una visualizzazione grafica.
+        
+        Args:
+            question: Domanda utente
+            
+        Returns:
+            True se richiede visualizzazione
+        """
+        question_lower = question.lower()
+        return any(kw in question_lower for kw in self.VISUALIZATION_KEYWORDS)
+    
+    async def _generate_infographic_for_response(
+        self, 
+        question: str, 
+        answer: str, 
+        sources: List[Dict],
+        tenant_id: int
+    ) -> Optional[Dict]:
+        """
+        Genera infografica se la query lo richiede.
+        
+        Args:
+            question: Domanda originale
+            answer: Risposta testuale generata
+            sources: Fonti documentali
+            tenant_id: ID tenant
+            
+        Returns:
+            Dict con infografica o None se non applicabile
+        """
+        try:
+            from app.services.infographics_generator import InfographicsGenerator
+            
+            logger.info(f"📊 Generazione infografica per query: {question[:50]}...")
+            
+            generator = InfographicsGenerator()
+            
+            # Estrai dati strutturati dalla risposta AI
+            extracted_data = await self._extract_data_for_visualization(question, answer, sources)
+            
+            logger.info(f"📊 Dati estratti per visualizzazione: {list(extracted_data.keys())}")
+            
+            result = await generator.analyze_and_generate(
+                data=extracted_data,
+                user_question=question,
+                output_format="png"  # PNG per visualizzazione inline (HTML bloccato da sanitizer)
+            )
+            
+            logger.info(f"✅ Infografica generata: tipo={result.get('chart_type', 'unknown')}, format={result.get('format', 'unknown')}")
+            return result
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Impossibile generare infografica: {e}")
+            import traceback
+            logger.warning(f"Traceback: {traceback.format_exc()}")
+            return None
+    
+    async def _extract_data_for_visualization(
+        self,
+        question: str,
+        answer: str,
+        sources: List[Dict]
+    ) -> Dict[str, Any]:
+        """
+        Estrae dati strutturati dalla risposta AI per la visualizzazione.
+        
+        Usa Groq per analizzare la risposta ed estrarre:
+        - Dati numerici (importi, percentuali, quantità)
+        - Categorie e confronti
+        - Serie temporali
+        - KPI e indicatori
+        
+        Args:
+            question: Domanda originale
+            answer: Risposta testuale generata
+            sources: Fonti documentali
+            
+        Returns:
+            Dict con dati strutturati per la visualizzazione
+        """
+        import json
+        import re
+        
+        # Prompt per estrarre dati strutturati
+        extraction_prompt = f"""Analizza la seguente risposta e estrai i dati strutturati per creare un grafico.
+
+DOMANDA UTENTE:
+{question}
+
+RISPOSTA DA ANALIZZARE:
+{answer[:2000]}
+
+Estrai i dati in formato JSON. Scegli UNA delle seguenti strutture in base al tipo di dati:
+
+1. Per CONFRONTI tra categorie (bar chart, pie chart):
+{{
+    "type": "categories",
+    "categories": ["Cat1", "Cat2", "Cat3"],
+    "values": [100, 200, 150],
+    "value_label": "Importo €"
+}}
+
+2. Per SERIE TEMPORALI (line chart):
+{{
+    "type": "time_series",
+    "dates": ["2024-01", "2024-02", "2024-03"],
+    "values": [100, 150, 200],
+    "value_label": "Valore"
+}}
+
+3. Per KPI/INDICATORI singoli:
+{{
+    "type": "kpi",
+    "kpis": [
+        {{"label": "NPV", "value": 150000, "unit": "€"}},
+        {{"label": "IRR", "value": 12.5, "unit": "%"}},
+        {{"label": "Payback", "value": 3.5, "unit": "anni"}}
+    ]
+}}
+
+4. Per MATRICI DECISIONALI (table):
+{{
+    "type": "matrix",
+    "headers": ["Criterio", "Opzione A", "Opzione B", "Opzione C"],
+    "rows": [
+        ["Costo", "Alto", "Medio", "Basso"],
+        ["ROI", "15%", "10%", "8%"],
+        ["Rischio", "Basso", "Medio", "Alto"]
+    ]
+}}
+
+5. Per DISTRIBUZIONI (pie chart):
+{{
+    "type": "distribution",
+    "categories": ["Categoria A", "Categoria B", "Categoria C"],
+    "values": [40, 35, 25],
+    "value_label": "Percentuale"
+}}
+
+Se non riesci a estrarre dati numerici specifici, usa dati di esempio realistici basati sul contesto.
+
+Rispondi SOLO con il JSON, senza altro testo."""
+
+        try:
+            # Usa AIRouter (Claude) per estrarre i dati - evita Groq che ha rate limits
+            ai_router = AIRouter()
+            context = {
+                "tenant_id": 0,
+                "task_class": "extraction",
+                "priority": "quality"
+            }
+            adapter = ai_router.get_chat_adapter(context)
+            
+            response = await adapter.generate(
+                messages=[{"role": "user", "content": extraction_prompt}],
+                temperature=0.2,
+                max_tokens=1000
+            )
+            
+            content = response.get("content", "")
+            
+            # Estrai JSON dalla risposta
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if json_match:
+                extracted = json.loads(json_match.group())
+                logger.info(f"📊 Dati estratti con AI: type={extracted.get('type', 'unknown')}")
+                
+                # Converti nel formato atteso dal generatore
+                return self._normalize_extracted_data(extracted)
+                
+        except Exception as e:
+            logger.warning(f"Estrazione AI fallita: {e}, uso fallback")
+        
+        # Fallback: estrai dati dai documenti sources
+        return self._extract_fallback_data(question, sources)
+    
+    def _normalize_extracted_data(self, extracted: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalizza i dati estratti nel formato atteso dal generatore."""
+        data_type = extracted.get("type", "")
+        
+        if data_type == "categories" or data_type == "distribution":
+            return {
+                "categories": extracted.get("categories", []),
+                "values": extracted.get("values", []),
+                "value_label": extracted.get("value_label", "Valore")
+            }
+        
+        elif data_type == "time_series":
+            return {
+                "time_series": [
+                    {"date": d, "value": v}
+                    for d, v in zip(
+                        extracted.get("dates", []),
+                        extracted.get("values", [])
+                    )
+                ]
+            }
+        
+        elif data_type == "kpi":
+            return {
+                "kpi": extracted.get("kpis", [])
+            }
+        
+        elif data_type == "matrix":
+            return {
+                "headers": extracted.get("headers", []),
+                "rows": extracted.get("rows", [])
+            }
+        
+        # Fallback: ritorna come è
+        return extracted
+    
+    def _extract_fallback_data(self, question: str, sources: List[Dict]) -> Dict[str, Any]:
+        """Estrae dati di fallback dai documenti quando l'AI fallisce."""
+        # Raggruppa documenti per categoria
+        categories = {}
+        for s in sources[:20]:
+            cat = s.get("category", s.get("document_type", "Altro"))
+            categories[cat] = categories.get(cat, 0) + 1
+        
+        if categories:
+            return {
+                "categories": list(categories.keys()),
+                "values": list(categories.values()),
+                "value_label": "Numero documenti"
+            }
+        
+        # Ultimo fallback: dati di esempio
+        return {
+            "categories": ["Documenti analizzati"],
+            "values": [len(sources)],
+            "value_label": "Quantità"
+        }
     
     def _build_document_citation(self, ev: Dict, index: int) -> str:
         """
@@ -516,9 +794,10 @@ class RAGFortressPipeline:
                     # Ripristina soglia originale
                     self.retriever.relevance_threshold = temp_threshold
             
-            # OTTIMIZZAZIONE: Ridotto da 100 a 50 per evitare timeout
-            evidences = all_evidences[:50]  # Limita a 50 evidenze totali (bilanciamento performance/qualità)
-            logger.info(f"Trovate {len(evidences)} evidenze totali dopo ricerche multiple")
+            # Usa configurazione centralizzata per max_evidences
+            rag_config = get_rag_config()
+            evidences = all_evidences[:rag_config.max_evidences]
+            logger.info(f"Trovate {len(evidences)} evidenze totali dopo ricerche multiple (max={rag_config.max_evidences}, profilo={rag_config.profile_name})")
             
             if not evidences:
                 # Se la query è generativa E non ci sono evidenze, NON generare template
@@ -565,9 +844,10 @@ class RAGFortressPipeline:
             )
             
             # Filtra solo evidenze direttamente rilevanti
+            # Soglia 5.0 (da 7.0) per essere meno restrittivi con modelli free-tier
             relevant_evidences = [
                 ev for ev in verified_evidences
-                if ev.get("is_directly_relevant", False) and ev.get("relevance_score", 0) >= 7.0
+                if ev.get("is_directly_relevant", False) and ev.get("relevance_score", 0) >= 5.0
             ]
             
             if not relevant_evidences:
@@ -757,11 +1037,13 @@ class RAGFortressPipeline:
             Dict con risposta aggregata da tutti i documenti
         """
         try:
-            batch_size = 10
+            # Usa configurazione centralizzata
+            rag_config = get_rag_config()
+            batch_size = rag_config.batch_size
             total_docs = len(evidences)
             num_batches = (total_docs + batch_size - 1) // batch_size  # Ceiling division
             
-            logger.info(f"🔄 MULTI-STEP: Processamento {total_docs} documenti in {num_batches} batch da {batch_size}")
+            logger.info(f"🔄 MULTI-STEP: Processamento {total_docs} documenti in {num_batches} batch da {batch_size} (profilo={rag_config.profile_name})")
             
             # Genera messaggio di avviso per l'utente (usa parametri keyword per nuova signature)
             processing_notice = self._generate_processing_notice(
@@ -796,8 +1078,9 @@ class RAGFortressPipeline:
                         text = str(content) if content else ""
                     
                     if text:
-                        # Limita lunghezza documento a 2000 caratteri per batch processing
-                        text_preview = text[:2000] + "..." if len(text) > 2000 else text
+                        # Limita lunghezza documento (da configurazione)
+                        max_len = rag_config.text_preview_length
+                        text_preview = text[:max_len] + "..." if len(text) > max_len else text
                         
                         # Usa citazione precisa invece di [DOC X]
                         citation = self._build_document_citation(ev, i)
@@ -934,38 +1217,15 @@ La risposta DEVE seguire questa struttura ESATTA:
 **SEZIONE 1 - HEADER METODOLOGICO** (OBBLIGATORIO, inseriscilo all'inizio):
 {methodology_header}
 
-**SEZIONE 2 - LEGENDA SEMAFORO** (subito dopo l'header):
----
-**📊 LEGENDA AFFIDABILITÀ DATI**
+**PARTE A: STATO ATTUALE** (solo fatti 🟢/🟠)
+Descrivi ciò che emerge dai documenti. Usa 🟢 per dati verificati e 🟠 per stime.
 
-🟢 **VERIFICATO** = Dato presente nei documenti ufficiali
-🟠 **STIMATO** = Elaborazione/stima basata su dati parziali  
-🔴 **PROPOSTA AI** = Suggerimento del sistema, NON nei documenti
----
+**PARTE B: PROPOSTE E RACCOMANDAZIONI** (solo 🔴)
+Proposte SEPARATE dai fatti, linguaggio condizionale. Usa 🔴 per ogni proposta.
 
-**SEZIONE 3 - PARTE A: STATO ATTUALE (solo fatti 🟢/🟠)**
-Qui descrivi SOLO ciò che emerge dai documenti. NO proposte.
-
-**SEZIONE 4 - PARTE B: PROPOSTE E RACCOMANDAZIONI (solo 🔴)**
-Qui metti le tue proposte, CHIARAMENTE SEPARATE dai fatti.
-
-=== TONO OBBLIGATORIO PER PROPOSTE 🔴 ===
-
-Le proposte AI devono usare SEMPRE linguaggio CONDIZIONALE e PRUDENTE:
-
-VERBI DA USARE:
-- ✅ "Si potrebbe valutare...", "Sarebbe opportuno considerare..."
-- ✅ "Una possibile soluzione potrebbe essere...", "Si suggerisce di..."
-- ❌ MAI: "Bisogna fare...", "È necessario...", "Occorre implementare..."
-
-NUMERI DA USARE:
-- ✅ "Budget indicativo: €150.000-250.000 (da validare con uffici tecnici)"
-- ✅ "Stima preliminare soggetta a verifica: €X-Y"
-- ❌ MAI numeri puntuali senza range
-
-DISCLAIMER DA AGGIUNGERE:
-- Alla fine di ogni proposta significativa, aggiungi: "(proposta da validare)"
-- Per KPI: "Target indicativo, da calibrare su dati storici reali"
+=== TONO PER PROPOSTE 🔴 ===
+Usa: "Si potrebbe...", "Sarebbe opportuno...", "Budget indicativo: €X-Y (da validare)"
+MAI: "Bisogna...", "È necessario...", numeri puntuali senza range
 
 === REGOLE CITAZIONI ===
 
@@ -1018,7 +1278,18 @@ Elabora la risposta seguendo la struttura obbligatoria."""
             # Post-processing: Aggiungi link cliccabili
             answer_with_links = self._add_clickable_links_to_answer(answer, all_sources)
             
-            return {
+            # Genera infografica se la query lo richiede
+            infographic = None
+            if self._requires_visualization(question):
+                logger.info("📊 Query richiede visualizzazione, genero infografica...")
+                infographic = await self._generate_infographic_for_response(
+                    question=question,
+                    answer=answer_with_links,
+                    sources=all_sources,
+                    tenant_id=tenant_id
+                )
+            
+            response = {
                 "answer": answer_with_links,
                 "urs_score": None,
                 "urs_explanation": f"Modalità GENERATIVA MULTI-STEP: sintesi da {total_docs} documenti processati in {num_batches} batch. Non applicate verifiche URS rigorose.",
@@ -1028,6 +1299,12 @@ Elabora la risposta seguendo la struttura obbligatoria."""
                 "gaps_detected": [],
                 "processing_notice": processing_notice  # Includi messaggio di progresso
             }
+            
+            # Aggiungi infografica se generata
+            if infographic:
+                response["infographic"] = infographic
+                
+            return response
         
         except APIError as api_err:
             # Errore API con messaggio user-friendly
@@ -1095,16 +1372,8 @@ Elabora la risposta seguendo la struttura obbligatoria."""
         if num_batches is None:
             num_batches = (docs_to_process + 9) // 10
             
-        # Stima tempo: ~15 secondi per batch + 20 secondi aggregazione finale
-        estimated_seconds = (num_batches * 15) + 20
-        estimated_minutes = estimated_seconds // 60
-        
-        if estimated_minutes < 1:
-            time_str = f"circa {estimated_seconds} secondi"
-        elif estimated_minutes == 1:
-            time_str = "circa un minuto"
-        else:
-            time_str = f"circa {estimated_minutes} minuti"
+        # Tempo stimato: sempre "fino a 3 minuti" per semplicità
+        time_str = "fino a 3 minuti"
         
         # Personalizza messaggio in base al tipo di query
         query_lower = question.lower()
@@ -1143,11 +1412,11 @@ Elabora la risposta seguendo la struttura obbligatoria."""
             docs_note = ""
         
         messages = [
-            f"🔍 **Analisi approfondita in corso**\n\n{docs_info}\n\n📊 **Processamento intelligente:**\n- Estrazione dati da {num_batches} gruppi di documenti\n- Analisi semantica e correlazioni\n- Aggregazione e sintesi finale\n\n⏱️ **Tempo stimato:** {time_str}{docs_note}\n\n✅ Il risultato sarà basato su dati reali e verificati!",
+            f"🔍 **Analisi approfondita in corso**\n\n{docs_info}\n\n📊 **Processamento:**\n- Estrazione da {num_batches} gruppi di documenti\n- Analisi semantica e correlazioni\n- Sintesi finale\n\n⏱️ **Tempo stimato:** {time_str}",
             
-            f"🚀 **Elaborazione profonda attivata**\n\n{docs_info}\n\n🔬 **Processo in corso:**\n• {num_batches} cicli di estrazione dati\n• Verifica coerenza e completezza\n• Sintesi intelligente per {task_type}\n\n⌛ Richiederà {time_str}{docs_note}",
+            f"🚀 **Elaborazione in corso**\n\n{docs_info}\n\n🔬 **Processo:**\n• {num_batches} cicli di estrazione\n• Verifica completezza\n• Sintesi per {task_type}\n\n⌛ {time_str}",
             
-            f"📚 **Analisi documentale completa**\n\n{docs_info}\n\n✨ **Cosa sto facendo:**\n- Lettura ed estrazione da {num_batches} batch documentali\n- Correlazione informazioni cross-documento\n- Creazione {task_type}\n\n🕐 Tempo previsto: {time_str}{docs_note}"
+            f"📚 **Analisi documentale**\n\n{docs_info}\n\n✨ **In corso:**\n- Lettura da {num_batches} batch\n- Correlazione cross-documento\n- Creazione {task_type}\n\n🕐 {time_str}"
         ]
         
         # Ruota tra i 3 messaggi in base al numero di documenti
@@ -1306,38 +1575,15 @@ La risposta DEVE seguire questa struttura ESATTA:
 **SEZIONE 1 - HEADER METODOLOGICO** (OBBLIGATORIO, inseriscilo all'inizio):
 {methodology_header}
 
-**SEZIONE 2 - LEGENDA SEMAFORO** (subito dopo l'header):
----
-**📊 LEGENDA AFFIDABILITÀ DATI**
+**PARTE A: STATO ATTUALE** (solo fatti 🟢/🟠)
+Descrivi ciò che emerge dai documenti. Usa 🟢 per dati verificati e 🟠 per stime.
 
-🟢 **VERIFICATO** = Dato presente nei documenti ufficiali
-🟠 **STIMATO** = Elaborazione/stima basata su dati parziali  
-🔴 **PROPOSTA AI** = Suggerimento del sistema, NON nei documenti
----
+**PARTE B: PROPOSTE E RACCOMANDAZIONI** (solo 🔴)
+Proposte SEPARATE dai fatti, linguaggio condizionale. Usa 🔴 per ogni proposta.
 
-**SEZIONE 3 - PARTE A: STATO ATTUALE (solo fatti 🟢/🟠)**
-Qui descrivi SOLO ciò che emerge dai documenti. NO proposte.
-
-**SEZIONE 4 - PARTE B: PROPOSTE E RACCOMANDAZIONI (solo 🔴)**
-Qui metti le tue proposte, CHIARAMENTE SEPARATE dai fatti.
-
-=== TONO OBBLIGATORIO PER PROPOSTE 🔴 ===
-
-Le proposte AI devono usare SEMPRE linguaggio CONDIZIONALE e PRUDENTE:
-
-VERBI DA USARE:
-- ✅ "Si potrebbe valutare...", "Sarebbe opportuno considerare..."
-- ✅ "Una possibile soluzione potrebbe essere...", "Si suggerisce di..."
-- ❌ MAI: "Bisogna fare...", "È necessario...", "Occorre implementare..."
-
-NUMERI DA USARE:
-- ✅ "Budget indicativo: €150.000-250.000 (da validare con uffici tecnici)"
-- ✅ "Stima preliminare soggetta a verifica: €X-Y"
-- ❌ MAI numeri puntuali senza range
-
-DISCLAIMER DA AGGIUNGERE:
-- Alla fine di ogni proposta significativa, aggiungi: "(proposta da validare)"
-- Per KPI: "Target indicativo, da calibrare su dati storici reali"
+=== TONO PER PROPOSTE 🔴 ===
+Usa: "Si potrebbe...", "Sarebbe opportuno...", "Budget indicativo: €X-Y (da validare)"
+MAI: "Bisogna...", "È necessario...", numeri puntuali senza range
 
 === REGOLE CITAZIONI ===
 
@@ -1453,7 +1699,7 @@ Elabora la risposta seguendo la struttura obbligatoria."""
                 'date': src.get('date', '')
             }
         
-        # STEP 1: Sostituisci riferimenti inline [DOCUMENTO X] o [DOC X] con link HTML stilizzati
+        # STEP 1: Sostituisci riferimenti inline [DOCUMENTO X] o [DOC X] con link Markdown
         # Pattern: [DOCUMENTO 13], [DOC 13], o [DOCUMENTI 1,3]
         def replace_inline_doc(match):
             full_match = match.group(0)  # es: "[DOCUMENTO 13]" o "[DOC 13]"
@@ -1465,7 +1711,7 @@ Elabora la risposta seguendo la struttura obbligatoria."""
             if not numbers:
                 return full_match  # No numbers found, return as is
             
-            # Crea link HTML per ogni numero (invece di Markdown)
+            # Crea link Markdown per ogni numero
             links = []
             for num_str in numbers:
                 num = int(num_str)
@@ -1477,59 +1723,65 @@ Elabora la risposta seguendo la struttura obbligatoria."""
                         source_info = src
                         break
                 
-                if source_info and source_info.get('url'):
-                    url = source_info['url']
-                    # Link HTML con stile inline: blu scuro, grassetto, sottolineato
-                    # Mantieni formato originale (DOCUMENTO o DOC)
-                    display_text = f"[DOC {num}]" if "DOC" in full_match and "DOCUMENTO" not in full_match else f"[DOCUMENTO {num}]"
-                    links.append(f'<a href="{url}" style="color: #1B365D; text-decoration: underline; font-weight: 600;" target="_blank" rel="noopener">{display_text}</a>')
+                if source_info:
+                    url = source_info.get('url', '')
+                    doc_id = source_info.get('document_id', '')
+                    
+                    # Se è un documento interno (#doc-xxx), crea link alla pagina documento
+                    if url.startswith('#doc-') and doc_id:
+                        link_url = f"/natan/documents/view/{doc_id}"
+                    elif url and not url.startswith('#'):
+                        link_url = url
+                    else:
+                        link_url = ''
+                    
+                    if link_url:
+                        # Link Markdown: [DOCUMENTO X](/path)
+                        display_text = f"DOC {num}" if "DOC" in full_match and "DOCUMENTO" not in full_match else f"DOCUMENTO {num}"
+                        links.append(f"[{display_text}]({link_url})")
+                    else:
+                        # Fallback senza link
+                        display_text = f"DOC {num}" if "DOC" in full_match and "DOCUMENTO" not in full_match else f"DOCUMENTO {num}"
+                        links.append(f"**{display_text}**")
                 else:
                     # Fallback senza link
                     display_text = f"DOC {num}" if "DOC" in full_match and "DOCUMENTO" not in full_match else f"DOCUMENTO {num}"
-                    links.append(display_text)
+                    links.append(f"**{display_text}**")
             
-            # Se multipli documenti: [DOCUMENTI 1,3] -> [DOCUMENTO 1], [DOCUMENTO 3]
+            # Se multipli documenti: [DOCUMENTI 1,3] -> [DOCUMENTO 1](/path), [DOCUMENTO 3](/path)
             return ", ".join(links)
         
         # Applica sostituzione per entrambi i formati: [DOCUMENTO X] e [DOC X]
         answer = re.sub(r'\[(DOC(?:UMENT[OI])?\s+\d+(?:,\s*\d+)*)\]', replace_inline_doc, answer, flags=re.IGNORECASE)
         
-        # STEP 2: Rimuovi qualsiasi sezione FONTI generata dall'AI
+        # STEP 2: Rimuovi qualsiasi sezione FONTI generata dall'AI (la rigeneriamo noi con formato standard)
         fonti_section_start = answer.find("## FONTI CONSULTATE")
         if fonti_section_start != -1:
-            # Taglia tutto dalla sezione FONTI in poi
             answer = answer[:fonti_section_start].rstrip()
         
-        # STEP 3: Genera automaticamente sezione FONTI pulita con HTML diretto
-        # Uso HTML invece di Markdown per controllo totale su stile e spaziatura
-        fonti_section = "\n\n## FONTI CONSULTATE\n\n"
-        fonti_section += '<div class="sources-section" style="margin-top: 1.5rem;">\n'
-        fonti_section += '<ul style="list-style-type: disc; padding-left: 1.5rem; margin: 0;">\n'
+        # Rimuovi anche altre varianti di sezione fonti che l'AI potrebbe generare
+        fonti_patterns = ["## FONTI", "### FONTI", "**FONTI", "## Fonti consultate", "### Fonti consultate"]
+        for pattern in fonti_patterns:
+            idx = answer.find(pattern)
+            if idx != -1:
+                answer = answer[:idx].rstrip()
         
-        for i, src in enumerate(sources, 1):
-            url = src.get('url', '')
-            title = src.get('title', f'Documento {i}')
-            protocol = src.get('protocol_number', '')
-            
-            # Ogni fonte ha margine bottom per spaziatura
-            fonti_section += '<li style="margin-bottom: 0.75rem; line-height: 1.6;">\n'
-            
-            if url:  # Solo se l'URL è disponibile
-                # Link blu e sottolineato, più evidente
-                fonti_section += f'<a href="{url}" style="color: #1B365D; text-decoration: underline; font-weight: 600;" target="_blank" rel="noopener">{title}</a>'
-                if protocol:
-                    fonti_section += f' <span style="color: #6B7280; font-size: 0.875rem;">(Protocollo: {protocol})</span>'
-            else:
-                # Se non c'è URL, mostra solo il titolo
-                fonti_section += f'<span style="font-weight: 600;">{title}</span>'
-                if protocol:
-                    fonti_section += f' <span style="color: #6B7280; font-size: 0.875rem;">(Protocollo: {protocol})</span>'
-            
-            fonti_section += '\n</li>\n'
-        
-        fonti_section += '</ul>\n</div>\n'
-        
-        answer += fonti_section
+        # STEP 3: Aggiungi sezione FONTI CONSULTATE con link cliccabili
+        if sources:
+            answer += "\n\n---\n\n## FONTI CONSULTATE\n\n"
+            for idx, src in enumerate(sources, 1):
+                title = src.get("title", "Documento")
+                url = src.get("url", "")
+                doc_id = src.get("document_id", "")
+                
+                # Se è un documento interno, crea link alla pagina documento
+                if url.startswith("#doc-") and doc_id:
+                    link_url = f"/natan/documents/view/{doc_id}"
+                    answer += f"{idx}. [{title}]({link_url})\n"
+                elif url and not url.startswith("#"):
+                    answer += f"{idx}. [{title}]({url})\n"
+                else:
+                    answer += f"{idx}. {title}\n"
         
         return answer
     

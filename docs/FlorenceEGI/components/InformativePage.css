@@ -1,0 +1,52 @@
+/* Informative Page Container */
+
+.informative-page {
+  width: 100%;
+  overflow-x: hidden;
+  background: #0a0a0a;
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Global reset for sections */
+section {
+  scroll-snap-align: start;
+}
+
+/* Placeholder section */
+.section-placeholder {
+  min-height: 50vh;
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #1a1a2e 0%, #0a0a0a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.section-placeholder .container {
+  max-width: 800px;
+}
+
+.section-placeholder h2 {
+  font-size: clamp(2rem, 3vw, 2.5rem);
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.section-placeholder p {
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+
+/* Optional: Scroll snap for smooth section transitions */
+@media (min-width: 1024px) {
+  .informative-page {
+    scroll-snap-type: y proximity;
+  }
+}

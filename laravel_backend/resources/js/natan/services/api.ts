@@ -420,10 +420,10 @@ export class ApiService {
 }
 
 // Singleton instance
-// Python FastAPI service runs on port 8001
-// Can be overridden via VITE_API_BASE_URL env variable
+// When served from Laravel, use empty baseUrl for same-origin API calls
+// Laravel proxy at /api/v1/chat forwards to FastAPI on port 8001
 export const apiService = new ApiService({
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || '',  // Empty = same origin (Laravel)
     timeout: 120000,
 });
 

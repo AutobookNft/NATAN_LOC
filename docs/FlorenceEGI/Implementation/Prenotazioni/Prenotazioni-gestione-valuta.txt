@@ -1,0 +1,279 @@
+# **📋 Piano Definitivo: Refactoring Sistema Prenotazioni e Gestione Valuta**
+
+**Data:** 13 Agosto 2025
+
+**Versione:** 3.0 (Integra la gestione multi-valuta)
+
+**Status:** DEFINITIVE \- READY FOR IMPLEMENTATION
+
+## **🎯 1\. OBIETTIVO STRATEGICO**
+
+Evolvere il sistema di prenotazioni EGI in una piattaforma enterprise-ready, disaccoppiando la logica di business dalla valuta FIAT. Il sistema deve:
+
+1. **Pensare in FIAT:** Offrire a Creator e Acquirenti un'esperienza utente basata sulla loro valuta locale (EUR, USD), astraendo la complessità della crypto.  
+2. **Operare** in **ALGO:** Usare ALGO come unica, immutabile fonte di verità per tutte le transazioni e i confronti di valore a livello di database.  
+3. **Essere Trasparente e Auditabile:** Registrare ogni dettaglio della conversione al momento della transazione per garantire massima trasparenza e tracciabilità futura.  
+4. **Essere Robusto:** Gestire la volatilità dei tassi di cambio e gli errori di servizio in modo controllato e professionale tramite UEM/ULM.
+
+## **🚨 2\. PROBLEMI CRITICI DA RISOLVERE**
+
+1. **Schema Database Inadeguato:** Mancano campi fondamentali per tracciare la valuta FIAT, il prezzo in ALGO e il tasso di cambio al momento della prenotazione.  
+2. **Logica di Rilancio Fragile:** La validazione delle offerte successive non è robusta e non gestisce correttamente la volatilità della valuta.  
+3. **Mancanza di un Oracolo per il Cambio:** Assenza di un servizio centralizzato e affidabile per ottenere i tassi di cambio.  
+4. **Gestione Errori Non Standardizzata:** Uso misto di eccezioni generiche e UEM.
+
+## **🏗️ 3\. PIANO DI IMPLEMENTAZIONE**
+
+### **FASE 1: Architettura del Database (Fonte di Verità)**
+
+#### **1.1. Migration per la Tabella reservations**
+
+Creare una nuova migration per aggiornare la tabella reservations.
+
+php artisan make:migration update\_reservations\_for\_multi\_currency \--table=reservations
+
+**Contenuto della Migration:**
+
+Schema::table('reservations', function (Blueprint $table) {  
+    // 1\. Rimuovere il vecchio campo, se esiste ancora  
+    if (Schema::hasColumn('reservations', 'offer\_amount\_eur')) {  
+        $table-\>dropColumn('offer\_amount\_eur');  
+    }
+
+    // 2\. Aggiungere i nuovi campi per la gestione completa della valuta  
+    $table-\>decimal('offer\_amount\_fiat', 12, 2)-\>after('egi\_id');  
+    $table-\>string('fiat\_currency', 3)-\>default('USD')-\>after('offer\_amount\_fiat');  
+    $table-\>unsignedBigInteger('offer\_amount\_algo')-\>after('fiat\_currency')-\>comment('Prezzo in microALGO');  
+    $table-\>decimal('exchange\_rate', 18, 8)-\>after('offer\_amount\_algo');  
+    $table-\>timestamp('exchange\_timestamp')-\>after('exchange\_rate');
+
+    // 3\. Assicurarsi che gli indici siano presenti  
+    $table-\>index('fiat\_currency');  
+    $table-\>index('offer\_amount\_algo');  
+});
+
+#### **1.2. Aggiornamento del Model Reservation.php**
+
+// app/Models/Reservation.php  
+protected $fillable \= \[  
+    // ... campi esistenti  
+    'offer\_amount\_fiat',  
+    'fiat\_currency',  
+    'offer\_amount\_algo',  
+    'exchange\_rate',  
+    'exchange\_timestamp',  
+\];
+
+protected $casts \= \[  
+    'offer\_amount\_fiat' \=\> 'decimal:2',  
+    'offer\_amount\_algo' \=\> 'integer', // Trattato come intero (microALGO)  
+    'exchange\_rate' \=\> 'decimal:8',  
+    'exchange\_timestamp' \=\> 'datetime',  
+\];
+
+### **FASE 2: Il Servizio Oracolo (CurrencyService)**
+
+#### **2.1. Creazione del Servizio**
+
+Creare una nuova classe di servizio dedicata.
+
+**File:** app/Services/CurrencyService.php
+
+\<?php
+
+namespace App\\Services;
+
+use Illuminate\\Support\\Facades\\Cache;  
+use Illuminate\\Support\\Facades\\Http;  
+use App\\Facades\\UltraError; // Assumendo che UltraError sia un Facade
+
+class CurrencyService  
+{  
+    // Aggiungere ULM per il logging  
+      
+    private const CACHE\_KEY\_PREFIX \= 'currency\_rate\_';  
+    private const CACHE\_TTL\_SECONDS \= 60; // Cache per 1 minuto
+
+    /\*\*  
+     \* Ottiene il tasso di cambio attuale da ALGO a una valuta FIAT.  
+     \* Implementa caching e failover.  
+     \*/  
+    public function getAlgoToFiatRate(string $fiatCurrency \= 'USD'): array  
+    {  
+        $cacheKey \= self::CACHE\_KEY\_PREFIX . strtoupper($fiatCurrency);
+
+        return Cache::remember($cacheKey, self::CACHE\_TTL\_SECONDS, function () use ($fiatCurrency) {  
+            try {  
+                // Esempio con API CoinGecko  
+                $response \= Http::get('\[https://api.coingecko.com/api/v3/simple/price\](https://api.coingecko.com/api/v3/simple/price)', \[  
+                    'ids' \=\> 'algorand',  
+                    'vs\_currencies' \=\> strtolower($fiatCurrency),  
+                \]);
+
+                if ($response-\>failed() || \!isset($response-\>json()\['algorand'\]\[strtolower($fiatCurrency)\])) {  
+                    // Logica di Failover (es. prova un'altra API)  
+                    throw new \\Exception('CoinGecko API failed');  
+                }
+
+                return \[  
+                    'rate' \=\> (float) $response-\>json()\['algorand'\]\[strtolower($fiatCurrency)\],  
+                    'timestamp' \=\> now(),  
+                \];
+
+            } catch (\\Exception $e) {  
+                // Gestione errore standardizzata  
+                UltraError::handle('CURRENCY\_EXCHANGE\_SERVICE\_FAILED', \[  
+                    'currency' \=\> $fiatCurrency,  
+                \], $e);  
+                // Ritorna un valore di fallback o null per essere gestito a monte  
+                return null;  
+            }  
+        });  
+    }
+
+    /\*\*  
+     \* Converte un importo FIAT in microALGO.  
+     \*/  
+    public function convertFiatToMicroAlgo(float $fiatAmount, float $rate): int  
+    {  
+        if ($rate \<= 0\) return 0;  
+        $algoAmount \= $fiatAmount / $rate;  
+        return (int) ($algoAmount \* 1\_000\_000); // Converte in microALGO  
+    }
+
+    /\*\*  
+     \* Converte microALGO in un importo FIAT.  
+     \*/  
+    public function convertMicroAlgoToFiat(int $microAlgoAmount, float $rate): float  
+    {  
+        $algoAmount \= $microAlgoAmount / 1\_000\_000;  
+        return $algoAmount \* $rate;  
+    }  
+}
+
+### **FASE 3: Refactoring del ReservationService**
+
+#### **3.1. Iniezione delle Dipendenze**
+
+Iniettare il nuovo CurrencyService nel costruttore.
+
+#### **3.2. Flusso di Conversione e Validazione (Logica Chiave)**
+
+La funzione createReservation deve essere riscritta per seguire questo flusso:
+
+// In app/Services/ReservationService.php
+
+public function createReservation(array $data): Reservation  
+{  
+    return DB::transaction(function () use ($data) {  
+        // 1\. VALIDAZIONE INPUT  
+        $egi \= $this-\>validateEgiIsReservable($data\['egi\_id'\]);  
+        $user \= auth()-\>user(); // O passato come parametro  
+        $offerFiat \= (float) $data\['offer\_amount\_fiat'\];  
+        $fiatCurrency \= $data\['fiat\_currency'\] ?? 'USD';
+
+        // 2\. OTTENERE TASSO DI CAMBIO ATTUALE (ORACLE CALL)  
+        $exchangeData \= $this-\>currencyService-\>getAlgoToFiatRate($fiatCurrency);  
+        if (\!$exchangeData) {  
+            // L'errore è già stato loggato da UEM nel service  
+            throw UltraError::rethrow('CURRENCY\_EXCHANGE\_SERVICE\_FAILED');  
+        }  
+        $currentRate \= $exchangeData\['rate'\];  
+        $offerAlgo \= $this-\>currencyService-\>convertFiatToMicroAlgo($offerFiat, $currentRate);
+
+        // 3\. VALIDAZIONE RILANCIO (CONFRONTO IN ALGO)  
+        $this-\>validateRelaunchAmountInAlgo($egi, $offerAlgo);
+
+        // 4\. CREAZIONE NUOVA PRENOTAZIONE  
+        $newReservation \= Reservation::create(\[  
+            'user\_id' \=\> $user-\>id,  
+            'egi\_id' \=\> $egi-\>id,  
+            'offer\_amount\_fiat' \=\> $offerFiat,  
+            'fiat\_currency' \=\> $fiatCurrency,  
+            'offer\_amount\_algo' \=\> $offerAlgo,  
+            'exchange\_rate' \=\> $currentRate,  
+            'exchange\_timestamp' \=\> $exchangeData\['timestamp'\],  
+            'status' \=\> 'active',  
+        \]);
+
+        // 5\. INVALIDAZIONE PRENOTAZIONI PRECEDENTI  
+        $this-\>supersedePreviousReservations($egi, $newReservation-\>id);  
+          
+        // 6\. LOGGING E EVENTI  
+        $this-\>logger-\>info('Reservation created successfully', \['reservation\_id' \=\> $newReservation-\>id\]);  
+        // event(new ReservationCreated($newReservation));
+
+        return $newReservation;  
+    });  
+}
+
+private function validateRelaunchAmountInAlgo(Egi $egi, int $newOfferInMicroAlgo): void  
+{  
+    $latestReservation \= $egi-\>reservations()-\>where('status', 'active')-\>latest()-\>first();
+
+    $minAmountInMicroAlgo \= $latestReservation   
+        ? $latestReservation-\>offer\_amount\_algo   
+        : $this-\>currencyService-\>convertFiatToMicroAlgo($egi-\>base\_price, $this-\>currencyService-\>getAlgoToFiatRate($egi-\>base\_currency)\['rate'\]);
+
+    if ($newOfferInMicroAlgo \<= $minAmountInMicroAlgo) {  
+        throw UltraError::handle('RESERVATION\_RELAUNCH\_INSUFFICIENT\_AMOUNT', \[  
+            'new\_offer\_algo' \=\> $newOfferInMicroAlgo,  
+            'required\_algo' \=\> $minAmountInMicroAlgo,  
+        \]);  
+    }  
+}
+
+### **FASE 4: API, Frontend e UEM**
+
+#### **4.1. Endpoint API**
+
+Creare un endpoint per il polling del front-end.
+
+**File:** routes/api.php
+
+Route::get('/v1/currency/rate/{fiatCurrency}', \[CurrencyController::class, 'getRate'\]);
+
+Controller:  
+Il CurrencyController userà il CurrencyService per restituire il tasso di cambio in formato JSON, gestendo gli errori con UEM.
+
+#### **4.2. Logica Frontend**
+
+* **Polling:** Uno script JS chiama l'endpoint ogni 15-30 secondi.  
+* **Aggiornamento UI:** Tutti i prezzi FIAT visibili sulla pagina vengono aggiornati dinamicamente.  
+* **Form di Prenotazione:** Quando l'utente inserisce un importo in FIAT, un piccolo testo sotto il campo mostra la stima in ALGO, aggiornata in tempo reale.  
+* **Conferma:** Prima di inviare il form, mostrare un modale di conferma: "Stai offrendo 100 USD (circa 200.123 ALGO). Confermi?"
+
+#### **4.3. Codici di Errore UEM**
+
+Aggiornare config/error-manager.php con i codici necessari.
+
+'RESERVATION\_RELAUNCH\_INSUFFICIENT\_AMOUNT' \=\> \[ /\* ... \*/ \],  
+'CURRENCY\_EXCHANGE\_SERVICE\_FAILED' \=\> \[ /\* ... \*/ \],  
+'EGI\_NOT\_RESERVABLE' \=\> \[ /\* ... \*/ \],
+
+### **FASE 5: Testing**
+
+La strategia di testing deve coprire i nuovi componenti critici.
+
+* **Unit Test per CurrencyService:**  
+  * test\_fetches\_rate\_from\_primary\_api (con Mock di Http).  
+  * test\_uses\_cache\_on\_subsequent\_calls.  
+  * test\_handles\_api\_failure\_gracefully.  
+  * test\_fiat\_to\_micro\_algo\_conversion\_is\_correct.  
+  * test\_micro\_algo\_to\_fiat\_conversion\_is\_correct.  
+* **Unit Test per ReservationService:**  
+  * test\_rejects\_offer\_if\_currency\_service\_fails.  
+  * test\_correctly\_compares\_offers\_in\_algo.  
+  * test\_saves\_all\_currency\_data\_on\_creation.  
+* **Feature Test:**  
+  * Simulare un intero flusso di prenotazione e rilancio, verificando che i dati vengano salvati correttamente nel database.
+
+## **📋 CHECKLIST FINALE**
+
+* \[ \] **DB:** Migration creata e testata. Model aggiornato.  
+* \[ \] **Service:** CurrencyService implementato con caching e gestione errori.  
+* \[ \] **Service:** ReservationService refattorizzato per usare il CurrencyService e la logica di confronto in ALGO.  
+* \[ \] **API:** Endpoint per il tasso di cambio creato e funzionante.  
+* \[ \] **Frontend:** Logica di polling implementata per l'aggiornamento dei prezzi.  
+* \[ \] **UEM:** Codici di errore configurati e tradotti.  
+* \[ \] **Testing:** Unit e Feature test scr

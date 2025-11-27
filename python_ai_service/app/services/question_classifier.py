@@ -150,11 +150,28 @@ class QuestionClassifier:
         # Trova pattern che matchano per calcolare confidenza pesata
         matched_conv_patterns = [kw for kw in conv_keywords if kw in question_lower]
         
+        # Check for GENERATIVE queries FIRST (create, generate, suggest, matrix, etc.)
+        # PRIORITÀ ALTA: Query generative hanno priorità su conversazionali
+        # Query generative possono (e devono) usare documenti tenant come contesto
+        generative_keywords = QuestionClassifier.KEYWORD_PATTERNS.get(QueryIntent.GENERATIVE, [])
+        matched_generative = [kw for kw in generative_keywords if kw in question_lower]
+        
+        if matched_generative:
+            # Ha pattern generativi → GENERATIVE con alta confidenza
+            intent = QueryIntent.GENERATIVE
+            confidence = 0.90  # Alta confidenza per pattern generativi
         # Check for exact keyword matches, BUT skip if it's a document request
-        if not has_document_request and matched_conv_patterns:
-            intent = QueryIntent.CONVERSATIONAL
-            # Usa sistema pesi per determinare confidenza
-            confidence = get_weighted_confidence(matched_conv_patterns, 'PERSONAL')
+        elif not has_document_request and matched_conv_patterns:
+            # Filtra pattern troppo generici (<=2 char) che possono matchare parti di parole
+            meaningful_conv_patterns = [p for p in matched_conv_patterns if len(p) > 2]
+            if meaningful_conv_patterns:
+                intent = QueryIntent.CONVERSATIONAL
+                # Usa sistema pesi per determinare confidenza
+                confidence = get_weighted_confidence(meaningful_conv_patterns, 'PERSONAL')
+            else:
+                # Solo pattern generici matchati → probabilmente falso positivo, usa fact_check
+                intent = QueryIntent.FACT_CHECK
+                confidence = 0.6
         # Check for metafore/frasi idiomatiche comuni
         elif any(idiom in question_lower for idiom in [
             "ago in un pagliaio", "ago nel pagliaio", "ago in pagliaio",
@@ -186,15 +203,6 @@ class QuestionClassifier:
                 # Simple conversational pattern without document keywords
                 intent = QueryIntent.CONVERSATIONAL
                 confidence = 0.85
-        # Check for GENERATIVE queries (create, generate, suggest, etc.)
-        # IMPORTANT: Check BEFORE document_request logic - GENERATIVE has HIGHER priority
-        # Query generative possono (e devono) usare documenti tenant come contesto
-        elif any(
-            keyword in question_lower 
-            for keyword in QuestionClassifier.KEYWORD_PATTERNS.get(QueryIntent.GENERATIVE, [])
-        ):
-            intent = QueryIntent.GENERATIVE
-            confidence = 0.85
         else:
             # If it's a document request, prioritize fact_check or interpretation
             if has_document_request:

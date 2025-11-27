@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NATAN_LOC | Generative UI Concept</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], serif: ['Lora', 'serif'], mono: ['IBM Plex Mono', 'monospace'] },
+                    colors: { paper: '#F9F9F7', ink: '#1A202C', 'border-tech': '#CBD5E1' }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Pattern per area "Tool Generato" */
+        .gen-ui-pattern {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 10px 10px;
+        }
+        /* Stile input "Form Modulo" */
+        .form-input-tech {
+            border: 1px solid #94a3b8;
+            border-radius: 2px;
+            padding: 4px 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            width: 100%;
+            background: white;
+        }
+        .form-input-tech:focus {
+            outline: 2px solid #1A202C;
+            border-color: #1A202C;
+        }
+    </style>
+</head>
+<body class="bg-slate-200 text-ink h-screen flex flex-col overflow-hidden font-sans">
+
+    <!-- HEADER -->
+    <header class="bg-slate-900 text-white h-12 flex items-center justify-between px-4 shrink-0">
+        <div class="flex items-center gap-3">
+            <span class="font-serif font-bold tracking-wider text-lg">NATAN_LOC</span>
+            <span class="text-xs font-mono text-slate-400 px-2 py-1 border border-slate-700 rounded-sm">GEN-UI MODULE ENABLED</span>
+        </div>
+    </header>
+
+    <!-- MAIN WRAPPER -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- SIDEBAR (Allegati Intelligenti) -->
+        <aside class="w-64 bg-slate-50 border-r border-border-tech flex flex-col">
+            <div class="p-4 border-b border-border-tech">
+                <h3 class="font-serif font-bold text-sm mb-1">Archivio Allegati</h3>
+                <p class="text-[10px] text-slate-500">PRATICA #8821 - SUOLO PUBBLICO</p>
+            </div>
+            
+            <!-- Drag & Drop Zone Speciale -->
+            <div class="p-4">
+                <div class="border-2 border-dashed border-slate-300 rounded-sm bg-slate-100 p-6 flex flex-col items-center justify-center text-center hover:bg-white hover:border-slate-400 transition-colors cursor-pointer group">
+                    <svg class="w-8 h-8 text-slate-400 group-hover:text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <span class="text-xs font-bold text-slate-600">Trascina qui i file</span>
+                    <span class="text-[9px] text-slate-400 mt-1">PDF, P7M, XML, CAD (DWG)</span>
+                </div>
+            </div>
+
+            <!-- Lista File "Forensic Style" -->
+            <div class="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+                <!-- File P7M (Firmato) -->
+                <div class="bg-white border border-slate-300 p-2 flex items-start gap-3 shadow-sm hover:border-blue-400 group cursor-pointer">
+                    <div class="w-8 h-10 bg-amber-50 border border-amber-200 flex flex-col items-center justify-center shrink-0">
+                        <span class="text-[8px] font-bold text-amber-700">P7M</span>
+                        <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-medium truncate">richiesta_rossi_signed.p7m</div>
+                        <div class="flex justify-between text-[9px] font-mono text-slate-400 mt-1">
+                            <span>245 KB</span>
+                            <span class="text-green-600">● VALID</span>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- File PDF -->
+                 <div class="bg-white border border-slate-300 p-2 flex items-start gap-3 shadow-sm hover:border-blue-400 group cursor-pointer">
+                    <div class="w-8 h-10 bg-red-50 border border-red-200 flex flex-col items-center justify-center shrink-0">
+                        <span class="text-[8px] font-bold text-red-700">PDF</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-medium truncate">planimetria_catastale.pdf</div>
+                        <div class="flex justify-between text-[9px] font-mono text-slate-400 mt-1">
+                            <span>1.2 MB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CHAT AREA -->
+        <main class="flex-1 flex flex-col bg-paper relative">
+            
+            <!-- Chat History -->
+            <div class="flex-1 overflow-y-auto p-8 space-y-8">
+                
+                <!-- User Request -->
+                <div class="flex gap-4 max-w-3xl">
+                    <div class="w-8 h-8 bg-slate-200 rounded-sm flex items-center justify-center text-xs font-bold">FC</div>
+                    <div>
+                        <div class="text-[10px] font-mono text-slate-400 mb-1">FABIO CHERICI • 10:42</div>
+                        <p class="bg-white border border-slate-200 p-3 rounded-sm shadow-sm text-sm">
+                            Devo calcolare il canone per l'occupazione di Via Calzaiuoli (Zona A). Sono 12mq per 45 giorni (cantiere edile). Mi prepari il calcolo secondo le tariffe 2024?
+                        </p>
+                    </div>
+                </div>
+
+                <!-- AI GENERATED TOOL (The Magic) -->
+                <div class="flex gap-4 max-w-4xl">
+                    <div class="w-8 h-8 bg-ink text-white rounded-sm flex items-center justify-center text-xs font-bold">AI</div>
+                    <div class="flex-1">
+                        <div class="text-[10px] font-mono text-slate-400 mb-1">NATAN SYSTEM • 10:42</div>
+                        
+                        <!-- Text Intro -->
+                        <p class="text-sm mb-3 text-slate-700">
+                            Ho rilevato una richiesta di calcolo Canone Unico Patrimoniale. Ho generato un widget interattivo basato sulla Delibera Giunta n.42/2024 (Tariffe Centro Storico).
+                        </p>
+
+                        <!-- THE GENERATED WIDGET CONTAINER -->
+                        <div class="border border-slate-400 bg-white rounded-sm shadow-md overflow-hidden">
+                            <!-- Widget Header -->
+                            <div class="bg-slate-100 border-b border-slate-300 px-3 py-2 flex justify-between items-center">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="square" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                                    <span class="font-mono text-xs font-bold uppercase tracking-wide text-slate-700">Tool Generato: Calcolatore CUP 2024</span>
+                                </div>
+                                <div class="text-[9px] font-mono text-slate-400">AUTO-GEN ID: #9921</div>
+                            </div>
+
+                            <!-- Widget Body (The "App") -->
+                            <div class="p-4 gen-ui-pattern grid grid-cols-2 gap-4">
+                                
+                                <!-- Input: Superficie -->
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Superficie (mq)</label>
+                                    <input type="number" value="12" class="form-input-tech">
+                                </div>
+
+                                <!-- Input: Giorni -->
+                                <div>
+                                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Durata (giorni)</label>
+                                    <input type="number" value="45" class="form-input-tech">
+                                </div>
+
+                                <!-- Input: Zona -->
+                                <div class="col-span-2">
+                                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Zona Tariffaria</label>
+                                    <select class="form-input-tech cursor-pointer">
+                                        <option value="A" selected>ZONA A (Centro Storico) - € 2,50 /mq/gg</option>
+                                        <option value="B">ZONA B (Viali) - € 1,80 /mq/gg</option>
+                                        <option value="C">ZONA C (Periferia) - € 1,10 /mq/gg</option>
+                                    </select>
+                                </div>
+
+                                <!-- Input: Tipologia -->
+                                <div class="col-span-2">
+                                    <label class="block text-[10px] font-bold uppercase text-slate-500 mb-1">Tipologia Occupazione</label>
+                                    <div class="flex gap-4 text-xs font-sans bg-white p-2 border border-slate-300 rounded-sm">
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="tipo" class="accent-black" checked> Cantiere Edile
+                                        </label>
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="tipo" class="accent-black"> Dehor / Tavolini
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Result Box -->
+                                <div class="col-span-2 mt-2 border-t-2 border-slate-800 pt-3 flex justify-between items-end">
+                                    <div>
+                                        <div class="text-[10px] text-slate-500">CALCOLO STIMATO</div>
+                                        <div class="text-xs font-mono text-slate-600">12mq * 45gg * €2,50</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-mono font-bold text-ink">€ 1.350,00</div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Widget Footer / Actions -->
+                            <div class="bg-slate-50 border-t border-slate-300 p-3 flex justify-end gap-2">
+                                <button class="px-3 py-1 text-xs font-bold uppercase border border-slate-300 bg-white hover:bg-slate-100 transition-colors rounded-sm">
+                                    Copia Dati
+                                </button>
+                                <button class="px-3 py-1 text-xs font-bold uppercase bg-emerald-600 text-white hover:bg-emerald-700 transition-colors rounded-sm shadow-sm flex items-center gap-2">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"></path></svg>
+                                    Salva nel Fascicolo
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- INPUT AREA (Smart Prompt) -->
+            <div class="p-4 bg-white border-t border-border-tech shadow-lg z-10">
+                <div class="relative">
+                    <div class="absolute -top-10 left-0 flex gap-2">
+                         <!-- Suggested Tools Chips -->
+                        <button class="bg-slate-800 text-white text-[10px] px-3 py-1 rounded-t-sm font-mono uppercase flex items-center gap-1 hover:bg-black transition-colors">
+                            <span class="text-emerald-400">+</span> Genera Strumento
+                        </button>
+                         <button class="bg-slate-200 text-slate-600 text-[10px] px-3 py-1 rounded-t-sm font-mono uppercase hover:bg-slate-300 transition-colors">
+                             Allega Documento
+                        </button>
+                    </div>
+                    <textarea 
+                        class="w-full bg-slate-50 border-2 border-slate-300 p-4 pr-24 text-sm focus:outline-none focus:border-black focus:bg-white transition-colors rounded-sm rounded-tl-none font-sans h-20 resize-none"
+                        placeholder="Descrivi un'operazione o chiedi all'AI di creare uno strumento..."
+                    ></textarea>
+                    <button class="absolute bottom-3 right-3 w-10 h-10 bg-ink text-white rounded-sm flex items-center justify-center hover:bg-black transition-colors">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+</body>
+</html>

@@ -247,8 +247,10 @@ export class ApiService {
 }
 
 // Singleton instance
+// When served from Laravel (e.g., localhost:7000), use empty baseUrl for same-origin API calls
+// The Laravel proxy at /api/v1/chat will forward to FastAPI
 export const apiService = new ApiService({
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || '',  // Empty = same origin (Laravel)
     timeout: 120000,
 });
 

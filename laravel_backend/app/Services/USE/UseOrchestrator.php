@@ -74,7 +74,7 @@ class UseOrchestrator
             // DataSanitizerService is for sanitizing internal data (acts, documents) before sending to AI
 
             // Check consent
-            if (!$this->consentService->hasConsent($user, 'ai_processing')) {
+            if (!$this->consentService->hasConsent($user, 'allow-ai-processing')) {
                 throw new \Exception(__('natan.errors.no_ai_consent'));
             }
 

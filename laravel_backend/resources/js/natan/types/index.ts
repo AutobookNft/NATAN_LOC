@@ -29,6 +29,14 @@ export interface Message {
     sources_list?: string[]; // Lista di fonti (URL o nomi documenti)
     gaps_detected?: string[]; // Lista di gap rilevati
     hallucinations_found?: string[]; // Lista di allucinazioni trovate
+    // Infographic (generata per query con "matrice", "grafico", etc.)
+    infographic?: {
+        chart: string; // HTML del grafico o base64 PNG/SVG
+        chart_type: string; // Tipo grafico (bar, pie, table, etc.)
+        format?: 'html' | 'png' | 'svg' | 'json'; // Formato output
+        title?: string;
+        description?: string;
+    };
 }
 
 export interface Claim {

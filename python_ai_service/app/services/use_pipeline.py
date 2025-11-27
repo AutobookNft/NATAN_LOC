@@ -471,6 +471,70 @@ class UsePipeline:
                 result_payload["debug"] = debug_info
             return result_payload
         
+        elif action == RouterAction.RAG_GENERATIVE.value:
+            # Query generativa - usa RAG per contesto ma genera risposta creativa
+            # Reindirizza a RAG_STRICT con flag generativo
+            logger.info(f"🎨 USE Pipeline: RAG_GENERATIVE mode - generazione creativa con contesto RAG")
+            
+            # Usa la stessa logica di RAG_STRICT ma con verifica meno rigida
+            if not query_embedding:
+                from app.services.ai_router import AIRouter
+                ai_router = AIRouter()
+                context = {"tenant_id": tenant_id, "task_class": "RAG"}
+                adapter = ai_router.get_embedding_adapter(context)
+                embed_result = await adapter.embed(question)
+                query_embedding = embed_result["embedding"]
+            
+            chunks = self.retriever.retrieve(
+                query_embedding=query_embedding,
+                tenant_id=tenant_id,
+                user_id=user_id,
+                limit=15,
+                min_score=0.2,
+                filters=constraints
+            )
+            
+            if not chunks:
+                return {
+                    "status": "no_results",
+                    "message": "Non ho documenti sufficienti per generare una risposta creativa.",
+                    "answer": "Non ho documenti sufficienti per generare una risposta creativa.",
+                    "classification": classification,
+                    "routing": routing
+                }
+            
+            # Genera risposta generativa
+            from app.services.ai_router import AIRouter
+            ai_router = AIRouter()
+            context = {"tenant_id": tenant_id, "task_class": "generative"}
+            adapter = ai_router.get_chat_adapter(context)
+            
+            # Prepara contesto dai chunks
+            context_text = "\n\n".join([
+                f"[DOC {i+1}] {chunk.get('chunk_text', chunk.get('content', ''))[:500]}"
+                for i, chunk in enumerate(chunks[:10])
+            ])
+            
+            messages = [
+                {"role": "system", "content": "Sei un assistente creativo. Usa il contesto fornito per generare risposte utili e informative."},
+                {"role": "user", "content": f"Contesto disponibile:\n{context_text}\n\nDomanda: {question}"}
+            ]
+            
+            result = await adapter.generate(messages, temperature=0.7, max_tokens=1500)
+            
+            return {
+                "status": "success",
+                "question": question,
+                "answer": result.get("content", ""),
+                "verified_claims": [],
+                "avg_urs": None,
+                "verification_status": "GENERATIVE",
+                "chunks_used": chunks,
+                "classification": classification,
+                "routing": routing,
+                "model_used": result.get("model", "unknown")
+            }
+        
         else:
             result_payload = {
                 "status": "error",

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NATAN_LOC | FlorenceEGI Production System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts Import: Lora (Serif), Inter (Sans), IBM Plex Mono (Code) -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Lora', 'serif'],
+                        mono: ['IBM Plex Mono', 'monospace'],
+                    },
+                    colors: {
+                        paper: '#F9F9F7',
+                        ink: '#1A202C',
+                        'paper-dark': '#E2E8F0',
+                        'border-main': '#CBD5E1',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar per un look tecnico */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border: 1px solid #94a3b8;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        .mechanical-btn:active {
+            transform: translateY(1px);
+        }
+        
+        /* Effetto evidenziatore realistico */
+        .highlight-claim {
+            background-color: #fef08a; /* Yellow-200 */
+            border-bottom: 2px solid #eab308; /* Yellow-500 */
+            padding: 0 2px;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="bg-paper text-ink h-screen flex flex-col overflow-hidden antialiased selection:bg-slate-300 selection:text-black">
+
+    <!-- TOP BAR: System Status & Context -->
+    <header class="h-12 border-b border-border-main bg-white flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <div class="w-3 h-3 bg-emerald-600 rounded-sm"></div> <!-- Square dot, not circle -->
+                <span class="font-serif font-bold text-lg tracking-tight text-slate-900">NATAN_LOC</span>
+                <span class="text-[10px] font-mono text-slate-500 bg-slate-100 px-1 py-0.5 border border-slate-200">v.2.0.0</span>
+            </div>
+            <div class="h-4 w-px bg-slate-300 mx-2"></div>
+            <div class="flex items-center gap-2 text-xs font-mono text-slate-600">
+                <span class="uppercase">Tenant:</span>
+                <span class="font-bold text-black">COMUNE_FIRENZE</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <div class="text-xs font-mono text-slate-500">
+                <span class="mr-2">RAG-FORTRESS:</span>
+                <span class="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 border border-emerald-200">ACTIVE</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 bg-slate-800 text-white flex items-center justify-center text-xs font-bold rounded-sm">
+                    FC
+                </div>
+                <span class="text-xs font-medium">Fabio Cherici</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- SIDEBAR: Navigation (The "File Cabinet") -->
+        <aside class="w-16 bg-slate-50 border-r border-border-main flex flex-col items-center py-4 gap-4 shrink-0">
+            <!-- Icons are simplistic, outlined, precise -->
+            <button class="w-10 h-10 flex items-center justify-center border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:border-slate-400 transition-colors rounded-sm mechanical-btn group relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                <span class="absolute left-12 bg-slate-800 text-white text-[10px] font-mono px-2 py-1 hidden group-hover:block whitespace-nowrap z-50">INTERROGAZIONE</span>
+            </button>
+            
+            <button class="w-10 h-10 flex items-center justify-center border border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors rounded-sm group relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span class="absolute left-12 bg-slate-800 text-white text-[10px] font-mono px-2 py-1 hidden group-hover:block whitespace-nowrap z-50">DOCUMENTI</span>
+            </button>
+
+            <button class="w-10 h-10 flex items-center justify-center border border-transparent text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors rounded-sm group relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                <span class="absolute left-12 bg-slate-800 text-white text-[10px] font-mono px-2 py-1 hidden group-hover:block whitespace-nowrap z-50">COMPLIANCE SCANNER</span>
+            </button>
+        </aside>
+
+        <!-- CONTENT AREA: Split View -->
+        <main class="flex-1 flex overflow-hidden relative">
+            
+            <!-- COLUMN 1: Interaction Log (Chat) -->
+            <div class="w-7/12 flex flex-col border-r border-border-main bg-paper relative z-10">
+                
+                <!-- Chat History -->
+                <div class="flex-1 overflow-y-auto p-8 space-y-8">
+                    
+                    <!-- User Message Block -->
+                    <div class="flex flex-col gap-2 border-l-2 border-slate-300 pl-4">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">Operatore (ID: FC-01)</span>
+                            <span class="text-[10px] text-slate-400 font-mono">10:42:12</span>
+                        </div>
+                        <p class="text-lg font-serif text-slate-900 leading-relaxed">
+                            Quali sono i limiti temporali per l'occupazione di suolo pubblico per cantieri edili nel centro storico?
+                        </p>
+                    </div>
+
+                    <!-- System Message Block -->
+                    <div class="flex flex-col gap-0 bg-white border border-slate-200 shadow-sm rounded-sm">
+                        <!-- Technical Header -->
+                        <div class="bg-slate-50 border-b border-slate-200 px-4 py-2 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-700 font-mono">NATAN Risposta</span>
+                                <span class="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1">URS: 98/100</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="text-slate-400 hover:text-slate-700"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="p-6 font-sans text-slate-800 leading-7 text-[15px]">
+                            <p class="mb-4">
+                                In base al Regolamento per l'occupazione di suolo pubblico del Comune di Firenze, per i cantieri edili situati nel centro storico (Zona A), la durata della concessione è soggetta a limitazioni specifiche.
+                            </p>
+                            <p class="mb-4">
+                                Nello specifico, l'articolo 12 stabilisce che le occupazioni temporanee per lavori edili <span class="highlight-claim font-medium" title="Clicca per vedere la fonte">[CLAIM_001]</span> non possono superare la durata ininterrotta di <strong>180 giorni</strong>.
+                            </p>
+                            <p>
+                                Eventuali proroghe devono essere richieste almeno 30 giorni prima della scadenza <span class="highlight-claim font-medium">[CLAIM_002]</span> e sono subordinate al parere della Direzione Mobilità.
+                            </p>
+                        </div>
+
+                        <!-- Footer / Actions -->
+                        <div class="border-t border-slate-100 p-3 bg-slate-50 flex justify-start gap-3">
+                            <button class="px-3 py-1 text-xs font-mono text-slate-600 hover:text-black border border-slate-300 bg-white hover:bg-slate-50 transition-all rounded-sm mechanical-btn flex items-center gap-2">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                                GENERA REPORT PDF
+                            </button>
+                            <button class="px-3 py-1 text-xs font-mono text-slate-600 hover:text-black border border-slate-300 bg-white hover:bg-slate-50 transition-all rounded-sm mechanical-btn">
+                                NOTARIZZA RISPOSTA
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Input Area (Fixed, Functional) -->
+                <div class="p-6 bg-paper border-t border-border-main shrink-0">
+                    <div class="relative">
+                        <textarea 
+                            class="w-full bg-white border border-slate-400 p-4 pr-24 text-sm focus:outline-none focus:border-black focus:ring-0 transition-colors rounded-sm font-sans resize-none h-24 shadow-sm"
+                            placeholder="Inserisci qui la tua interrogazione legale..."
+                        ></textarea>
+                        <button class="absolute bottom-3 right-3 bg-slate-900 text-white text-xs font-bold uppercase tracking-wide px-4 py-2 rounded-sm hover:bg-black mechanical-btn">
+                            Esegui
+                        </button>
+                    </div>
+                    <div class="mt-2 flex justify-between items-center">
+                        <span class="text-[10px] font-mono text-slate-400">SHIFT+ENTER per nuova riga</span>
+                        <div class="flex gap-2 text-[10px] font-mono text-slate-500">
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Atlas Vector</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 bg-green-500 rounded-full"></span> Claude 3.5</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMN 2: Evidence & Context (The "Fortress") -->
+            <div class="w-5/12 bg-slate-100 flex flex-col h-full border-l border-white">
+                
+                <!-- Header Evidence -->
+                <div class="h-10 border-b border-slate-200 bg-slate-50 flex items-center px-4 justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wide text-slate-500 font-mono">Evidenze Documentali</span>
+                    <span class="text-[10px] font-mono text-slate-400">Source ID: FI-REG-2024-12</span>
+                </div>
+
+                <!-- Document Viewer -->
+                <div class="flex-1 overflow-y-auto p-6">
+                    
+                    <!-- Evidence Card -->
+                    <div class="bg-white border border-slate-300 shadow-sm p-0 mb-6 rounded-sm relative group">
+                        <!-- Sticky Header for Card -->
+                        <div class="sticky top-0 bg-white/95 backdrop-blur border-b border-slate-100 p-4 z-10 flex justify-between items-start">
+                            <div>
+                                <div class="text-[10px] font-mono text-slate-500 uppercase mb-1">Documento Originale</div>
+                                <h3 class="font-serif text-md font-bold text-slate-900 leading-tight">Regolamento occupazione suolo pubblico</h3>
+                                <div class="text-[11px] text-slate-500 mt-1">Delibera C.C. n. 2023/00045 • Pagina 12</div>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <span class="bg-emerald-100 text-emerald-800 text-[10px] font-mono px-2 py-1 border border-emerald-200 rounded-sm font-bold">
+                                    RELEVANCE: 9.2
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Content Text -->
+                        <div class="p-5 font-mono text-xs leading-loose text-slate-600">
+                            <div class="pl-4 border-l-2 border-slate-200">
+                                ...comunale. <br><br>
+                                <span class="text-slate-400">Art. 11 - Omissis</span><br><br>
+                                <strong class="text-slate-800">Art. 12 - Durata delle concessioni</strong><br>
+                                1. Le concessioni permanenti hanno durata di anni 5.<br>
+                                2. Le concessioni temporanee hanno durata inferiore ad un anno.<br>
+                                <span class="bg-yellow-100 text-slate-900 px-1 py-0.5 border-b-2 border-yellow-400 font-medium relative">
+                                    3. Per i cantieri edili in Zona A (Centro Storico UNESCO), la durata massima dell'occupazione non può eccedere giorni 180 continuativi.
+                                    <span class="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-[8px] text-white font-bold">1</span>
+                                </span>
+                                <br>
+                                4. La proroga può essere concessa una sola volta per giustificati motivi tecnici.<br><br>
+                                ...
+                            </div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="bg-slate-50 border-t border-slate-200 p-2 flex justify-between items-center">
+                            <button class="text-[10px] uppercase font-bold text-blue-600 hover:underline px-2">Apri PDF Completo</button>
+                            <span class="text-[10px] font-mono text-slate-400">Hash: a7f3...9c21</span>
+                        </div>
+                    </div>
+
+                    <!-- Second Evidence (Dimmed) -->
+                    <div class="bg-white/50 border border-slate-200 p-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity cursor-pointer">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-serif text-sm font-bold text-slate-700">Allegato A - Planimetria Zone</h4>
+                            <span class="text-[10px] font-mono text-slate-400">REL: 8.4</span>
+                        </div>
+                        <p class="font-mono text-[10px] text-slate-500 truncate">La zona indicata come Centro Storico corrisponde all'area delimitata dai viali...</p>
+                    </div>
+
+                </div>
+
+                <!-- PROCESS CONSOLE (The "Transparency" Layer) -->
+                <div class="h-48 bg-slate-900 text-slate-300 font-mono text-[10px] p-4 flex flex-col overflow-hidden shrink-0 border-t-4 border-emerald-900">
+                    <div class="flex justify-between items-center mb-2 border-b border-slate-700 pb-1">
+                        <span class="uppercase font-bold text-slate-400">System Log / RAG Pipeline</span>
+                        <span class="text-emerald-500">● LIVE</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto space-y-1 font-mono opacity-90">
+                        <div class="flex gap-2"><span class="text-slate-500">10:42:12.050</span> <span class="text-blue-400">[ROUTER]</span> Question classified as "REGULATION_QUERY"</div>
+                        <div class="flex gap-2"><span class="text-slate-500">10:42:12.120</span> <span class="text-yellow-400">[RETRIEVER]</span> MongoDB Vector Search: found 12 chunks (top_k=5)</div>
+                        <div class="flex gap-2"><span class="text-slate-500">10:42:12.450</span> <span class="text-purple-400">[RERANK]</span> Cohere Rerank: 3 chunks selected (score > 0.85)</div>
+                        <div class="flex gap-2"><span class="text-slate-500">10:42:13.100</span> <span class="text-green-400">[VERIFIER]</span> Claude 3.5: Evidence confirms claim (Confidence: 9.8/10)</div>
+                        <div class="flex gap-2"><span class="text-slate-500">10:42:13.800</span> <span class="text-cyan-400">[SYNTH]</span> Generating constrained response...</div>
+                        <div class="flex gap-2"><span class="text-slate-500">10:42:14.200</span> <span class="text-white bg-slate-800 px-1">[URS]</span> Final Score Calculated: 98/100. Response Valid.</div>
+                    </div>
+                </div>
+                
+            </div>
+
+        </main>
+    </div>
+
+</body>
+</html>

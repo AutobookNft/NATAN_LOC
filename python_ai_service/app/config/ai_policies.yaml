@@ -2,33 +2,49 @@ version: 1
 
 # Fallback chains: se un provider fallisce, prova il successivo
 fallbacks:
-  chat: ["groq.llama-3.1-70b", "anthropic.sonnet-3.5", "openai.gpt-4.1", "ollama.llama3-70b"]
-  embed: ["openai.text-embedding-3-small", "ollama.nomic-embed", "aisiru.embed-v1"]
+  chat:
+    [
+      "anthropic.claude-3-5-sonnet-20241022",
+      "groq.llama-3.3-70b-versatile",
+      "ollama.llama3.1:8b",
+      "openai.gpt-4.1",
+    ]
+  embed:
+    ["openai.text-embedding-3-small", "ollama.nomic-embed", "aisiru.embed-v1"]
 
 # Policy rules: match context → select provider
+# NOTA: Usando Claude per performance (dati pubblici Albo Pretorio)
+
 policies:
-  # GENERATIVO: Usa Groq (LLaMA 70B gratuito/economico) per sintesi e report
+  # GENERATIVO: Claude
   - match:
       task_class: "generative"
     use:
-      chat: "groq.llama-3.1-70b"
+      chat: "anthropic.claude-3-5-sonnet-20241022"
       embed: "openai.text-embedding-3-small"
-  
-  # GENERATIVO con contesto: Groq per volume alto
+
+  # GENERATIVO con contesto: Claude
   - match:
       task_class: "generative_with_context"
     use:
-      chat: "groq.llama-3.1-70b"
+      chat: "anthropic.claude-3-5-sonnet-20241022"
       embed: "openai.text-embedding-3-small"
-  
-  # Default: Cloud mode (production) - Claude per precisione
+
+  # Default RAG: Claude
   - match:
       persona: "strategic"
       task_class: "RAG"
     use:
-      chat: "anthropic.sonnet-3.5"
-      embed: "openai.text-embedding-3-large"
-  
+      chat: "anthropic.claude-3-5-sonnet-20241022"
+      embed: "openai.text-embedding-3-small"
+
+  # Chat standard - Claude
+  - match:
+      task_class: "chat"
+    use:
+      chat: "anthropic.claude-3-5-sonnet-20241022"
+      embed: "openai.text-embedding-3-small"
+
   # Local mode (on-premise PA - air-gapped)
   - match:
       tenant_id: 0
@@ -36,7 +52,7 @@ policies:
     use:
       chat: "ollama.llama3-8b"
       embed: "ollama.nomic-embed"
-  
+
   # High-precision queries (USE pipeline) - Claude per massima qualità
   - match:
       task_class: "USE"
@@ -44,7 +60,7 @@ policies:
     use:
       chat: "anthropic.opus-3"
       embed: "openai.text-embedding-3-large"
-  
+
   # Fast responses (chat) - Groq è velocissimo!
   - match:
       task_class: "chat"
@@ -52,10 +68,10 @@ policies:
     use:
       chat: "groq.llama-3.1-8b"
       embed: "openai.text-embedding-3-small"
-  
+
   # EU Enterprise (AISIRU)
   - match:
-      tenant_id: [100, 101, 102]  # Esempi tenant EU
+      tenant_id: [100, 101, 102] # Esempi tenant EU
       compliance: "gdpr_strict"
     use:
       chat: "aisiru.enterprise-v1"
@@ -78,7 +94,7 @@ providers:
       mixtral-8x7b:
         max_tokens: 32768
         temperature: 0.7
-  
+
   anthropic:
     api_key_env: "ANTHROPIC_API_KEY"
     base_url: "https://api.anthropic.com/v1"
@@ -89,7 +105,7 @@ providers:
       opus-3:
         max_tokens: 4096
         temperature: 0.5
-  
+
   openai:
     api_key_env: "OPENAI_API_KEY"
     base_url: "https://api.openai.com/v1"
@@ -101,9 +117,9 @@ providers:
         dimensions: 3072
       text-embedding-3-small:
         dimensions: 1536
-  
+
   ollama:
-    base_url: "http://localhost:11434"  # Local Ollama instance
+    base_url: "http://localhost:11434" # Local Ollama instance
     models:
       llama3-70b:
         temperature: 0.7
@@ -113,7 +129,7 @@ providers:
         max_tokens: 2048
       nomic-embed:
         dimensions: 768
-  
+
   aisiru:
     api_key_env: "AISIRU_API_KEY"
     base_url: "https://api.aisiru.eu/v1"
@@ -124,22 +140,43 @@ providers:
       embed-v1:
         dimensions: 1536
 
+# =============================================================================
+# RAG FORTRESS CONFIGURATION
+# =============================================================================
+# Parametri configurabili per RAG pipeline
+# Profiles: "cloud" (Claude/Groq), "local" (Ollama), "hybrid"
 
+rag_fortress:
+  # Profilo attivo: cambia questo per switchare configurazione
+  active_profile: "cloud"
 
+  profiles:
+    # Cloud profile: Claude, Groq (API veloci, più documenti)
+    cloud:
+      max_evidences: 50 # Documenti totali da processare
+      batch_size: 10 # Documenti per batch
+      text_preview_length: 2000 # Caratteri max per documento
+      timeout_seconds: 240 # Timeout richiesta
 
+    # Local profile: Ollama su GPU consumer (GTX 1070, RTX 3060, etc.)
+    local:
+      max_evidences: 20 # Meno documenti per velocità
+      batch_size: 5 # Batch più piccoli
+      text_preview_length: 1000 # Testi più corti
+      timeout_seconds: 600 # Timeout più lungo
 
+    # Hybrid: usa cloud per aggregazione, local per estrazione
+    hybrid:
+      max_evidences: 30
+      batch_size: 6
+      text_preview_length: 1500
+      timeout_seconds: 360
+      extraction_provider: "ollama.llama3.1:8b"
+      aggregation_provider: "anthropic.claude-3-5-sonnet-20241022"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # High-end local: Ollama su GPU potenti (RTX 4090, A100, etc.)
+    local_high_end:
+      max_evidences: 50
+      batch_size: 10
+      text_preview_length: 2000
+      timeout_seconds: 300

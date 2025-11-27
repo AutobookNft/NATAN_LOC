@@ -1,0 +1,297 @@
+            {
+    "export_info": {
+        "generated_at": "2025-08-05T13:18:10.075001Z",
+        "user_id": 4,
+        "categories": [
+            "profile",
+            "account",
+            "preferences",
+            "activity",
+            "consents",
+            "collections",
+            "purchases",
+            "comments",
+            "messages",
+            "biography"
+        ],
+        "format": "json",
+        "florence_egi_version": null
+    },
+    "profile": {
+        "basic_info": {
+            "id": 4,
+            "name": "Fabio Cherici",
+            "email": "fabiocherici@gmail.com",
+            "bio": null,
+            "created_at": "2025-08-04T13:38:49.000000Z",
+            "updated_at": "2025-08-04T13:38:50.000000Z"
+        },
+        "settings": {
+            "notification_preferences": [],
+            "privacy_settings": [],
+            "language": "it",
+            "timezone": "UTC"
+        },
+        "verification_status": {
+            "email_verified": false,
+            "email_verified_at": null
+        }
+    },
+    "account": {
+        "account_info": {
+            "user_id": 4,
+            "email": "fabiocherici@gmail.com",
+            "email_verified": false,
+            "email_verified_at": null,
+            "account_created": "2025-08-04T13:38:49.000000Z",
+            "last_updated": "2025-08-04T13:38:50.000000Z",
+            "last_login": null
+        },
+        "account_status": {
+            "active": true,
+            "verified": false,
+            "two_factor_enabled": false
+        },
+        "account_metadata": {
+            "timezone": "UTC",
+            "language": "it",
+            "created_via": "web_form_permission_based"
+        }
+    },
+    "preferences": {
+        "ui_preferences": {
+            "language": "it",
+            "timezone": "UTC",
+            "theme": "light",
+            "notifications_enabled": true
+        },
+        "privacy_preferences": {
+            "profile_visibility": "public",
+            "allow_contact": true,
+            "show_online_status": true
+        },
+        "platform_preferences": {
+            "newsletter_subscribed": false,
+            "marketing_emails": false,
+            "product_updates": true
+        },
+        "notification_settings": {
+            "email_notifications": [],
+            "push_notifications": [],
+            "sms_notifications": []
+        }
+    },
+    "activity": {
+        "login_history": [
+            {
+                "timestamp": "2025-08-05T13:09:13.000000Z",
+                "ip_address": "masked",
+                "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36",
+                "success": true,
+                "action": "user_logged_in_with_gdpr_ecosystem"
+            },
+            {
+                "timestamp": "2025-08-05T07:32:23.000000Z",
+                "ip_address": "masked",
+                "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36",
+                "success": true,
+                "action": "user_logged_in_with_gdpr_ecosystem"
+            },
+            {
+                "timestamp": "2025-08-04T17:53:02.000000Z",
+                "ip_address": "masked",
+                "user_agent": "Mozilla\/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit\/605.1.15 (KHTML, like Gecko) Version\/16.6 Mobile\/15E148 Safari\/604.1 Edg\/138.0.0.0",
+                "success": true,
+                "action": "user_logged_in_with_gdpr_ecosystem"
+            },
+            {
+                "timestamp": "2025-08-04T13:42:48.000000Z",
+                "ip_address": "masked",
+                "user_agent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36 Edg\/138.0.0.0",
+                "success": true,
+                "action": "user_logged_in_with_gdpr_ecosystem"
+            }
+        ],
+        "platform_usage": {
+            "total_logins": 4,
+            "last_login": null,
+            "account_age_days": 0.9856608999652777
+        }
+    },
+    "consents": {
+        "current_consents": {
+            "platform-services": true,
+            "terms-of-service": true,
+            "privacy-policy": true,
+            "age-confirmation": true,
+            "analytics": false,
+            "marketing": false,
+            "personalization": false
+        },
+        "consent_history": [
+            {
+                "consent_type": "platform-services",
+                "granted": true,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "contract",
+                "withdrawal_method": null
+            },
+            {
+                "consent_type": "terms-of-service",
+                "granted": true,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "contract",
+                "withdrawal_method": null
+            },
+            {
+                "consent_type": "privacy-policy",
+                "granted": true,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "legal_obligation",
+                "withdrawal_method": null
+            },
+            {
+                "consent_type": "age-confirmation",
+                "granted": true,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "contract",
+                "withdrawal_method": null
+            },
+            {
+                "consent_type": "analytics",
+                "granted": false,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "consent",
+                "withdrawal_method": null
+            },
+            {
+                "consent_type": "marketing",
+                "granted": false,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "consent",
+                "withdrawal_method": null
+            },
+            {
+                "consent_type": "personalization",
+                "granted": false,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "consent",
+                "withdrawal_method": null
+            },
+            {
+                "consent_type": "terms-of-service",
+                "granted": true,
+                "timestamp": "2025-08-04T13:38:50.000000Z",
+                "version": "1.0",
+                "legal_basis": "contract",
+                "withdrawal_method": null
+            }
+        ],
+        "last_updated": "2025-08-04T13:38:50.000000Z"
+    },
+    "collections": {
+        "owned_collections": [
+            {
+                "id": 2,
+                "name": null,
+                "description": "Enter a description of the collection",
+                "created_at": "2025-08-04T13:38:50.000000Z",
+                "egi_count": 0,
+                "status": "local",
+                "blockchain_data": {
+                    "contract_address": null,
+                    "blockchain_id": null
+                }
+            },
+            {
+                "id": 4,
+                "name": null,
+                "description": "Una delle collection più belle di Fabino",
+                "created_at": "2025-08-04T13:40:43.000000Z",
+                "egi_count": 40,
+                "status": "local",
+                "blockchain_data": {
+                    "contract_address": null,
+                    "blockchain_id": null
+                }
+            }
+        ],
+        "collaboration_collections": [
+            {
+                "id": 4,
+                "name": null,
+                "role": "creator",
+                "joined_at": "2025-08-04T13:43:04.000000Z"
+            }
+        ]
+    },
+    "purchases": {
+        "purchase_summary": {
+            "total_purchases": 0,
+            "total_spent": 0,
+            "currency": "EUR",
+            "first_purchase": null,
+            "last_purchase": null
+        },
+        "purchase_history": [],
+        "payment_methods": [],
+        "invoices": [],
+        "refunds": [],
+        "note": "Purchase system not yet implemented in FlorenceEGI MVP"
+    },
+    "comments": {
+        "comment_summary": {
+            "total_comments": 0,
+            "total_reviews": 0,
+            "average_rating_given": null,
+            "first_comment": null,
+            "last_comment": null
+        },
+        "comments": [],
+        "reviews": [],
+        "comment_settings": {
+            "allow_public_comments": true,
+            "moderate_comments": false
+        },
+        "note": "Comment system not yet implemented in FlorenceEGI MVP"
+    },
+    "messages": {
+        "message_summary": {
+            "total_sent": 0,
+            "total_received": 0,
+            "conversations": 0,
+            "first_message": null,
+            "last_message": null
+        },
+        "conversations": [],
+        "sent_messages": [],
+        "received_messages": [],
+        "message_settings": {
+            "allow_messages": true,
+            "message_privacy": "contacts_only"
+        },
+        "note": "Messaging system not yet implemented in FlorenceEGI MVP"
+    },
+    "biography": {
+        "summary": {
+            "total_biographies": 0,
+            "public_biographies": 0,
+            "completed_biographies": 0,
+            "total_chapters": 0,
+            "export_date": "2025-08-05T13:18:10.165309Z"
+        },
+        "biographies": [],
+        "export_metadata": {
+            "legal_basis": "Article 20 GDPR - Right to data portability",
+            "processing_purpose": "User data export request",
+            "retention_note": "This export file will be automatically deleted after 30 days",
+            "data_controller": "FlorenceEGI S.r.l.",
+            "export_format_note": "Structured data for portability and interoperability"
+     

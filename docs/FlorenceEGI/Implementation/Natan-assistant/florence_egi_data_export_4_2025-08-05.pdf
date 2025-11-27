@@ -1,0 +1,290 @@
+            FlorenceEGI Data Export
+Generated: 2025-08-05T13:35:41.228500Z
+
+EXPORT_INFO
+===========
+
+generated_at: 2025-08-05T13:35:41.145930Z
+user_id: 4
+categories: 
+  0: profile
+  1: account
+  2: preferences
+  3: activity
+  4: consents
+  5: collections
+  6: purchases
+  7: comments
+  8: messages
+  9: biography
+format: pdf
+florence_egi_version: 
+
+
+PROFILE
+=======
+
+basic_info: 
+  id: 4
+  name: Fabio Cherici
+  email: fabiocherici@gmail.com
+  bio: 
+  created_at: 2025-08-04T13:38:49.000000Z
+  updated_at: 2025-08-04T13:38:50.000000Z
+settings: 
+  notification_preferences: 
+  privacy_settings: 
+  language: it
+  timezone: UTC
+verification_status: 
+  email_verified: 
+  email_verified_at: 
+
+
+ACCOUNT
+=======
+
+account_info: 
+  user_id: 4
+  email: fabiocherici@gmail.com
+  email_verified: 
+  email_verified_at: 
+  account_created: 2025-08-04T13:38:49.000000Z
+  last_updated: 2025-08-04T13:38:50.000000Z
+  last_login: 
+account_status: 
+  active: 1
+  verified: 
+  two_factor_enabled: 
+account_metadata: 
+  timezone: UTC
+  language: it
+  created_via: web_form_permission_based
+
+
+PREFERENCES
+===========
+
+ui_preferences: 
+  language: it
+  timezone: UTC
+  theme: light
+  notifications_enabled: 1
+privacy_preferences: 
+  profile_visibility: public
+  allow_contact: 1
+  show_online_status: 1
+platform_preferences: 
+  newsletter_subscribed: 
+  marketing_emails: 
+  product_updates: 1
+notification_settings: 
+  email_notifications: 
+  push_notifications: 
+  sms_notifications: 
+
+
+ACTIVITY
+========
+
+login_history: 
+  0: 
+    timestamp: 2025-08-05T13:09:13.000000Z
+    ip_address: masked
+    user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
+    success: 1
+    action: user_logged_in_with_gdpr_ecosystem
+  1: 
+    timestamp: 2025-08-05T07:32:23.000000Z
+    ip_address: masked
+    user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
+    success: 1
+    action: user_logged_in_with_gdpr_ecosystem
+  2: 
+    timestamp: 2025-08-04T17:53:02.000000Z
+    ip_address: masked
+    user_agent: Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1 Edg/138.0.0.0
+    success: 1
+    action: user_logged_in_with_gdpr_ecosystem
+  3: 
+    timestamp: 2025-08-04T13:42:48.000000Z
+    ip_address: masked
+    user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0
+    success: 1
+    action: user_logged_in_with_gdpr_ecosystem
+platform_usage: 
+  total_logins: 4
+  last_login: 
+  account_age_days: 0.99782599771991
+
+
+CONSENTS
+========
+
+current_consents: 
+  platform-services: 1
+  terms-of-service: 1
+  privacy-policy: 1
+  age-confirmation: 1
+  analytics: 
+  marketing: 
+  personalization: 
+consent_history: 
+  0: 
+    consent_type: platform-services
+    granted: 1
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: contract
+    withdrawal_method: 
+  1: 
+    consent_type: terms-of-service
+    granted: 1
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: contract
+    withdrawal_method: 
+  2: 
+    consent_type: privacy-policy
+    granted: 1
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: legal_obligation
+    withdrawal_method: 
+  3: 
+    consent_type: age-confirmation
+    granted: 1
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: contract
+    withdrawal_method: 
+  4: 
+    consent_type: analytics
+    granted: 
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: consent
+    withdrawal_method: 
+  5: 
+    consent_type: marketing
+    granted: 
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: consent
+    withdrawal_method: 
+  6: 
+    consent_type: personalization
+    granted: 
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: consent
+    withdrawal_method: 
+  7: 
+    consent_type: terms-of-service
+    granted: 1
+    timestamp: 2025-08-04T13:38:50.000000Z
+    version: 1.0
+    legal_basis: contract
+    withdrawal_method: 
+last_updated: 2025-08-04T13:38:50.000000Z
+
+
+COLLECTIONS
+===========
+
+owned_collections: 
+  0: 
+    id: 2
+    name: 
+    description: Enter a description of the collection
+    created_at: 2025-08-04T13:38:50.000000Z
+    egi_count: 0
+    status: local
+    blockchain_data: 
+      contract_address: 
+      blockchain_id: 
+  1: 
+    id: 4
+    name: 
+    description: Una delle collection più belle di Fabino
+    created_at: 2025-08-04T13:40:43.000000Z
+    egi_count: 40
+    status: local
+    blockchain_data: 
+      contract_address: 
+      blockchain_id: 
+collaboration_collections: 
+  0: 
+    id: 4
+    name: 
+    role: creator
+    joined_at: 2025-08-04T13:43:04.000000Z
+
+
+PURCHASES
+=========
+
+purchase_summary: 
+  total_purchases: 0
+  total_spent: 0
+  currency: EUR
+  first_purchase: 
+  last_purchase: 
+purchase_history: 
+payment_methods: 
+invoices: 
+refunds: 
+note: Purchase system not yet implemented in FlorenceEGI MVP
+
+
+COMMENTS
+========
+
+comment_summary: 
+  total_comments: 0
+  total_reviews: 0
+  average_rating_given: 
+  first_comment: 
+  last_comment: 
+comments: 
+reviews: 
+comment_settings: 
+  allow_public_comments: 1
+  moderate_comments: 
+note: Comment system not yet implemented in FlorenceEGI MVP
+
+
+MESSAGES
+========
+
+message_summary: 
+  total_sent: 0
+  total_received: 0
+  conversations: 0
+  first_message: 
+  last_message: 
+conversations: 
+sent_messages: 
+received_messages: 
+message_settings: 
+  allow_messages: 1
+  message_privacy: contacts_only
+note: Messaging system not yet implemented in FlorenceEGI MVP
+
+
+BIOGRAPHY
+=========
+
+summary: 
+  total_biographies: 0
+  public_biographies: 0
+  completed_biographies: 0
+  total_chapters: 0
+  export_date: 2025-08-05T13:35:41.218488Z
+biographies: 
+export_metadata: 
+  legal_basis: Article 20 GDPR - Right to data portability
+  processing_purpose: User data export request
+  retention_note: This export file will be automatically deleted after 30 days
+  data_controller: FlorenceEGI S.r.l.
+  export_format_note: Structured data for portability and interop
