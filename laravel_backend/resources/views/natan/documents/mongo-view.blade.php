@@ -137,6 +137,24 @@
                     {{-- PDF Viewer (mostrato solo su click) --}}
                     @if($pdfUrl || $pdfPath)
                         <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
+                    @else
+                        {{-- Avviso PDF mancante --}}
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-amber-600 text-2xl">warning</span>
+                                <div>
+                                    <h3 class="text-base font-semibold text-amber-900 mb-2">PDF Non Disponibile</h3>
+                                    <p class="text-sm text-amber-800 leading-relaxed">
+                                        Il documento è stato importato senza il file PDF originale. 
+                                        Per visualizzare il contenuto completo e strutturato, è necessario re-importare il documento con il PDF.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($pdfUrl || $pdfPath)
+                        <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
                             <div class="flex items-center justify-between mb-4">
                                 <h2 class="text-lg font-semibold text-gray-900">Visualizzazione PDF</h2>
                                 @if($pdfUrl)
@@ -277,6 +295,19 @@
                         {{-- Fallback: Full Text Content (if no structure) --}}
                         <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
                             <h2 class="text-lg font-semibold text-gray-900 mb-4">Contenuto Testo Completo</h2>
+                            
+                            @if($totalChars < 500)
+                                <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div class="flex items-start gap-2">
+                                        <span class="material-symbols-outlined text-blue-600 text-lg">info</span>
+                                        <p class="text-sm text-blue-800">
+                                            Questo documento contiene solo {{ $totalChars }} caratteri. 
+                                            Per contenuti più dettagliati, verifica che il documento sia stato importato con il PDF completo.
+                                        </p>
+                                    </div>
+                                </div>
+                            @endif
+                            
                             <div class="prose prose-sm max-w-none">
                                 <div class="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{{ $fullText }}</div>
                             </div>
@@ -285,6 +316,20 @@
                                     <p class="text-xs text-gray-500">Caratteri totali: {{ number_format($totalChars) }}</p>
                                 </div>
                             @endif
+                        </div>
+                    @else
+                        {{-- Nessun contenuto disponibile --}}
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+                            <div class="flex items-start gap-3">
+                                <span class="material-symbols-outlined text-red-600 text-2xl">error</span>
+                                <div>
+                                    <h3 class="text-base font-semibold text-red-900 mb-2">Contenuto Non Disponibile</h3>
+                                    <p class="text-sm text-red-800 leading-relaxed">
+                                        Il documento non contiene testo estratto. 
+                                        Il documento deve essere re-importato con il PDF originale per estrarre il contenuto.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     @endif
 

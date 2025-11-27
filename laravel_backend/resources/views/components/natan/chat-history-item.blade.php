@@ -19,22 +19,24 @@
 <button
     type="button"
     data-chat-id="{{ $id }}"
-    class="w-full text-left px-2 py-2 rounded-lg text-xs text-white hover:bg-white/10 transition-colors {{ $expanded ? '' : 'opacity-75' }}"
+    data-chat-title="{{ $title }}"
+    class="w-full text-left px-2 py-2 rounded-sm text-xs transition-colors chat-history-item hover:bg-slate-200"
     aria-label="Carica conversazione: {{ $title }}"
+    style="color: #0f172a !important; background-color: transparent !important;"
 >
     <div class="flex items-start justify-between gap-2">
         <div class="flex-1 min-w-0">
-            <p class="font-medium truncate">{{ $title }}</p>
-            <p class="text-natan-blue-extra-light/70 text-[10px] mt-0.5">
+            <p class="font-medium truncate" style="color: #0f172a !important;">{{ $title }}</p>
+            <p class="text-[10px] mt-0.5" style="color: #475569 !important;">
                 {{ $date->diffForHumans() }}
             </p>
         </div>
         @if($costEur > 0)
-            <span class="flex-shrink-0 text-[10px] font-semibold text-natan-blue-extra-light">
+            <span class="flex-shrink-0 text-[10px] font-semibold" style="color: #475569 !important;">
                 €{{ number_format($costEur, 2, ',', '.') }}
             </span>
         @else
-            <span class="flex-shrink-0 text-[10px] text-natan-blue-extra-light/50">
+            <span class="flex-shrink-0 text-[10px] opacity-50" style="color: #475569 !important;">
                 €0,00
             </span>
         @endif

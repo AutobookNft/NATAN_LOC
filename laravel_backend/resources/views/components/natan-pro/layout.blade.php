@@ -1,3 +1,7 @@
+@props([
+    'chatHistory' => [],
+])
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -111,7 +115,6 @@
         @php
             $currentContext = request('context') ?: session('current_context', 'natan.chat');
             $menus = \App\Services\Menu\ContextMenus::getMenusForContext($currentContext);
-            $chatHistory = $chatHistory ?? [];
         @endphp
         <x-natan-pro.sidebar-context :menus="$menus" :chatHistory="$chatHistory" />
 
