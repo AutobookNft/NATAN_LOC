@@ -57,6 +57,57 @@ Non dispongo di informazioni verificate sufficienti per rispondere alla parte re
 Rispondi SOLO con il testo della risposta formale, senza aggiunte.
 """
 
+MATRIX_SYNTHESIS_PROMPT = """
+Sei un assistente per la Pubblica Amministrazione italiana.
+
+La tua missione è creare una matrice decisionale o tabella usando ESCLUSIVAMENTE i dati reali estratti dalle claim verificate.
+
+DOMANDA UTENTE:
+{user_question}
+
+CLAIM VERIFICATE (usa SOLO queste per estrarre dati reali):
+{claims_json}
+
+GAP RILEVATI:
+{gaps_json}
+
+REGOLE FERREE PER MATRICI/TABELLE:
+1. Estrai SOLO progetti/interventi/atti REALI presenti nelle claim
+2. Per ogni progetto reale estratto, identifica dai dati delle claim:
+   - Nome/descrizione del progetto (dalle claim)
+   - Impatto (se presente nelle claim, altrimenti NON inventare)
+   - Urgenza (se presente nelle claim, altrimenti NON inventare)
+   - Costo (se presente nelle claim, altrimenti NON inventare)
+   - Fattibilità tecnica (se presente nelle claim, altrimenti NON inventare)
+3. Se un dato NON è presente nelle claim → NON inventarlo, indica "Dato non disponibile"
+4. Crea la matrice SOLO con progetti reali estratti dalle claim
+5. Ogni riga della matrice DEVE essere supportata da claim: (CLAIM_XXX)
+6. Se NON ci sono progetti reali nelle claim → NON creare progetti fittizi
+7. Se ci sono meno di 3 progetti reali, crea comunque la matrice con quelli disponibili
+8. Formato: tabella markdown con colonne appropriate
+9. Aggiungi note metodologiche che spiegano che i dati provengono dai documenti verificati
+
+ESEMPIO CORRETTO:
+Se le claim contengono:
+- [CLAIM_001] Progetto "Rigenerazione centro storico" approvato con delibera 123/2024
+- [CLAIM_002] Importo stanziato: 500.000 euro
+- [CLAIM_003] Progetto "Digitalizzazione servizi" approvato con delibera 124/2024
+- [CLAIM_004] Importo stanziato: 200.000 euro
+
+Allora crea:
+| PROGETTO | IMPATTO | URGENZA | COSTO | FATTIBILITÀ | PUNTEGGIO | PRIORITÀ |
+|----------|---------|---------|-------|-------------|-----------|----------|
+| Rigenerazione centro storico (CLAIM_001) | Dato non disponibile | Dato non disponibile | 500.000€ (CLAIM_002) | Dato non disponibile | - | - |
+| Digitalizzazione servizi (CLAIM_003) | Dato non disponibile | Dato non disponibile | 200.000€ (CLAIM_004) | Dato non disponibile | - | - |
+
+ESEMPIO SBAGLIATO (NON fare così):
+- Creare progetti "Progetto A", "Progetto B" fittizi
+- Inventare valori di impatto/urgenza non presenti nelle claim
+- Creare template vuoto senza progetti reali
+
+Rispondi SOLO con la matrice/tabella formattata in markdown, senza aggiunte.
+"""
+
 class ConstrainedSynthesizer:
     """
     Sintetizzatore vincolato usando Ollama locale con LoRA NATAN-LegalPA-v1
@@ -67,6 +118,20 @@ class ConstrainedSynthesizer:
         self.ai_router = AIRouter()
         self.model = "natan-legalpa-v1-q4"  # Ollama locale con LoRA
         self.fallback_model = "claude-3-5-sonnet"  # Fallback
+    
+    def _is_matrix_query(self, question: str) -> bool:
+        """Rileva se la query richiede una matrice/tabella"""
+        lower_q = question.lower()
+        return any(keyword in lower_q for keyword in ['matrice', 'tabella', 'prioritizza', 'classifica', 'ordina'])
+    
+    def _build_matrix_prompt(self, question: str, claims: List[str], gaps: List[str]) -> str:
+        """Costruisce prompt speciale per generazione matrici con dati reali"""
+        import json
+        return MATRIX_SYNTHESIS_PROMPT.format(
+            user_question=question,
+            claims_json=json.dumps(claims, ensure_ascii=False, indent=2),
+            gaps_json=json.dumps(gaps, ensure_ascii=False, indent=2)
+        )
     
     async def synthesize_response(
         self,
@@ -89,14 +154,22 @@ class ConstrainedSynthesizer:
             return "Non dispongo di informazioni verificate sufficienti per rispondere alla domanda posta."
         
         try:
-            # Prepara prompt
+            # Prepara prompt - usa prompt speciale per matrici
             import json
-            prompt = SYNTHESIS_PROMPT.format(
-                user_question=user_question,
-                claims_json=json.dumps(claims, ensure_ascii=False, indent=2),
-                gaps_json=json.dumps(gaps, ensure_ascii=False, indent=2),
-                regole=SYNTHESIS_RULES
-            )
+            is_matrix = self._is_matrix_query(user_question)
+            
+            if is_matrix:
+                # Prompt speciale per matrici/tabelle con dati reali
+                prompt = self._build_matrix_prompt(user_question, claims, gaps)
+                max_tokens = 3000  # Più token per matrici complesse
+            else:
+                prompt = SYNTHESIS_PROMPT.format(
+                    user_question=user_question,
+                    claims_json=json.dumps(claims, ensure_ascii=False, indent=2),
+                    gaps_json=json.dumps(gaps, ensure_ascii=False, indent=2),
+                    regole=SYNTHESIS_RULES
+                )
+                max_tokens = 600
             
             # Prova Ollama locale con LoRA prima
             try:
@@ -111,7 +184,7 @@ class ConstrainedSynthesizer:
                         prompt=prompt,
                         options={
                             "temperature": 0.3,
-                            "num_predict": 600
+                            "num_predict": max_tokens  # Variabile: 600 per risposte normali, 3000 per matrici
                         }
                     ),
                     timeout=8.0
@@ -144,7 +217,7 @@ class ConstrainedSynthesizer:
                 result = await adapter.generate(
                     messages,
                     temperature=0.3,  # Bassa temperatura per stile formale
-                    max_tokens=600  # ~450 parole max
+                    max_tokens=max_tokens  # Variabile: 600 per risposte normali, 3000 per matrici
                 )
             
             response = result["content"].strip()
