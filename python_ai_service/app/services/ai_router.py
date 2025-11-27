@@ -7,6 +7,7 @@ from app.services.providers import (
     AnthropicChatAdapter,
     OllamaChatAdapter,
     OllamaEmbeddingAdapter,
+    GroqChatAdapter,
     BaseChatAdapter,
     BaseEmbeddingAdapter
 )
@@ -48,6 +49,10 @@ class AIRouter:
             return OpenAIChatAdapter(model=model_name)
         elif model.startswith("ollama."):
             return OllamaChatAdapter(model=model)
+        elif model.startswith("groq.") or model.startswith("llama"):
+            # Groq per LLaMA e altri modelli veloci
+            model_name = model.replace("groq.", "")
+            return GroqChatAdapter(model=model_name)
         else:
             raise ValueError(f"Unknown chat model: {model}")
     

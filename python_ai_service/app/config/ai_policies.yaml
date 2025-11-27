@@ -2,12 +2,26 @@ version: 1
 
 # Fallback chains: se un provider fallisce, prova il successivo
 fallbacks:
-  chat: ["anthropic.sonnet-3.5", "openai.gpt-4.1", "ollama.llama3-70b"]
+  chat: ["groq.llama-3.1-70b", "anthropic.sonnet-3.5", "openai.gpt-4.1", "ollama.llama3-70b"]
   embed: ["openai.text-embedding-3-small", "ollama.nomic-embed", "aisiru.embed-v1"]
 
 # Policy rules: match context → select provider
 policies:
-  # Default: Cloud mode (production)
+  # GENERATIVO: Usa Groq (LLaMA 70B gratuito/economico) per sintesi e report
+  - match:
+      task_class: "generative"
+    use:
+      chat: "groq.llama-3.1-70b"
+      embed: "openai.text-embedding-3-small"
+  
+  # GENERATIVO con contesto: Groq per volume alto
+  - match:
+      task_class: "generative_with_context"
+    use:
+      chat: "groq.llama-3.1-70b"
+      embed: "openai.text-embedding-3-small"
+  
+  # Default: Cloud mode (production) - Claude per precisione
   - match:
       persona: "strategic"
       task_class: "RAG"
@@ -23,7 +37,7 @@ policies:
       chat: "ollama.llama3-8b"
       embed: "ollama.nomic-embed"
   
-  # High-precision queries (USE pipeline)
+  # High-precision queries (USE pipeline) - Claude per massima qualità
   - match:
       task_class: "USE"
       intent: "financial_analysis"
@@ -31,12 +45,12 @@ policies:
       chat: "anthropic.opus-3"
       embed: "openai.text-embedding-3-large"
   
-  # Fast responses (chat)
+  # Fast responses (chat) - Groq è velocissimo!
   - match:
       task_class: "chat"
       priority: "speed"
     use:
-      chat: "openai.gpt-4.1"
+      chat: "groq.llama-3.1-8b"
       embed: "openai.text-embedding-3-small"
   
   # EU Enterprise (AISIRU)
@@ -49,6 +63,22 @@ policies:
 
 # Provider configurations
 providers:
+  groq:
+    api_key_env: "GROQ_API_KEY"
+    base_url: "https://api.groq.com/openai/v1"
+    models:
+      llama-3.1-70b:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 128000
+      llama-3.1-8b:
+        max_tokens: 8192
+        temperature: 0.7
+        context_window: 128000
+      mixtral-8x7b:
+        max_tokens: 32768
+        temperature: 0.7
+  
   anthropic:
     api_key_env: "ANTHROPIC_API_KEY"
     base_url: "https://api.anthropic.com/v1"

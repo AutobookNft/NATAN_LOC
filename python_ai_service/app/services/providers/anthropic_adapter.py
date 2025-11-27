@@ -1,8 +1,19 @@
 """Anthropic (Claude) provider adapter"""
 import os
 import httpx
+import logging
 from typing import List, Dict, Any
 from .base import BaseChatAdapter
+from .api_errors import (
+    APIError, 
+    APIErrorType,
+    parse_api_error, 
+    InsufficientFundsError, 
+    InvalidAPIKeyError,
+    RateLimitError
+)
+
+logger = logging.getLogger(__name__)
 
 class AnthropicChatAdapter(BaseChatAdapter):
     """Anthropic Claude chat adapter"""
@@ -92,20 +103,69 @@ class AnthropicChatAdapter(BaseChatAdapter):
                         logger = logging.getLogger(__name__)
                         logger.info(f"✅ Discovered working Anthropic model: {model_id} for base {self.base_model}")
                         return model_id
+                    
+                    # Controlla errori specifici che non dovremmo ignorare
+                    # 400 può essere anche "credit balance too low" su Anthropic
+                    if test_response.status_code in [400, 401, 402, 429]:
+                        response_text = test_response.text.lower()
+                        # Controlla se è errore di credito/billing
+                        if any(kw in response_text for kw in ['credit', 'balance', 'billing', 'payment', 'insufficient']):
+                            error = parse_api_error(402, test_response.text, "anthropic")
+                            raise error
+                        # Altri errori 400 potrebbero essere modello non valido, proviamo il prossimo
+                        if test_response.status_code == 400:
+                            logger.warning(f"Model {model_id} returned 400: {test_response.text[:200]}")
+                            continue
+                        # 401, 402, 429 sono errori critici
+                        error = parse_api_error(
+                            test_response.status_code, 
+                            test_response.text, 
+                            "anthropic"
+                        )
+                        raise error
+                        
+            except (InsufficientFundsError, InvalidAPIKeyError, RateLimitError) as api_err:
+                # Errori critici che non dipendono dal modello - propagali
+                raise api_err
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 404:
                     # Model not found, try next in fallback chain
                     continue
+                # Check for billing/auth errors
+                if e.response.status_code in [401, 402, 429]:
+                    error = parse_api_error(
+                        e.response.status_code, 
+                        e.response.text, 
+                        "anthropic"
+                    )
+                    raise error
                 # Other error, re-raise
                 raise
-            except Exception:
-                # Network/timeout errors, try next
+            except APIError:
+                # Already parsed API error, propagate
+                raise
+            except Exception as e:
+                # Network/timeout errors, log and try next
+                logger.warning(f"Error testing model {model_id}: {str(e)[:100]}")
                 continue
         
-        # No model found in fallback chain
-        raise ValueError(
-            f"Anthropic API: No available model found for '{self.base_model}'. "
-            f"Tried: {fallbacks}. Check your API key and model availability."
+        # No model found in fallback chain - potrebbe essere problema API key o billing
+        # Trasforma in APIError per messaggio user-friendly
+        raise APIError(
+            message=f"Anthropic API: No available model found for '{self.base_model}'. Tried: {fallbacks}. Check your API key and billing status.",
+            error_type=APIErrorType.MODEL_NOT_AVAILABLE,
+            provider="anthropic",
+            status_code=400,
+            user_message=(
+                "⚠️ **Servizio AI temporaneamente non disponibile**\n\n"
+                "Non è stato possibile connettersi al servizio di intelligenza artificiale.\n\n"
+                "**Possibili cause:**\n"
+                "- Credito API esaurito\n"
+                "- Chiave API non valida o scaduta\n"
+                "- Servizio temporaneamente non raggiungibile\n\n"
+                "**Cosa fare?**\n"
+                "Contatta l'amministratore di sistema per verificare lo stato del servizio."
+            )
         )
     
     async def generate(self, messages: List[Dict[str, str]], **options) -> Dict[str, Any]:
@@ -152,6 +212,18 @@ class AnthropicChatAdapter(BaseChatAdapter):
                 response.raise_for_status()
                 data = response.json()
             except httpx.HTTPStatusError as e:
+                # Log dettagli errore per debug
+                logger.error(f"Anthropic API error {e.response.status_code}: {e.response.text}")
+                
+                # Gestisci errori critici (billing, auth, rate limit)
+                if e.response.status_code in [401, 402, 429]:
+                    error = parse_api_error(
+                        e.response.status_code, 
+                        e.response.text, 
+                        "anthropic"
+                    )
+                    raise error
+                
                 if e.response.status_code == 404:
                     # Model might have been deprecated, re-discover
                     self._discovered_model = None
@@ -175,7 +247,13 @@ class AnthropicChatAdapter(BaseChatAdapter):
                     response.raise_for_status()
                     data = response.json()
                 else:
-                    raise
+                    # Errore generico - prova a parsarlo
+                    error = parse_api_error(
+                        e.response.status_code, 
+                        e.response.text, 
+                        "anthropic"
+                    )
+                    raise error
             
             content_text = ""
             if isinstance(data["content"], list):
