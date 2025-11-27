@@ -1,8 +1,8 @@
 # 📊 NATAN_LOC - Stato dell'Arte del Progetto
 
-**Versione**: 2.2.0  
+**Versione**: 2.3.0  
 **Data**: 2025-01-28  
-**Ultimo Aggiornamento**: 2025-11-20 (Natan Pro UI/UX Redesign)  
+**Ultimo Aggiornamento**: 2025-11-26 (Sistema Memoria Semantica & Pattern Classifier)  
 **Autore**: Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici  
 **Contesto**: FlorenceEGI - NATAN_LOC Production System
 
@@ -12,7 +12,7 @@
 
 **NATAN_LOC** è un sistema SaaS multi-tenant per la gestione e notarizzazione di documenti con integrazione AI avanzata, sviluppato per Pubbliche Amministrazioni e aziende.
 
-**Status Attuale**: ✅ **PRODUCTION-READY** - Architettura completa implementata, RAG-Fortress Zero-Hallucination attivo, Compliance Scanner operativo, Natan Pro UI/UX redesign completato
+**Status Attuale**: ✅ **PRODUCTION-READY** - Architettura completa implementata, RAG-Fortress Zero-Hallucination attivo, Compliance Scanner operativo, Natan Pro UI/UX redesign completato, Sistema Memoria Semantica personalizzata funzionante
 
 **Deployment**: 
 - **Staging**: `https://natan.florenceegi.com`
@@ -256,6 +256,8 @@ natan_chat_messages
 
 natan_user_memories
   - id, tenant_id, user_id, memory_type, content, ...
+  - Sincronizzato con MongoDB Atlas user_memories collection
+  - Rilevamento automatico memorie in chat (MemoryDetectionService)
 ```
 
 ### **MongoDB Collections**
@@ -265,6 +267,13 @@ natan_user_memories
 documents
   - _id, tenant_id, document_id, protocol_number, content, metadata, embedding, ...
   - 1199 documenti PA unici (tenant 2) - duplicati rimossi (2025-11-20)
+
+// User memories (NEW 2025-11-26)
+user_memories
+  - _id, memory_id, user_id, content, embedding, is_active, created_at, updated_at
+  - Embeddings 1536 dimensioni (OpenAI text-embedding-3-small)
+  - Recupero semantico con cosine similarity (threshold 0.3)
+  - Integrazione automatica in chat conversazionali
 
 // Scraping tracking
 scraped_comuni
@@ -527,6 +536,29 @@ chat_messages
 - ✅ **Test Tracking**: `test_comuni_tracker.py`
 - ✅ **Test Workflow**: `test_scraper_tracking_integration.py`
 - ✅ Tutti i test passati, copertura completa
+
+#### **Sistema Memoria Semantica Personalizzata** (2025-11-26)
+- ✅ **Pattern Classifier**: 11 file pattern con 2500+ pattern totali
+  - `personal_query_patterns.py` (300+ pattern personali)
+  - `conversational_query_patterns.py` (150+ pattern conversazionali)
+  - `generative_query_patterns.py` (200+ pattern generativi)
+  - `fact_check_query_patterns.py` (300+ pattern fact-checking)
+  - `numerical_query_patterns.py` (250+ pattern numerici)
+  - `comparison_query_patterns.py` (250+ pattern comparativi)
+  - `definition_query_patterns.py` (250+ pattern definizioni)
+  - `procedure_query_patterns.py` (300+ pattern procedurali)
+  - `temporal_query_patterns.py` (250+ pattern temporali)
+  - `interpretation_query_patterns.py` (250+ pattern interpretativi)
+  - `spatial_query_patterns.py` (300+ pattern spaziali)
+- ✅ **QuestionClassifier**: Aggiornato per importare tutti i pattern file
+- ✅ **Memoria Utente**: Sistema completo salvataggio/recupero memorie
+  - Salvataggio: PHP `MemoryDetectionService` → MySQL + Python `/api/v1/memories/generate-embedding` → MongoDB Atlas
+  - Recupero: Python `HybridRetriever._retrieve_user_memories()` con cosine similarity (threshold 0.3)
+  - Integrazione: Memorie iniettate automaticamente in prompt conversazionali
+- ✅ **Bug Fix Endpoint**: Corretto path `/memories/generate-embedding` → `/api/v1/memories/generate-embedding`
+- ✅ **Logging**: Aggiunto logging classificazione e routing in `chat.py`
+- ✅ **Test Completo**: "dimmi di più sulla mia città" recupera "vivo a Firenze" e genera risposta contestualizzata
+- ✅ **Storage**: MongoDB Atlas per embeddings (1536 dim, OpenAI text-embedding-3-small)
 
 #### **RAG-Fortress Zero-Hallucination** (2025-01-28)
 - ✅ Tutti i 10 passi implementati e testati
@@ -950,6 +982,22 @@ Vite Build Output:
 - ✅ Mobile responsive (iOS/Android)
 
 ---
+
+## 📝 Changelog Recente (2025-11-26)
+
+### **🧠 Sistema Memoria Semantica Personalizzata**
+- Creati 11 file pattern per classificazione query (2500+ pattern totali)
+- Implementato sistema salvataggio memorie: PHP → MySQL → Python → MongoDB Atlas
+- Risolto bug endpoint `/api/v1/memories/generate-embedding` (era chiamato senza prefisso)
+- Integrato recupero memorie in `DIRECT_QUERY` handler con cosine similarity
+- Aggiunto logging classificazione e routing per debugging
+- Test completo end-to-end: salvataggio "vivo a Firenze" → query "dimmi di più sulla mia città" → risposta contestualizzata
+- Memorie archiviate su MongoDB Atlas con embeddings OpenAI (text-embedding-3-small, 1536 dim)
+
+### **🔧 Bug Fix & Ottimizzazioni**
+- Rimosso codice duplicato: `retriever_service._retrieve_user_memories()` (ora solo in RAG-Fortress)
+- Aggiunto import `logging` in `chat.py` per logger
+- Corretto endpoint Laravel `MemoryDetectionService` per chiamare URL corretto Python
 
 ## 📝 Changelog Recente (2025-11-20)
 
