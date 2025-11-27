@@ -376,7 +376,236 @@ curl -X POST "http://localhost:8001/api/v1/admin/compliance-scanner/generate-rep
 
 ---
 
-**Versione**: 1.0.0  
+---
+
+## 🔧 Script Scraping Comune di Firenze
+
+Il Comune di Firenze è il principale caso d'uso e dispone di **due scraper specializzati** per fonti diverse.
+
+### **1. Albo Pretorio - `scrape_albo_firenze_v2.py`**
+
+Script per estrarre atti dall'Albo Pretorio online di Firenze.
+
+**Percorso:** `scripts/scrape_albo_firenze_v2.py`
+
+**Fonte dati:**
+- **URL Base:** `https://accessoconcertificato.comune.fi.it`
+- **Endpoint:** `/AOL/Affissione/ComuneFi/Page`
+- **Tipo:** Web scraping HTML (BeautifulSoup)
+
+**Dati estratti per ogni atto:**
+| Campo | Descrizione | Pattern regex |
+|-------|-------------|---------------|
+| `tipo_atto` | Tipo dell'atto | Prima riga div |
+| `direzione` | Direzione competente | Seconda riga div |
+| `numero_registro` | N° registro atto | `N°\s*registro\s*(\d+/\d+)` |
+| `numero_atto` | N° atto | `N°\s*atto\s*(\d+/\d+)` |
+| `data_inizio` | Inizio pubblicazione | `Inizio\s+pubblicazione\s*(\d{2}/\d{2}/\d{4})` |
+| `data_fine` | Fine pubblicazione | `Fine\s+pubblicazione\s*(\d{2}/\d{2}/\d{4})` |
+| `oggetto` | Oggetto dell'atto | Ultimo testo lungo (>50 char) |
+| `pdf_links` | Link PDF allegati | Tag `<a>` con `.pdf` in href |
+
+**Utilizzo:**
+```bash
+# Scrape tutte le pagine
+python scripts/scrape_albo_firenze_v2.py
+
+# Limitare a 5 pagine
+python scripts/scrape_albo_firenze_v2.py --max-pages 5
+
+# Scaricare anche i PDF allegati
+python scripts/scrape_albo_firenze_v2.py --download-pdfs
+
+# Directory output custom
+python scripts/scrape_albo_firenze_v2.py --output-dir storage/custom_dir
+```
+
+**Output:**
+- JSON: `{output_dir}/json/atti_YYYYMMDD_HHMMSS.json`
+- PDF: `{output_dir}/pdf/{numero_registro}_{index}.pdf`
+
+---
+
+### **2. Deliberazioni e Determinazioni - `scrape_firenze_deliberazioni.py`**
+
+Script avanzato per estrarre tutti gli atti amministrativi tramite **API REST** del Comune di Firenze.
+
+**Percorso:** `scripts/scrape_firenze_deliberazioni.py`
+
+**Fonte dati:**
+- **URL Base:** `https://accessoconcertificato.comune.fi.it`
+- **Endpoint API:** `/trasparenza-atti-cat/searchAtti`
+- **Tipo:** API REST (JSON request/response)
+
+**Tipi di atti supportati:**
+| Codice | Nome completo |
+|--------|---------------|
+| `DG` | Deliberazioni di Giunta |
+| `DC` | Deliberazioni di Consiglio |
+| `DD` | Determinazioni Dirigenziali |
+| `DS` | Decreti Sindacali |
+| `OD` | Ordinanze Dirigenziali |
+
+**Payload API ricerca:**
+```json
+{
+    "oggetto": "",
+    "notLoadIniziale": "ok",
+    "numeroAdozione": "",
+    "competenza": "DG",
+    "annoAdozione": "2024",
+    "tipiAtto": ["DG"]
+}
+```
+
+**Dati estratti per ogni atto:**
+| Campo | Descrizione |
+|-------|-------------|
+| `numeroAdozione` | Numero atto (es: "123/2024") |
+| `tipoAtto` | Tipo (DG, DC, DD, DS, OD) |
+| `oggetto` | Oggetto completo dell'atto |
+| `dataAdozione` | Data adozione |
+| `competenza` | Direzione/Ufficio competente |
+| `annoAdozione` | Anno di riferimento |
+| `allegati[]` | Lista allegati con link PDF |
+
+**Utilizzo:**
+```bash
+# Scrape completo 2018-2025 (solo JSON)
+python scripts/scrape_firenze_deliberazioni.py
+
+# Scrape con import MongoDB
+python scripts/scrape_firenze_deliberazioni.py --mongodb --tenant-id 2
+
+# Limitare anni
+python scripts/scrape_firenze_deliberazioni.py --anno-inizio 2023 --anno-fine 2025
+
+# Solo specifici tipi
+python scripts/scrape_firenze_deliberazioni.py --tipi DG DC
+
+# Download PDF (con limite per test)
+python scripts/scrape_firenze_deliberazioni.py --download-pdfs --max-pdf-per-type 10
+```
+
+**Parametri CLI:**
+| Parametro | Default | Descrizione |
+|-----------|---------|-------------|
+| `--anno-inizio` | 2018 | Anno inizio scraping |
+| `--anno-fine` | 2025 | Anno fine scraping |
+| `--download-pdfs` | False | Scarica allegati PDF |
+| `--max-pdf-per-type` | None | Limite PDF per tipo (test) |
+| `--output-dir` | `storage/testing/firenze_atti_completi` | Directory output |
+| `--tipi` | Tutti | Tipi atto specifici (DG DC DD DS OD) |
+| `--mongodb` | False | Importa direttamente in MongoDB |
+| `--tenant-id` | 1 | Tenant ID per import MongoDB |
+
+**Output:**
+- JSON per tipo: `{output_dir}/json/{TIPO}_{anno_inizio}_{anno_fine}.json`
+- JSON master: `{output_dir}/json/tutti_atti_YYYYMMDD_HHMMSS.json`
+- PDF: `{output_dir}/pdf/{TIPO}_{anno}_{numero}_{id_allegato}.pdf`
+
+---
+
+### **3. Integrazione MongoDB (PAActMongoDBImporter)**
+
+Lo script `scrape_firenze_deliberazioni.py` può importare direttamente in MongoDB usando il flag `--mongodb`.
+
+**Flusso import:**
+```
+1. Scrape atto da API
+2. Mappa campi API → formato MongoDB
+3. Chiama PAActMongoDBImporter.import_atto()
+4. Genera embeddings per chunking
+5. Salva in collection pa_acts_{tenant_id}
+```
+
+**Mapping campi API → MongoDB:**
+```python
+{
+    'numero_atto': atto['numeroAdozione'],
+    'tipo_atto': atto['tipoAtto'],
+    'oggetto': atto['oggetto'],
+    'data_atto': atto['dataAdozione'],
+    'competenza': atto['competenza'],
+    'anno': atto['annoAdozione'],
+    'scraper_type': 'firenze_deliberazioni'
+}
+```
+
+**Statistiche output:**
+```
+📊 Statistiche MongoDB:
+   ✅ Importati: 1200
+   ⚠️  Saltati: 50 (duplicati)
+   ❌ Errori: 3
+   📄 Totale chunks: 5400
+
+💰 Costi embeddings:
+   Modello: text-embedding-3-small
+   Tokens: 1,200,000
+   Costo: €0.0240
+```
+
+---
+
+### **4. File JSON Generati**
+
+Esempi di file JSON già presenti nel repository:
+
+| Path | Descrizione |
+|------|-------------|
+| `python_ai_service/storage/testing/compliance_scanner/json/atti_firenze_20251119_213528.json` | Atti Albo Pretorio |
+| `python_ai_service/storage/testing/compliance_scanner/json/atti_firenze_20251119_220028.json` | Atti Albo Pretorio |
+| `python_ai_service/app/scrapers/toscana_scraping_results.json` | Risultati scraping Toscana |
+
+---
+
+### **5. Test degli Scraper**
+
+**Test unit disponibili:**
+- `scripts/tests/test_scrape_albo_firenze_v2.py`
+- `scripts/tests/test_scrape_firenze_deliberazioni.py`
+- `python_ai_service/tests/test_real_scraping_verification.py`
+
+**Eseguire test:**
+```bash
+# Test singolo scraper
+python -m pytest scripts/tests/test_scrape_albo_firenze_v2.py -v
+
+# Test verifica scraping reale
+python -m pytest python_ai_service/tests/test_real_scraping_verification.py -v
+```
+
+---
+
+## 📋 Differenze tra i due Scraper Firenze
+
+| Aspetto | Albo Pretorio (v2) | Deliberazioni |
+|---------|-------------------|---------------|
+| **Fonte** | HTML web scraping | API REST JSON |
+| **Endpoint** | `/AOL/Affissione/ComuneFi/Page` | `/trasparenza-atti-cat/searchAtti` |
+| **Paginazione** | Sì (HTML) | Per anno/tipo |
+| **Import MongoDB** | No (solo JSON) | Sì (integrato) |
+| **Tipi atto** | Tutti (Albo Pretorio) | DG, DC, DD, DS, OD |
+| **Anni** | Solo correnti (pubblicati) | 2018-2025 (storici) |
+| **PDF** | Link estratti | Link da allegati API |
+| **Performance** | ~2-5 sec/pagina | ~1 sec/anno/tipo |
+
+---
+
+## 🔐 Rate Limiting e Best Practices
+
+Per evitare blocchi dal server:
+
+1. **Pause tra richieste:** `sleep(1-2)` tra ogni request
+2. **User-Agent realistico:** `Mozilla/5.0 (Windows NT 10.0; Win64; x64)`
+3. **Session persistente:** Riuso cookies tra requests
+4. **Timeout:** 15-30 secondi per request
+5. **Retry logic:** Retry automatico su errori transitori
+
+---
+
+**Versione**: 1.1.0  
 **Status**: ✅ PRODUCTION-READY  
-**Ultimo Aggiornamento**: 2025-01-28
+**Ultimo Aggiornamento**: 2025-11-26
 
