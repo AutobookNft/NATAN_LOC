@@ -21,9 +21,12 @@ export class ChatInterface {
     private tenantId: number;
     private persona: string = 'auto';
     private isLoading: boolean = false;
+    private currentConversationId: string | null = null;
+    private tabSessionId: string;
 
     constructor(tenantId: number = 1) {
         this.tenantId = tenantId;
+        this.tabSessionId = this.initTabSessionId();
         this.findDOMElements();
         this.attachEventListeners();
         this.initMobileComponents();
@@ -218,24 +221,40 @@ export class ChatInterface {
         this.setLoading(true);
 
         try {
-            // Send USE query
-            const response: UseQueryResponse = await apiService.sendUseQuery(
-                question,
+            // Build messages array for RAG-Fortress (include conversation history)
+            const messages = [
+                ...this.messages.filter(m => m.role === 'assistant' || m.role === 'user').slice(-5), // Last 5 messages for context
+                { role: 'user' as const, content: question }
+            ].map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+
+            // Send RAG-Fortress chat query
+            const response = await apiService.sendChatQuery(
+                messages,
                 this.tenantId,
-                this.persona
+                this.persona,
+                true // use_rag_fortress = true
             );
 
-            // Add assistant message with natural language answer and verified claims
+            // Add assistant message with RAG-Fortress metadata
             const assistantMessage: Message = {
                 id: this.generateId(),
                 role: 'assistant',
-                content: response.answer || this.formatResponse(response),  // Use natural language answer if available
+                content: response.message || 'Risposta generata.',
                 timestamp: new Date(),
-                claims: response.verified_claims || [],  // Verified claims with sources (shown as proof below)
-                blockedClaims: response.blocked_claims || [],
-                sources: this.extractSources(response),
-                avgUrs: response.avg_urs,
-                verificationStatus: response.verification_status,
+                // RAG-Fortress fields
+                urs_score: response.urs_score,
+                urs_explanation: response.urs_explanation,
+                claims_used: response.claims || [],
+                sources_list: response.sources || [],
+                gaps_detected: response.gaps_detected || [],
+                hallucinations_found: response.hallucinations_found || [],
+                // Legacy fields (for backward compatibility)
+                avgUrs: response.urs_score,
+                verificationStatus: response.urs_score && response.urs_score >= 90 ? 'SAFE' : 
+                                   response.urs_score && response.urs_score >= 70 ? 'WARNING' : 'BLOCKED',
             };
 
             this.addMessage(assistantMessage);
@@ -258,6 +277,10 @@ export class ChatInterface {
         const messageElement = MessageComponent.render(message);
         this.messagesContainer.appendChild(messageElement);
         this.scrollToBottom();
+        
+        // Save conversation after each message (user or assistant)
+        // This ensures conversations are saved even if assistant fails to respond
+        this.saveMessageToConversation(message);
     }
 
     private formatResponse(response: UseQueryResponse): string {
@@ -341,6 +364,173 @@ export class ChatInterface {
 
     private generateId(): string {
         return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    /**
+     * Get current conversation ID (if loaded)
+     */
+    private getCurrentConversationId(): string | null {
+        if (this.currentConversationId) {
+            return this.currentConversationId;
+        }
+
+        if (typeof window === 'undefined' || !window.sessionStorage) {
+            return null;
+        }
+
+        const storageKey = this.getConversationStorageKey();
+        const storedId = window.sessionStorage.getItem(storageKey);
+        if (storedId) {
+            this.currentConversationId = storedId;
+            return storedId;
+        }
+
+        return null;
+    }
+
+    /**
+     * Set current conversation ID
+     */
+    private setCurrentConversationId(conversationId: string | null): void {
+        this.currentConversationId = conversationId;
+        if (typeof window === 'undefined' || !window.sessionStorage) {
+            return;
+        }
+
+        const storageKey = this.getConversationStorageKey();
+        if (conversationId) {
+            window.sessionStorage.setItem(storageKey, conversationId);
+        } else {
+            window.sessionStorage.removeItem(storageKey);
+        }
+    }
+
+    /**
+     * Create new conversation ID
+     */
+    private createConversationId(): string {
+        return `natan_${this.tabSessionId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    }
+
+    /**
+     * Get conversation storage key for sessionStorage
+     */
+    private getConversationStorageKey(): string {
+        return `natan_current_conversation_${this.tabSessionId}`;
+    }
+
+    /**
+     * Initialize tab session ID (unique per tab)
+     */
+    private initTabSessionId(): string {
+        const fallbackId = `tab_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+
+        if (typeof window === 'undefined' || !window.sessionStorage) {
+            return fallbackId;
+        }
+
+        const storageKey = 'natan_tab_session_id';
+        let tabId = window.sessionStorage.getItem(storageKey);
+
+        if (!tabId) {
+            tabId = fallbackId;
+            window.sessionStorage.setItem(storageKey, tabId);
+        }
+
+        return tabId;
+    }
+
+    /**
+     * Save message to conversation (create or update conversation in natan_chat_messages)
+     * Called after each message (user or assistant) to ensure conversations are always saved
+     */
+    private async saveMessageToConversation(message: Message): Promise<void> {
+        try {
+            // Get current conversation ID or generate new one
+            let conversationId = this.getCurrentConversationId();
+            const isNewConversation = !conversationId;
+
+            if (isNewConversation) {
+                conversationId = this.createConversationId();
+                this.setCurrentConversationId(conversationId);
+            }
+            
+            // Prepare all messages for saving (include tokens, model, claims, sources, verification_status)
+            const messagesToSave = this.messages.map(msg => ({
+                id: msg.id,
+                role: msg.role,
+                content: msg.content,
+                timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString(),
+                // Include tokens_used and model_used for cost calculation (only for assistant messages)
+                ...(msg.role === 'assistant' && (msg as any).tokensUsed ? {
+                    tokens_used: (msg as any).tokensUsed,
+                    model_used: (msg as any).modelUsed ?? null,
+                } : {}),
+                // Include claims, sources, and verification_status for assistant messages (CRITICAL for reopening chats)
+                ...(msg.role === 'assistant' ? {
+                    claims: msg.claims ?? [],
+                    sources: msg.sources ?? [],
+                    verification_status: msg.verificationStatus ?? null,
+                    avg_urs: msg.avgUrs ?? msg.urs_score ?? null,
+                    // RAG-Fortress fields
+                    urs_score: msg.urs_score ?? null,
+                    urs_explanation: (msg as any).urs_explanation ?? null,
+                    claims_used: (msg as any).claims_used ?? [],
+                    sources_list: (msg as any).sources_list ?? [],
+                    gaps_detected: (msg as any).gaps_detected ?? [],
+                    hallucinations_found: (msg as any).hallucinations_found ?? [],
+                    ...((msg as any).commandName ? { command_name: (msg as any).commandName } : {}),
+                    ...((msg as any).commandResult ? { command_result: (msg as any).commandResult } : {}),
+                } : {}),
+            }));
+
+            // Generate title from first user message if new conversation
+            let title: string | undefined = undefined;
+            if (isNewConversation) {
+                const firstUserMessage = this.messages.find(m => m.role === 'user');
+                if (firstUserMessage) {
+                    title = firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '');
+                }
+            }
+
+            // Save conversation
+            console.log('💾 Saving conversation:', {
+                conversationId: conversationId ?? 'new',
+                messageCount: messagesToSave.length,
+                lastMessageRole: message.role,
+            });
+            
+            const result = await apiService.saveConversation({
+                conversation_id: conversationId ?? undefined,
+                title,
+                persona: this.persona,
+                messages: messagesToSave,
+            });
+
+            console.log('✅ Conversation save result:', result);
+
+            // Update conversation ID if it was created
+            if (result.success && result.conversation) {
+                const savedConversationId = result.conversation.id || result.conversation.session_id;
+
+                if (savedConversationId) {
+                    this.setCurrentConversationId(savedConversationId);
+                    if (isNewConversation) {
+                        console.log('📝 New conversation created:', savedConversationId);
+                        // Reload page to refresh chat history sidebar
+                        // window.location.reload(); // Commented out - too aggressive, better to update sidebar via JS
+                    } else {
+                        console.log('📝 Conversation updated:', savedConversationId);
+                    }
+                }
+            } else {
+                console.warn('⚠️ Conversation save returned success=false:', result);
+            }
+        } catch (error) {
+            console.error('❌ Error saving message to conversation:', error);
+            // Don't throw - save failure shouldn't block chat functionality
+            // But log it for debugging
+        }
     }
 }
 

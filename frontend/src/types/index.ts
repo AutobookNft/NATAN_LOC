@@ -12,6 +12,13 @@ export interface Message {
     sources?: Source[];
     avgUrs?: number;
     verificationStatus?: 'SAFE' | 'WARNING' | 'BLOCKED';
+    // RAG-Fortress fields
+    urs_score?: number; // 0-100
+    urs_explanation?: string;
+    claims_used?: string[]; // Lista di claim citate, es. ["(CLAIM_001)", "(CLAIM_002)"]
+    sources_list?: string[]; // Lista di fonti (URL o nomi documenti)
+    gaps_detected?: string[]; // Lista di gap rilevati
+    hallucinations_found?: string[]; // Lista di allucinazioni trovate
 }
 
 export interface Claim {
@@ -74,6 +81,24 @@ export interface ApiConfig {
     baseUrl: string;
     apiToken?: string;
     timeout: number;
+}
+
+export interface ChatResponse {
+    message: string;
+    model: string;
+    usage: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+        elapsed_ms?: number;
+    };
+    citations?: string[];
+    urs_score?: number;
+    urs_explanation?: string;
+    claims?: string[];
+    sources?: string[];
+    hallucinations_found?: string[];
+    gaps_detected?: string[];
 }
 
 

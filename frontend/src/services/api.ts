@@ -3,7 +3,7 @@
  * Handles all HTTP requests to Laravel backend and Python FastAPI
  */
 
-import type { UseQueryResponse, ApiConfig } from '../types';
+import type { UseQueryResponse, ApiConfig, ChatResponse } from '../types';
 
 export class ApiService {
     private baseUrl: string;
@@ -151,6 +151,84 @@ export class ApiService {
 
         const data = await response.json();
         return data.embedding || [];
+    }
+
+    /**
+     * Send RAG-Fortress chat query to Python FastAPI via Laravel proxy
+     */
+    async sendChatQuery(
+        messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+        tenantId: number,
+        persona: string = 'strategic',
+        useRagFortress: boolean = true
+    ): Promise<ChatResponse> {
+        const response = await this.fetchWithAuth('/api/v1/chat', {
+            method: 'POST',
+            body: JSON.stringify({
+                messages,
+                tenant_id: tenantId,
+                persona,
+                use_rag_fortress: useRagFortress,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(error.detail || error.message || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Save conversation to database
+     */
+    async saveConversation(data: {
+        conversation_id?: string;
+        title?: string;
+        persona?: string;
+        messages: Array<{
+            id: string;
+            role: 'user' | 'assistant';
+            content: string;
+            timestamp: string;
+            tokens_used?: { input: number; output: number };
+            model_used?: string;
+            claims?: any[];
+            sources?: any[];
+            verification_status?: string;
+            avg_urs?: number;
+            command_name?: string;
+            command_result?: any;
+        }>;
+    }): Promise<{ success: boolean; conversation?: any; message?: string }> {
+        const response = await this.fetchWithAuth('/api/natan/conversations/save', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(error.message || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
+     * Get conversation by ID
+     */
+    async getConversation(conversationId: string): Promise<{ success: boolean; conversation?: any; message?: string }> {
+        const response = await this.fetchWithAuth(`/api/natan/conversations/${conversationId}`, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(error.message || `HTTP ${response.status}`);
+        }
+
+        return response.json();
     }
 
     /**
