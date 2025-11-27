@@ -26,50 +26,57 @@ export class MessageComponent {
       : 'bg-white text-natan-gray-900 border border-natan-gray-300 hover:shadow-md'
       }`;
 
-    // Copy button (only for assistant messages)
+    // Action buttons container (only for assistant messages with content)
     if (message.role === 'assistant' && message.content) {
-      const copyButton = document.createElement('button');
-      copyButton.type = 'button';
-      copyButton.className = 'absolute top-2 right-2 p-1.5 rounded-lg bg-natan-gray-100 hover:bg-natan-gray-200 text-natan-gray-600 hover:text-natan-blue-dark transition-colors opacity-0 group-hover:opacity-100';
-      copyButton.setAttribute('aria-label', 'Copia risposta');
-      copyButton.setAttribute('title', 'Copia risposta');
+      const actionsContainer = document.createElement('div');
+      actionsContainer.className = 'absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity';
       
-      // Use SVG icon for clipboard
-      copyButton.innerHTML = `
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      // Copy button
+      const copyButton = this.createActionButton(
+        'Copia',
+        `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-        </svg>
-      `;
-      
-      copyButton.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        try {
-          await navigator.clipboard.writeText(message.content || '');
-          // Visual feedback
-          const originalHTML = copyButton.innerHTML;
-          copyButton.innerHTML = `
-            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-          `;
-          copyButton.classList.add('text-green-600');
-          setTimeout(() => {
-            copyButton.innerHTML = originalHTML;
-            copyButton.classList.remove('text-green-600');
-          }, 2000);
-        } catch (err) {
-          console.error('Failed to copy:', err);
-          // Fallback: select text
-          const textArea = document.createElement('textarea');
-          textArea.value = message.content || '';
-          document.body.appendChild(textArea);
-          textArea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textArea);
+        </svg>`,
+        async (btn) => {
+          try {
+            await navigator.clipboard.writeText(message.content || '');
+            this.showButtonFeedback(btn, 'success');
+          } catch (err) {
+            console.error('Failed to copy:', err);
+            // Fallback
+            const textArea = document.createElement('textarea');
+            textArea.value = message.content || '';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            this.showButtonFeedback(btn, 'success');
+          }
         }
-      });
+      );
+      actionsContainer.appendChild(copyButton);
       
-      bubble.appendChild(copyButton);
+      // Export HTML button (for rich content)
+      const htmlButton = this.createActionButton(
+        'Scarica HTML',
+        `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+        </svg>`,
+        () => this.exportAsHtml(message)
+      );
+      actionsContainer.appendChild(htmlButton);
+      
+      // Export Excel button (for table content)
+      const excelButton = this.createActionButton(
+        'Scarica Excel',
+        `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>`,
+        () => this.exportAsExcel(message)
+      );
+      actionsContainer.appendChild(excelButton);
+      
+      bubble.appendChild(actionsContainer);
       bubble.classList.add('group'); // Add group class for hover effect
     }
 
@@ -84,16 +91,21 @@ export class MessageComponent {
       
       contentDiv.className = `message-content ${proseClasses}`;
       
-      // Render markdown to HTML and sanitize for XSS protection
-      const htmlContent = marked.parse(message.content, {
-        breaks: true, // Convert line breaks to <br>
-        gfm: true, // GitHub Flavored Markdown
-      }) as string;
+      // Configure marked for enterprise-grade rendering
+      marked.setOptions({
+        breaks: true,         // Convert line breaks to <br>
+        gfm: true,           // GitHub Flavored Markdown (tables, strikethrough, etc.)
+        headerIds: false,    // Disable auto-generated IDs for headers
+        mangle: false,       // Don't obfuscate email addresses
+      });
+
+      // Render markdown to HTML
+      const htmlContent = marked.parse(message.content) as string;
       
       // Sanitize HTML to prevent XSS attacks
       const sanitizedContent = DOMPurify.sanitize(htmlContent, {
-        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr'],
-        ALLOWED_ATTR: ['href', 'target', 'rel', 'class'],
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr', 'div', 'span', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+        ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style', 'id'],
       });
       
       contentDiv.innerHTML = sanitizedContent;
@@ -313,6 +325,260 @@ export class MessageComponent {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  /**
+   * Create a styled action button for message actions
+   */
+  private static createActionButton(
+    title: string,
+    iconHtml: string,
+    onClick: (btn: HTMLButtonElement) => void
+  ): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'p-1.5 rounded-lg bg-natan-gray-100 hover:bg-natan-gray-200 text-natan-gray-600 hover:text-natan-blue-dark transition-colors';
+    button.setAttribute('aria-label', title);
+    button.setAttribute('title', title);
+    button.innerHTML = iconHtml;
+    
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick(button);
+    });
+    
+    return button;
+  }
+
+  /**
+   * Show visual feedback on button (success checkmark)
+   */
+  private static showButtonFeedback(button: HTMLButtonElement, type: 'success' | 'error'): void {
+    const originalHTML = button.innerHTML;
+    const color = type === 'success' ? 'text-green-600' : 'text-red-600';
+    const icon = type === 'success' 
+      ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>'
+      : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>';
+    
+    button.innerHTML = `<svg class="w-4 h-4 ${color}" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icon}</svg>`;
+    button.classList.add(color);
+    
+    setTimeout(() => {
+      button.innerHTML = originalHTML;
+      button.classList.remove(color);
+    }, 2000);
+  }
+
+  /**
+   * Export message content as HTML file
+   */
+  private static exportAsHtml(message: Message): void {
+    const content = message.content || '';
+    
+    // Configure marked for rendering
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+      headerIds: false,
+      mangle: false,
+    });
+    
+    const htmlContent = marked.parse(content) as string;
+    const sanitizedContent = DOMPurify.sanitize(htmlContent, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr', 'div', 'span', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+      ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style'],
+    });
+    
+    // Create full HTML document with styling
+    const fullHtml = `<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NATAN - Report ${new Date().toLocaleDateString('it-IT')}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      color: #1a1a2e;
+      background: #f8fafc;
+    }
+    h1, h2, h3 { color: #1B365D; margin-top: 1.5em; }
+    h1 { border-bottom: 3px solid #1B365D; padding-bottom: 0.5em; }
+    h2 { border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin: 1em 0;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    th, td { 
+      border: 1px solid #e2e8f0; 
+      padding: 12px; 
+      text-align: left; 
+    }
+    th { 
+      background: #1B365D; 
+      color: white; 
+      font-weight: 600;
+    }
+    tr:nth-child(even) { background: #f8fafc; }
+    tr:hover { background: #e8f4f8; }
+    a { color: #1B365D; text-decoration: underline; }
+    a:hover { color: #0d1f3c; }
+    strong { color: #1B365D; }
+    ul, ol { margin: 1em 0; padding-left: 2em; }
+    li { margin-bottom: 0.5em; }
+    blockquote { 
+      border-left: 4px solid #1B365D; 
+      margin: 1em 0; 
+      padding: 0.5em 1em; 
+      background: #f1f5f9;
+    }
+    code { 
+      background: #e2e8f0; 
+      padding: 2px 6px; 
+      border-radius: 4px; 
+      font-size: 0.9em;
+    }
+    pre { 
+      background: #1a1a2e; 
+      color: #e2e8f0; 
+      padding: 1em; 
+      border-radius: 8px; 
+      overflow-x: auto;
+    }
+    .header {
+      background: linear-gradient(135deg, #1B365D 0%, #2d4a7c 100%);
+      color: white;
+      padding: 30px;
+      margin: -40px -20px 40px;
+      border-radius: 0 0 20px 20px;
+    }
+    .header h1 { color: white; border: none; margin: 0; }
+    .header .meta { opacity: 0.9; margin-top: 10px; font-size: 0.9em; }
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 Report NATAN</h1>
+    <div class="meta">Generato il ${new Date().toLocaleString('it-IT')} • Sistema Intelligence Documentale PA</div>
+  </div>
+  
+  <main>
+    ${sanitizedContent}
+  </main>
+  
+  <div class="footer">
+    <p>Documento generato automaticamente da NATAN - Sistema di Intelligence Documentale per la PA</p>
+    <p>© ${new Date().getFullYear()} - I dati contenuti provengono da fonti ufficiali verificate</p>
+  </div>
+</body>
+</html>`;
+    
+    // Download
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `NATAN_Report_${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    console.log('[Message] HTML exported successfully');
+  }
+
+  /**
+   * Export message content as Excel (CSV) file
+   * Extracts tables from markdown and converts to CSV
+   */
+  private static exportAsExcel(message: Message): void {
+    const content = message.content || '';
+    
+    // Extract tables from content (simple markdown table parser)
+    const tableRegex = /\|(.+)\|[\r\n]+\|[-:\s|]+\|[\r\n]+((?:\|.+\|[\r\n]*)+)/g;
+    const tables: string[][] = [];
+    let match;
+    
+    while ((match = tableRegex.exec(content)) !== null) {
+      const headerRow = match[1].split('|').map(cell => cell.trim()).filter(Boolean);
+      const bodyRows = match[2].trim().split('\n').map(row => 
+        row.split('|').map(cell => cell.trim()).filter(Boolean)
+      );
+      
+      tables.push([headerRow, ...bodyRows]);
+    }
+    
+    if (tables.length === 0) {
+      // No tables found, export as plain text CSV
+      const lines = content.split('\n').map(line => {
+        // Escape quotes and wrap in quotes
+        return '"' + line.replace(/"/g, '""').replace(/\*\*/g, '').replace(/\*/g, '') + '"';
+      });
+      
+      const csv = lines.join('\n');
+      this.downloadCsv(csv, 'NATAN_Export');
+      return;
+    }
+    
+    // Convert tables to CSV
+    let csv = '';
+    tables.forEach((table, index) => {
+      if (index > 0) csv += '\n\n'; // Separator between tables
+      
+      table.forEach(row => {
+        const escapedRow = row.map(cell => {
+          // Remove markdown formatting and escape
+          let clean = cell
+            .replace(/\*\*/g, '')
+            .replace(/\*/g, '')
+            .replace(/<[^>]+>/g, '') // Remove HTML tags (links, etc.)
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Extract link text
+          
+          // Escape quotes and wrap
+          if (clean.includes(',') || clean.includes('"') || clean.includes('\n')) {
+            clean = '"' + clean.replace(/"/g, '""') + '"';
+          }
+          return clean;
+        });
+        csv += escapedRow.join(',') + '\n';
+      });
+    });
+    
+    this.downloadCsv(csv, 'NATAN_Matrix');
+  }
+
+  /**
+   * Download CSV content as file
+   */
+  private static downloadCsv(csv: string, filename: string): void {
+    // Add BOM for Excel UTF-8 compatibility
+    const bom = '\ufeff';
+    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    console.log('[Message] CSV/Excel exported successfully');
   }
 }
 

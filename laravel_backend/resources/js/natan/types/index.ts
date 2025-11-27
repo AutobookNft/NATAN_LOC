@@ -22,6 +22,13 @@ export interface Message {
         completion?: number;
     } | null;
     modelUsed?: string | null;
+    // RAG-Fortress fields
+    urs_score?: number; // 0-100
+    urs_explanation?: string;
+    claims_used?: string[]; // Lista di claim citate, es. ["(CLAIM_001)", "(CLAIM_002)"]
+    sources_list?: string[]; // Lista di fonti (URL o nomi documenti)
+    gaps_detected?: string[]; // Lista di gap rilevati
+    hallucinations_found?: string[]; // Lista di allucinazioni trovate
 }
 
 export interface Claim {

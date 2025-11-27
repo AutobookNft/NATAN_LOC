@@ -64,6 +64,15 @@ export class ApiService {
                 code: 'invalid_response',
             }));
 
+            // Log response for debugging memory system
+            console.log('[ApiService] Natural query response:', {
+                success: data.success,
+                code: data.code,
+                message: data.message?.substring(0, 100),
+                hasRows: !!data.rows,
+                rowsCount: data.rows?.length || 0
+            });
+
             if (!response.ok) {
                 return {
                     success: false,
@@ -228,6 +237,51 @@ export class ApiService {
     }
 
     /**
+     * Send RAG-Fortress chat query to Python FastAPI via Laravel proxy
+     */
+    async sendChatQuery(
+        messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+        tenantId: number,
+        persona: string = 'strategic',
+        useRagFortress: boolean = true
+    ): Promise<any> {
+        // Use relative URL - works correctly because browser uses the same origin as the page
+        // Laravel serves on port 7000, so /api/v1/chat will resolve to http://localhost:7000/api/v1/chat
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        // Explicitly ensure POST method (prevent any GET requests)
+        console.log('[ApiService][sendChatQuery] Sending POST request to /api/v1/chat', {
+            messagesCount: messages.length,
+            tenantId,
+            persona,
+            useRagFortress
+        });
+
+        const response = await fetch('/api/v1/chat', {
+            method: 'POST', // CRITICAL: Must be POST, not GET
+            credentials: 'same-origin', // CRITICAL: Include cookies for session auth
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            },
+            body: JSON.stringify({
+                messages,
+                tenant_id: tenantId,
+                persona,
+                use_rag_fortress: useRagFortress,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(error.detail || error.message || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    /**
      * Health check
      */
     async healthCheck(): Promise<boolean> {
@@ -313,6 +367,55 @@ export class ApiService {
         }
 
         return response.json();
+    }
+
+    /**
+     * Estimate query processing time and complexity
+     * Returns immediately with processing notice if query will take time
+     */
+    async estimateQuery(text: string): Promise<{
+        will_take_time: boolean;
+        estimated_seconds: number;
+        processing_notice: string | null;
+        query_type: string;
+        num_documents_estimated: number;
+    }> {
+        const laravelUrl = window.location.origin;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        try {
+            const response = await fetch(`${laravelUrl}/natan/commands/estimate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+                },
+                body: JSON.stringify({ text }),
+            });
+
+            if (!response.ok) {
+                console.warn('[ApiService] Estimate failed, proceeding without notice');
+                return {
+                    will_take_time: false,
+                    estimated_seconds: 5,
+                    processing_notice: null,
+                    query_type: 'unknown',
+                    num_documents_estimated: 0,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.warn('[ApiService] Estimate error:', error);
+            return {
+                will_take_time: false,
+                estimated_seconds: 5,
+                processing_notice: null,
+                query_type: 'error',
+                num_documents_estimated: 0,
+            };
+        }
     }
 }
 

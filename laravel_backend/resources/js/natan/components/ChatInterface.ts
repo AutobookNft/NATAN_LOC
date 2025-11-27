@@ -4,7 +4,7 @@
  * Mobile-first: integrates with Blade components, no DOM creation
  */
 
-import type { Message, UseQueryResponse, NaturalQueryResponse } from '../types';
+import type { Message, UseQueryResponse, NaturalQueryResponse, Source } from '../types';
 import { apiService } from '../services/api';
 import { MessageComponent } from './Message';
 
@@ -27,15 +27,22 @@ export class ChatInterface {
     private tabSessionId: string;
 
     constructor(tenantId: number | null = null) {
+        console.log('[ChatInterface] Constructor called', { tenantId });
         // tenantId viene passato da /api/session o risolto dal backend
         // Se null, il backend risolverà automaticamente usando TenantResolver
         this.tenantId = tenantId;
         this.tabSessionId = this.initTabSessionId();
+        console.log('[ChatInterface] Finding DOM elements...');
         this.findDOMElements();
+        console.log('[ChatInterface] Attaching event listeners...');
         this.attachEventListeners();
+        console.log('[ChatInterface] Initializing mobile components...');
         this.initMobileComponents();
+        console.log('[ChatInterface] Initializing chat history listeners...');
         this.initChatHistoryListeners();
+        console.log('[ChatInterface] Initializing command helper...');
         this.initCommandHelper();
+        console.log('[ChatInterface] Constructor completed successfully');
     }
 
     /**
@@ -195,8 +202,18 @@ export class ChatInterface {
      * Attach event listeners
      */
     private attachEventListeners(): void {
-        // Form submit
-        this.inputForm.addEventListener('submit', (e) => this.handleSubmit(e));
+        // Form submit - CRITICAL: prevent default form submission (which would be GET)
+        this.inputForm.addEventListener('submit', (e) => {
+            console.log('[Chat][attachEventListeners] Form submit intercepted', { 
+                defaultPrevented: e.defaultPrevented,
+                type: e.type,
+                target: e.target
+            });
+            e.preventDefault();
+            e.stopPropagation();
+            // Call handleSubmit directly (no setTimeout needed)
+            this.handleSubmit(e);
+        });
 
         // Shift+Enter for new line, Enter for send
         this.inputField.addEventListener('keydown', (e) => {
@@ -248,12 +265,88 @@ export class ChatInterface {
 
         let handledByCommand = false;
         let naturalResponse: NaturalQueryResponse | null = null;
+        let processingNoticeElement: HTMLElement | null = null;
 
         try {
             if (this.isCommand(question)) {
                 console.log('[Chat][handleSubmit] detected command', question);
                 handledByCommand = true;
                 await this.executeCommandFlow(question);
+            } else if (this.requiresAI(question)) {
+                // Query che richiedono AI (creazione, analisi, calcoli complessi) → RAG-Fortress diretto
+                console.log('[Chat][handleSubmit] query requires AI, using RAG-Fortress', { question });
+                handledByCommand = true;
+                
+                // STEP 1: Pre-flight estimate call (fast, < 1 second)
+                // This shows user feedback BEFORE long processing starts
+                try {
+                    console.log('[Chat][handleSubmit] calling estimate endpoint...');
+                    const estimate = await apiService.estimateQuery(question);
+                    console.log('[Chat][handleSubmit] estimate result:', estimate);
+                    
+                    if (estimate.will_take_time && estimate.processing_notice) {
+                        // Show processing notice immediately
+                        processingNoticeElement = this.showProcessingNotice(
+                            estimate.processing_notice,
+                            estimate.estimated_seconds
+                        );
+                    }
+                } catch (estimateError) {
+                    console.warn('[Chat][handleSubmit] estimate failed, continuing without notice:', estimateError);
+                }
+                
+                // STEP 2: Actual query (may take minutes)
+                const chatMessages = this.messages.map(msg => ({
+                    role: msg.role,
+                    content: msg.content,
+                }));
+
+                const response = await apiService.sendChatQuery(
+                    chatMessages,
+                    this.tenantId ?? 1,
+                    this.persona,
+                    true // use_rag_fortress = true
+                );
+                
+                // Remove processing notice after response received
+                if (processingNoticeElement) {
+                    this.removeProcessingNotice(processingNoticeElement);
+                }
+
+                // Converti sources da RAG-Fortress (array di oggetti) in formato Source
+                const sources: Source[] = (response.sources || []).map((src: any) => ({
+                    id: src.document_id || src.url || '',
+                    url: src.url || '',
+                    title: src.title || src.url || 'Senza titolo',
+                    type: src.type || 'internal',
+                }));
+
+                const assistantMessage: Message = {
+                    id: this.generateId(),
+                    role: 'assistant',
+                    content: response.message || 'Risposta generata.',
+                    timestamp: new Date(),
+                    // RAG-Fortress fields
+                    urs_score: response.urs_score,
+                    urs_explanation: response.urs_explanation,
+                    claims_used: response.claims || [],
+                    sources_list: response.sources || [], // Mantieni per compatibilità
+                    sources: sources, // Array di oggetti Source per visualizzazione con link
+                    gaps_detected: response.gaps_detected || [],
+                    hallucinations_found: response.hallucinations_found || [],
+                    // Legacy fields (for backward compatibility)
+                    avgUrs: response.urs_score,
+                    verificationStatus: response.urs_score && response.urs_score >= 90 ? 'SAFE' : 
+                                       response.urs_score && response.urs_score >= 70 ? 'WARNING' : 'BLOCKED',
+                    tokensUsed: response.usage ? {
+                        input: response.usage.prompt_tokens || 0,
+                        output: response.usage.completion_tokens || 0,
+                        total: response.usage.total_tokens || 0,
+                    } : null,
+                    modelUsed: response.model || null,
+                };
+
+                this.addMessage(assistantMessage);
             } else {
                 console.log('[Chat][handleSubmit] executing natural query', { question });
                 naturalResponse = await apiService.executeNaturalQuery(question) ?? {
@@ -396,6 +489,95 @@ export class ChatInterface {
         if (handledByCommand) {
             return;
         }
+    }
+
+    /**
+     * Verifica se la query richiede AI (creazione, analisi complessa, calcoli, matrici, ecc.)
+     * Queste query devono essere passate direttamente a RAG-Fortress invece che al natural query service
+     */
+    private requiresAI(question: string): boolean {
+        const lowerQuestion = question.toLowerCase().trim();
+        console.log('[Chat][requiresAI] checking query', { question, lowerQuestion });
+        
+        // Parole chiave che indicano richieste creative/analitiche che richiedono AI
+        const aiKeywords = [
+            // Creazione e generazione
+            'crea', 'creare', 'genera', 'generare', 'costruisci', 'costruire',
+            'sviluppa', 'sviluppare', 'progetta', 'progettare', 'disegna', 'disegnare',
+            'elabora', 'elaborare', 'formula', 'formulare', 'definisci', 'definire',
+            
+            // Matrici e strutture complesse
+            'matrice', 'matrici', 'tabella', 'tabelle', 'grafico', 'grafici',
+            'schema', 'schemi', 'diagramma', 'diagrammi', 'modello', 'modelli',
+            
+            // Analisi complesse
+            'analizza', 'analizzare', 'analisi', 'valuta', 'valutare', 'valutazione',
+            'confronta', 'confrontare', 'confronto', 'paragona', 'paragonare',
+            'calcola', 'calcolare', 'calcolo', 'misura', 'misurare', 'misurazione',
+            'quantifica', 'quantificare', 'quantificazione', 'stima', 'stimare', 'stima',
+            
+            // Prioritizzazione e decisioni
+            'prioritizza', 'prioritizzare', 'priorità', 'prioritizzazione',
+            'ordina', 'ordinare', 'ordine', 'classifica', 'classificare', 'classificazione',
+            'raccomanda', 'raccomandare', 'raccomandazione', 'suggerisci', 'suggerire',
+            'consiglia', 'consigliare', 'consiglio', 'proponi', 'proporre', 'proposta',
+            
+            // Strategia e pianificazione
+            'strategia', 'strategie', 'pianifica', 'pianificare', 'pianificazione',
+            'piano', 'piani', 'roadmap', 'roadmap', 'road map',
+            
+            // Sintesi e riassunti
+            'riassumi', 'riassumere', 'riassunto', 'sintetizza', 'sintetizzare', 'sintesi',
+            'riepiloga', 'riepilogare', 'riepilogo', 'compendi', 'compendio',
+            
+            // Spiegazioni complesse
+            'spiega', 'spiegare', 'spiegazione', 'illustra', 'illustrare', 'illustrazione',
+            'descrivi', 'descrivere', 'descrizione', 'dettaglia', 'dettagliare', 'dettaglio',
+            'commenta', 'commentare', 'commento', 'interpreta', 'interpretare', 'interpretazione',
+            
+            // Calcoli complessi
+            'sroi', 'roi', 'npv', 'irr', 'payback', 'break-even', 'break even',
+            'impatto', 'impatti', 'beneficio', 'benefici', 'costo', 'costi',
+            'fattibilità', 'fattibilita', 'fattibile', 'viabilità', 'viabilita', 'viabile',
+            
+            // Domande complesse
+            'perché', 'perche', 'per quale motivo', 'in che modo', 'come posso',
+            'cosa possiamo', 'cosa si può', 'cosa si puo', 'come si può', 'come si puo',
+        ];
+        
+        // Verifica se la query contiene parole chiave che richiedono AI
+        const hasAIKeyword = aiKeywords.some(keyword => lowerQuestion.includes(keyword));
+        
+        // Verifica pattern specifici che richiedono AI
+        const aiPatterns = [
+            /crea.*matrice/i,
+            /crea.*tabella/i,
+            /crea.*grafico/i,
+            /crea.*schema/i,
+            /crea.*modello/i,
+            /matrice.*decision/i,
+            /matrice.*priorit/i,
+            /prioritizza.*progetti/i,
+            /analizza.*impatto/i,
+            /calcola.*sroi/i,
+            /calcola.*roi/i,
+            /strategia.*per/i,
+            /piano.*per/i,
+        ];
+        
+        const matchesPattern = aiPatterns.some(pattern => pattern.test(question));
+        
+        const result = hasAIKeyword || matchesPattern;
+        console.log('[Chat][requiresAI] result', { 
+            question, 
+            hasAIKeyword, 
+            matchesPattern, 
+            result,
+            matchedKeywords: aiKeywords.filter(kw => lowerQuestion.includes(kw)),
+            matchedPatterns: aiPatterns.filter(p => p.test(question)).map(p => p.toString())
+        });
+        
+        return result;
     }
 
     private isCommand(content: string): boolean {
@@ -562,7 +744,14 @@ export class ChatInterface {
                     claims: msg.claims ?? [],
                     sources: msg.sources ?? [],
                     verification_status: msg.verificationStatus ?? null,
-                    avg_urs: msg.avgUrs ?? null,
+                    avg_urs: msg.avgUrs ?? msg.urs_score ?? null,
+                    // RAG-Fortress fields
+                    urs_score: msg.urs_score ?? null,
+                    urs_explanation: msg.urs_explanation ?? null,
+                    claims_used: msg.claims_used ?? [],
+                    sources_list: msg.sources_list ?? [],
+                    gaps_detected: msg.gaps_detected ?? [],
+                    hallucinations_found: msg.hallucinations_found ?? [],
                     ...(msg.commandName ? { command_name: msg.commandName } : {}),
                     ...(msg.commandResult ? { command_result: msg.commandResult } : {}),
                 } : {}),
@@ -585,11 +774,15 @@ export class ChatInterface {
                 hasTokens: messagesToSave.some(m => m.tokens_used),
             });
             
+            // Get current project ID if available
+            const projectId = (window as any).natanProjects?.getCurrentProject() || null;
+            
             const result = await apiService.saveConversation({
                 conversation_id: conversationId ?? undefined,
                 title,
                 persona: this.persona,
                 messages: messagesToSave,
+                project_id: projectId,
             });
 
             console.log('✅ Conversation save result:', result);
@@ -918,6 +1111,98 @@ export class ChatInterface {
 
     private createConversationId(): string {
         return `natan_${this.tabSessionId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    }
+
+    /**
+     * Show processing notice in chat while long operation is running
+     * Returns the element so it can be removed later
+     */
+    private showProcessingNotice(notice: string, estimatedSeconds: number): HTMLElement {
+        console.log('[Chat] Showing processing notice', { estimatedSeconds });
+        
+        const noticeDiv = document.createElement('div');
+        noticeDiv.className = 'processing-notice flex justify-start mb-4 animate-pulse';
+        noticeDiv.setAttribute('role', 'status');
+        noticeDiv.setAttribute('aria-live', 'polite');
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'w-full sm:max-w-3xl rounded-xl px-4 py-4 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200';
+        
+        // Parse markdown-style formatting in notice
+        const formattedNotice = notice
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-blue-900">$1</strong>')
+            .replace(/\n/g, '<br>')
+            .replace(/- (.*?)(<br>|$)/g, '<li class="ml-4 text-blue-700">$1</li>')
+            .replace(/(<li.*<\/li>)+/g, '<ul class="list-disc my-2">$&</ul>');
+        
+        bubble.innerHTML = `
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 mt-1">
+                    <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <div class="text-sm text-blue-800 prose prose-sm max-w-none prose-strong:text-blue-900">
+                        ${formattedNotice}
+                    </div>
+                    <div class="mt-3 flex items-center gap-2">
+                        <div class="h-1.5 flex-1 bg-blue-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-500 rounded-full animate-progress" style="width: 0%"></div>
+                        </div>
+                        <span class="text-xs text-blue-600 font-mono" id="processing-timer">0s / ~${estimatedSeconds}s</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        noticeDiv.appendChild(bubble);
+        this.messagesContainer.appendChild(noticeDiv);
+        this.scrollToBottom();
+        
+        // Start progress animation and timer
+        const progressBar = bubble.querySelector('.animate-progress') as HTMLElement;
+        const timerSpan = bubble.querySelector('#processing-timer') as HTMLElement;
+        
+        let elapsed = 0;
+        const timerInterval = setInterval(() => {
+            elapsed++;
+            if (timerSpan) {
+                timerSpan.textContent = `${elapsed}s / ~${estimatedSeconds}s`;
+            }
+            if (progressBar) {
+                const progress = Math.min((elapsed / estimatedSeconds) * 100, 95);
+                progressBar.style.width = `${progress}%`;
+            }
+        }, 1000);
+        
+        // Store interval ID on element for cleanup
+        (noticeDiv as any).__timerInterval = timerInterval;
+        
+        return noticeDiv;
+    }
+
+    /**
+     * Remove processing notice and clean up
+     */
+    private removeProcessingNotice(noticeElement: HTMLElement): void {
+        console.log('[Chat] Removing processing notice');
+        
+        // Clear timer interval
+        if ((noticeElement as any).__timerInterval) {
+            clearInterval((noticeElement as any).__timerInterval);
+        }
+        
+        // Fade out animation
+        noticeElement.style.transition = 'opacity 0.3s ease-out';
+        noticeElement.style.opacity = '0';
+        
+        setTimeout(() => {
+            if (noticeElement.parentNode) {
+                noticeElement.parentNode.removeChild(noticeElement);
+            }
+        }, 300);
     }
 }
 
