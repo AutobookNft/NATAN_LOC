@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\NatanChatController;
 use App\Http\Controllers\NatanCommandController;
+use App\Http\Controllers\NatanProjectViewController;
+use App\Http\Controllers\NatanProjectController;
+use App\Http\Controllers\NatanDocumentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NatanDiagnosticController;
 
@@ -127,6 +130,9 @@ Route::prefix('natan')->name('natan.')->middleware(['auth', 'natan.access'])->gr
     Route::post('/commands/execute', [NatanCommandController::class, 'execute'])
         ->name('commands.execute')
         ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
+    Route::post('/commands/estimate', [NatanCommandController::class, 'estimateProcessing'])
+        ->name('commands.estimate')
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class]);
     Route::post('/commands/natural-query', [NatanCommandController::class, 'natural'])
         ->name('commands.natural')
         ->middleware('throttle:natan-natural-query')
@@ -185,6 +191,52 @@ Route::middleware(['auth', 'superadmin'])->prefix('natan/tenants')->group(functi
 });
 
 // Admin Config Routes (tenant-specific configurations)
+// NATAN Projects Routes (Web Views)
+// NATAN Web Views (HTML pages, not API)
+Route::middleware(['auth'])->prefix('natan/ui/projects')->name('natan.ui.projects.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\NatanProjectViewController::class, 'index'])->name('index');
+    Route::get('/{id}', [\App\Http\Controllers\NatanProjectViewController::class, 'show'])->name('show');
+});
+
+// NATAN Projects API (JSON endpoints with web session auth)
+Route::middleware(['auth'])->prefix('natan')->name('natan.api.')->group(function () {
+    // Projects CRUD
+    Route::get('/projects', [\App\Http\Controllers\NatanProjectController::class, 'index'])
+        ->name('projects.index');
+    Route::post('/projects', [\App\Http\Controllers\NatanProjectController::class, 'store'])
+        ->name('projects.store');
+    Route::get('/projects/{id}', [\App\Http\Controllers\NatanProjectController::class, 'show'])
+        ->name('projects.show');
+    Route::put('/projects/{id}', [\App\Http\Controllers\NatanProjectController::class, 'update'])
+        ->name('projects.update');
+    Route::patch('/projects/{id}', [\App\Http\Controllers\NatanProjectController::class, 'update'])
+        ->name('projects.patch');
+    Route::delete('/projects/{id}', [\App\Http\Controllers\NatanProjectController::class, 'destroy'])
+        ->name('projects.destroy');
+
+    // Documents in Projects
+    Route::get('/projects/{projectId}/documents', [\App\Http\Controllers\NatanDocumentController::class, 'index'])
+        ->name('projects.documents.index');
+    Route::post('/projects/{projectId}/documents', [\App\Http\Controllers\NatanDocumentController::class, 'store'])
+        ->name('projects.documents.store');
+    Route::post('/projects/{projectId}/text-notes', [\App\Http\Controllers\NatanDocumentController::class, 'storeTextNote'])
+        ->name('projects.text-notes.store');
+    Route::delete('/projects/{projectId}/documents/{documentId}', [\App\Http\Controllers\NatanDocumentController::class, 'destroy'])
+        ->name('projects.documents.destroy');
+
+    // User Memories
+    Route::get('/memories', [\App\Http\Controllers\NatanMemoryController::class, 'index'])
+        ->name('memories.index');
+    Route::post('/memories', [\App\Http\Controllers\NatanMemoryController::class, 'store'])
+        ->name('memories.store');
+    Route::post('/memories/search', [\App\Http\Controllers\NatanMemoryController::class, 'search'])
+        ->name('memories.search');
+    Route::patch('/memories/{id}', [\App\Http\Controllers\NatanMemoryController::class, 'update'])
+        ->name('memories.update');
+    Route::delete('/memories/{id}', [\App\Http\Controllers\NatanMemoryController::class, 'destroy'])
+        ->name('memories.destroy');
+});
+
 Route::middleware(['auth'])->prefix('admin/config')->group(function () {
     Route::get('/', [\App\Http\Controllers\AdminConfigController::class, 'index'])->name('admin.config.index');
     Route::put('/', [\App\Http\Controllers\AdminConfigController::class, 'update'])->name('admin.config.update');
