@@ -581,11 +581,15 @@ export class MessageComponent {
     });
 
     // Create full HTML document with styling
+    // Get base URL for absolute links (works when HTML is opened locally)
+    const baseUrl = window.location.origin;
+
     const fullHtml = `<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base href="${baseUrl}/">
   <title>NATAN - Report ${new Date().toLocaleDateString('it-IT')}</title>
   <style>
     body {
@@ -775,20 +779,44 @@ export class MessageComponent {
   /**
    * Download infographic HTML as file
    */
-  private static downloadInfographic(infographic: { chart: string; chart_type: string; title?: string }): void {
-    const html = infographic.chart;
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  private static downloadInfographic(infographic: { chart: string; chart_type: string; title?: string; format?: string }): void {
+    const chartType = infographic.chart_type || 'chart';
+    const dateStr = new Date().toISOString().split('T')[0];
+    const format = infographic.format || 'html';
+
+    let blob: Blob;
+    let extension: string;
+
+    if (format === 'png') {
+      // PNG: decode base64 to binary
+      const binaryString = atob(infographic.chart);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      blob = new Blob([bytes], { type: 'image/png' });
+      extension = 'png';
+    } else if (format === 'svg') {
+      // SVG: decode base64 to string
+      const svgContent = atob(infographic.chart);
+      blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+      extension = 'svg';
+    } else {
+      // HTML chart
+      blob = new Blob([infographic.chart], { type: 'text/html;charset=utf-8' });
+      extension = 'html';
+    }
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    const chartType = infographic.chart_type || 'chart';
-    link.download = `NATAN_${chartType}_${new Date().toISOString().split('T')[0]}.html`;
+    link.download = `NATAN_${chartType}_${dateStr}.${extension}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    console.log('[Message] Infographic downloaded successfully');
+    console.log(`[Message] Infographic downloaded successfully as ${extension.toUpperCase()}`);
   }
 }
 

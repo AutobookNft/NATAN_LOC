@@ -531,6 +531,385 @@ Rispondi SOLO con il JSON, senza altro testo."""
     def _has_citations(self, text: str) -> bool:
         """Verifica se il testo contiene citazioni claim"""
         return "(CLAIM_" in text
+
+    def _build_high_urs_response(
+        self,
+        answer_with_links: str,
+        urs_score: float,
+        sources: List[Dict],
+        claims_used: List[str],
+        gaps: List[str],
+        evidences: List[Dict] = None,
+        tenant_id: str = None
+    ) -> str:
+        """
+        Costruisce una risposta formattata per URS alto (≥70).
+        Include header metodologico, legenda affidabilità, risposta strutturata, fonti.
+        
+        Args:
+            answer_with_links: Risposta con CLAIM convertiti in link
+            urs_score: Punteggio URS
+            sources: Lista fonti con metadata
+            claims_used: Lista claim utilizzate
+            gaps: Eventuali gap rilevati
+            evidences: Lista evidenze per costruire nota metodologica
+            tenant_id: ID tenant per contare documenti totali
+            
+        Returns:
+            Risposta formattata completa
+        """
+        response_parts = []
+        
+        # === 1. HEADER METODOLOGICO (se abbiamo evidences) ===
+        if evidences:
+            # Estrai metadati per nota metodologica
+            total_docs = len(evidences)
+            try:
+                from app.services.mongodb_service import MongoDBService
+                total_available = MongoDBService.count_documents(
+                    "documents", 
+                    {"tenant_id": int(tenant_id), "embedding": {"$exists": True}}
+                ) if tenant_id else total_docs * 10
+            except:
+                total_available = total_docs * 10
+            
+            date_range = self._extract_date_range_from_evidences(evidences)
+            doc_types = self._extract_doc_types_from_evidences(evidences)
+            asset_categories = self._extract_asset_categories_from_evidences(evidences)
+            
+            methodology_header = self._build_methodology_header(
+                num_docs_analyzed=total_docs,
+                total_docs_available=total_available,
+                date_range=date_range,
+                doc_types=doc_types,
+                asset_categories_found=asset_categories
+            )
+            response_parts.append(methodology_header)
+        
+        # === 2. LEGENDA AFFIDABILITÀ ===
+        response_parts.append("""---
+**📊 LEGENDA AFFIDABILITÀ DATI**
+
+🟢 **VERIFICATO** = Dato presente nei documenti ufficiali  
+🟠 **STIMATO** = Elaborazione/stima basata su dati parziali  
+🔴 **PROPOSTA AI** = Suggerimento del sistema, NON nei documenti
+
+---
+
+""")
+        
+        # === 3. HEADER URS ===
+        if urs_score >= 90:
+            reliability_level = "ALTA"
+            reliability_emoji = "🟢"
+        elif urs_score >= 70:
+            reliability_level = "MEDIA"
+            reliability_emoji = "🟡"
+        else:
+            reliability_level = "BASSA"
+            reliability_emoji = "🟠"
+        
+        response_parts.append(f"""> **{reliability_emoji} AFFIDABILITÀ COMPLESSIVA: {reliability_level}**
+> *(Indice interno NATAN: URS {urs_score:.0f}/100)*
+>
+> Risposta basata su **{len(sources)} fonte/i** verificata/e con **{len(claims_used)} riferimenti** puntuali.
+
+---
+
+""")
+        
+        # === 4. RISPOSTA PRINCIPALE ===
+        response_parts.append(answer_with_links)
+        
+        # === 5. FONTI CONSULTATE (formattazione ricca) ===
+        response_parts.append("\n\n---\n\n## FONTI CONSULTATE\n\n")
+        response_parts.append('<div class="sources-section" style="margin-top: 1.5rem;">\n')
+        response_parts.append('<ul style="list-style-type: disc; padding-left: 1.5rem; margin: 0;">\n')
+        
+        if sources:
+            for src in sources:
+                title = src.get("title", "Documento")
+                if title == "unknown" or not title:
+                    title = "Documento PA"
+                doc_id = src.get("document_id", "")
+                protocol = src.get("protocol_number", "")
+                
+                if doc_id:
+                    response_parts.append(f'''<li style="margin-bottom: 0.75rem; line-height: 1.6;">
+<a href="/natan/documents/view/{doc_id}" style="color: #1B365D; text-decoration: underline; font-weight: 600;" target="_blank" rel="noopener">{title}</a> <span style="color: #6B7280; font-size: 0.875rem;">(Protocollo: {protocol or "N/D"})</span>
+</li>\n''')
+                else:
+                    response_parts.append(f'''<li style="margin-bottom: 0.75rem; line-height: 1.6;">
+{title} <span style="color: #6B7280; font-size: 0.875rem;">(Protocollo: {protocol or "N/D"})</span>
+</li>\n''')
+        
+        response_parts.append('</ul>\n</div>\n')
+        
+        # === 6. FOOTER CON EVENTUALI GAP ===
+        if gaps and gaps != ["FULL_COVERAGE"]:
+            response_parts.append("\n---\n\n")
+            response_parts.append("⚠️ **Nota**: Alcune parti della domanda potrebbero non essere completamente coperte. ")
+            response_parts.append("Verifica i documenti originali per conferma.\n")
+        
+        return "".join(response_parts)
+
+    async def _decompose_question(self, question: str, evidences_count: int) -> List[Dict]:
+        """
+        Scompone una domanda complessa in parti atomiche.
+        Per ogni parte indica se possiamo rispondere con i dati disponibili.
+        
+        Args:
+            question: Domanda dell'utente
+            evidences_count: Numero di evidenze trovate
+            
+        Returns:
+            Lista di dict con:
+            - part: testo della sotto-domanda
+            - can_answer: bool se possiamo rispondere
+            - reason: motivazione se non possiamo
+        """
+        # Prompt per LLM che scompone la domanda
+        decompose_prompt = f"""Analizza questa domanda e scomponila in parti atomiche.
+Per ogni parte, indica se è possibile rispondere avendo solo {evidences_count} documenti generici.
+
+DOMANDA: {question}
+
+Rispondi SOLO in formato JSON così:
+[
+  {{"part": "prima sotto-domanda", "needs_specific_data": true/false, "data_needed": "cosa servirebbe"}},
+  {{"part": "seconda sotto-domanda", "needs_specific_data": true/false, "data_needed": "cosa servirebbe"}}
+]
+
+REGOLE:
+- Scomponi in 2-5 parti massimo
+- needs_specific_data=true se serve: ranking, confronto, criticità, priorità, statistiche
+- needs_specific_data=false se basta: elencare, descrivere, citare documenti
+- Rispondi SOLO con il JSON, nient'altro"""
+
+        try:
+            context = {"task_class": "analysis"}
+            adapter = self.ai_router.get_chat_adapter(context)
+            
+            result = await adapter.generate(
+                [{"role": "user", "content": decompose_prompt}],
+                temperature=0.0,
+                max_tokens=500
+            )
+            
+            import json
+            content = result["content"].strip()
+            # Estrai JSON dalla risposta
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+            
+            parts = json.loads(content)
+            
+            # Converti in formato finale
+            decomposed = []
+            for p in parts:
+                can_answer = not p.get("needs_specific_data", True)
+                # Se abbiamo pochi documenti, non possiamo rispondere a domande che richiedono dati specifici
+                if evidences_count < 3 and p.get("needs_specific_data"):
+                    can_answer = False
+                    
+                decomposed.append({
+                    "part": p.get("part", ""),
+                    "can_answer": can_answer,
+                    "reason": p.get("data_needed", "") if not can_answer else ""
+                })
+            
+            return decomposed
+            
+        except Exception as e:
+            logger.warning(f"Errore decomposizione domanda: {e}, uso fallback")
+            # Fallback: considera la domanda come unica parte
+            return [{
+                "part": question,
+                "can_answer": evidences_count >= 3,
+                "reason": "Dati insufficienti per una risposta completa" if evidences_count < 3 else ""
+            }]
+
+    def _build_partial_support_response(
+        self,
+        original_answer: str,
+        urs_score: float,
+        hallucinations: List[str],
+        gaps: List[str],
+        claims_used: List[str],
+        total_claims: int,
+        sources: List[Dict],
+        claims_mapping: Dict[str, Dict] = None,
+        question: str = "",
+        question_parts: List[Dict] = None
+    ) -> str:
+        """
+        Costruisce una risposta in modalità "supporto parziale" - Template Low-URS.
+        
+        Formato strutturato per assessori/dirigenti PA:
+        1. Titolo + Affidabilità (semaforo + URS)
+        2. Come usarla / Come NON usarla
+        3. Cosa NON posso fare (tabella per ogni parte della domanda)
+        4. Cosa POSSO fare (elenco concreto)
+        5. Fonti consultate (tabella con tipo, numero, data)
+        6. Suggerimento (cosa manca + next step)
+        
+        Args:
+            original_answer: Risposta originale generata
+            urs_score: Punteggio URS calcolato
+            hallucinations: Lista allucinazioni trovate
+            gaps: Lista gap di copertura
+            claims_used: Claim utilizzate
+            total_claims: Totale claim disponibili
+            sources: Fonti documentali
+            claims_mapping: Mapping CLAIM_XXX -> documento sorgente
+            question: Domanda originale dell'utente
+            question_parts: Parti della domanda scomposte (da _decompose_question)
+            
+        Returns:
+            Risposta formattata con trasparenza totale
+        """
+        import re
+        
+        # === 1. TITOLO + AFFIDABILITÀ ===
+        if urs_score >= 70:
+            reliability_level = "MEDIA"
+            reliability_emoji = "🟡"
+        elif urs_score >= 50:
+            reliability_level = "BASSA"
+            reliability_emoji = "🟠"
+        else:
+            reliability_level = "MOLTO BASSA"
+            reliability_emoji = "🔴"
+        
+        response_parts = []
+        
+        # Header compatto
+        doc_word = "atto" if len(sources) == 1 else "atti"
+        response_parts.append(f"""> **{reliability_emoji} AFFIDABILITÀ: {reliability_level}**
+> *(Indice interno NATAN: URS {urs_score:.0f}/100)*
+>
+> Ho trovato **{len(sources)} {doc_word}** pertinente/i che contiene/contengono riferimenti utili. Non posso rispondere in modo completo alla tua domanda.
+
+---
+
+""")
+        
+        # === 2. COME USARLA / COME NON USARLA ===
+        response_parts.append("""### 🧭 Come usare questa risposta
+
+| ✅ Usala per... | ⛔ NON usarla per... |
+|-----------------|----------------------|
+| Orientarti su quali documenti/progetti esistono | Prendere decisioni su priorità o rischi |
+| Avere un primo elenco da approfondire | Considerarla come analisi completa |
+| Identificare gli atti da consultare | Citarla come fonte ufficiale |
+
+---
+
+""")
+        
+        # === 3. COSA NON POSSO FARE (tabella) ===
+        if question_parts and len(question_parts) > 1:
+            response_parts.append("### ❌ Cosa NON posso fare con questi dati\n\n")
+            response_parts.append("La tua domanda chiedeva:\n\n")
+            response_parts.append("| Richiesta | Posso rispondere? | Motivo |\n")
+            response_parts.append("|-----------|-------------------|--------|\n")
+            
+            for idx, part in enumerate(question_parts, 1):
+                # Non troncare le stringhe - mostra testo completo per chiarezza
+                part_text = part.get("part", "")
+                can_answer = part.get("can_answer", False)
+                reason = part.get("reason", "")
+                
+                status = "✅ Sì" if can_answer else "❌ No"
+                reason_text = reason if reason and not can_answer else "Dati disponibili"
+                
+                response_parts.append(f"| {idx}. {part_text} | {status} | {reason_text} |\n")
+            
+            response_parts.append("\n---\n\n")
+        
+        # === 4. COSA POSSO FARE (elenco concreto) ===
+        response_parts.append("### ✅ Cosa POSSO fare: elencare le informazioni trovate\n\n")
+        
+        # Converti i riferimenti (CLAIM_XXX) in link ai documenti
+        answer_with_links = original_answer
+        if claims_mapping:
+            def replace_claim_ref(match):
+                claim_id = match.group(1)
+                if claim_id in claims_mapping:
+                    claim_info = claims_mapping[claim_id]
+                    doc_id = claim_info.get('document_id', '')
+                    if doc_id:
+                        return f"([{claim_id}](/natan/documents/view/{doc_id}))"
+                return match.group(0)
+            
+            answer_with_links = re.sub(r'\((CLAIM_\d+)\)', replace_claim_ref, answer_with_links)
+        
+        # Aggiungi nota se è un elenco, non un ranking
+        if urs_score < 50:
+            response_parts.append("⚠️ **Attenzione**: Questo è solo un elenco, non una classifica per importanza o criticità.\n\n")
+        
+        response_parts.append(answer_with_links)
+        
+        # === 5. FONTI CONSULTATE (tabella) ===
+        response_parts.append("\n\n---\n\n### 📚 FONTI CONSULTATE\n\n")
+        
+        if sources:
+            response_parts.append("| # | Documento | Numero | Data |\n")
+            response_parts.append("|---|-----------|--------|------|\n")
+            
+            for idx, src in enumerate(sources, 1):
+                title = src.get("title", "Documento")
+                if title == "unknown" or not title:
+                    title = "Documento PA"
+                doc_id = src.get("document_id", "")
+                
+                # Estrai numero e data dal titolo o metadata
+                protocol = src.get("protocol_number", "")
+                date = src.get("protocol_date", "")
+                
+                # Crea link se disponibile
+                if doc_id:
+                    title_link = f"[{title[:50]}](/natan/documents/view/{doc_id})"
+                else:
+                    title_link = title[:50]
+                
+                response_parts.append(f"| {idx} | {title_link} | {protocol or 'N/D'} | {date or 'N/D'} |\n")
+        else:
+            response_parts.append("*Nessuna fonte documentale trovata.*\n")
+        
+        # === 6. SUGGERIMENTO FINALE ===
+        response_parts.append("""
+
+---
+
+### 💡 Suggerimento
+
+Per rispondere completamente alla tua domanda servirebbero:
+""")
+        
+        # Suggerimenti concreti e utili per il dirigente
+        # Prima i gap specifici se presenti, poi suggerimenti generici PA-oriented
+        suggestions_added = 0
+        if gaps and gaps != ["FULL_COVERAGE"]:
+            for gap in gaps[:2]:  # Max 2 gap specifici
+                gap_text = gap.replace("GAP_", "").replace("_", " ")
+                if ":" in gap_text:
+                    gap_text = gap_text.split(":", 1)[1].strip()
+                if gap_text and len(gap_text) > 10:
+                    response_parts.append(f"- {gap_text}\n")
+                    suggestions_added += 1
+        
+        # Aggiungi sempre suggerimenti concreti PA-oriented
+        response_parts.append("- Report di avanzamento progetti con % di completamento\n")
+        response_parts.append("- Dati su scadenze e milestone principali\n")
+        response_parts.append("- Eventuali segnalazioni di criticità dai RUP (ritardi, varianti, contenziosi)\n")
+        response_parts.append("- Elenco completo degli atti correlati, non solo quelli trovati\n")
+        
+        response_parts.append("\n**Vuoi che provi a cercare questi documenti o a restringere il perimetro della domanda?**\n")
+        
+        return "".join(response_parts)
     
     def _build_sources_list(self, evidences: List[Dict]) -> List[Dict]:
         """
@@ -549,20 +928,36 @@ Rispondi SOLO con il JSON, senza altro testo."""
                 continue
             
             metadata = ev.get("metadata", {})
-            document_id = metadata.get("document_id") or ev.get("evidence_id", "")
+            # FIX: Il retriever mette document_id direttamente nell'evidenza, non in metadata
+            document_id = ev.get("document_id") or metadata.get("document_id") or ev.get("evidence_id", "")
             
             if document_id:
                 source_url = f"#doc-{document_id}"
             else:
                 source_url = metadata.get("url") or source_str
             
-            source_title = metadata.get("title") or metadata.get("oggetto") or source_str
+            # FIX: Usa anche ev.title direttamente
+            source_title = ev.get("title") or metadata.get("title") or metadata.get("oggetto") or source_str
+            
+            # Estrai protocol_number e protocol_date per la tabella fonti
+            protocol_number = ev.get("protocol_number") or metadata.get("protocol_number") or metadata.get("numero_atto") or ""
+            protocol_date = ev.get("protocol_date") or metadata.get("protocol_date") or metadata.get("data_atto") or ""
+            
+            # Formatta la data se è un timestamp
+            if protocol_date and isinstance(protocol_date, (int, float)):
+                try:
+                    from datetime import datetime
+                    protocol_date = datetime.fromtimestamp(protocol_date / 1000).strftime("%d/%m/%Y")
+                except:
+                    protocol_date = str(protocol_date)
             
             if source_str not in sources_dict:
                 sources_dict[source_str] = {
                     "url": source_url,
                     "title": source_title,
                     "document_id": document_id,
+                    "protocol_number": protocol_number,
+                    "protocol_date": protocol_date,
                     "type": "internal" if document_id else "external"
                 }
         
@@ -635,6 +1030,101 @@ Rispondi SOLO con il JSON, senza altro testo."""
         
         return has_keyword or matches_pattern
     
+    def _get_matrix_instructions(self, question: str) -> str:
+        """
+        Genera istruzioni specifiche per le matrici decisionali.
+        
+        REGOLA FONDAMENTALE:
+        - "Crea una matrice" → Template VUOTO + istruzioni di compilazione
+        - "Applica la matrice ai progetti" → Pre-compilata CON GROSSO DISCLAIMER
+        
+        Args:
+            question: Domanda dell'utente
+            
+        Returns:
+            Istruzioni specifiche per il prompt, o stringa vuota se non è una richiesta di matrice
+        """
+        import re
+        lower_question = question.lower()
+        
+        # Verifica se è una richiesta di matrice decisionale
+        is_matrix_request = any([
+            'matrice' in lower_question and ('decision' in lower_question or 'priorit' in lower_question),
+            re.search(r'crea.*matrice', lower_question),
+            re.search(r'matrice.*per.*priorit', lower_question),
+            'prioritizza' in lower_question and 'progetti' in lower_question,
+        ])
+        
+        if not is_matrix_request:
+            return ""
+        
+        # Verifica se chiede di APPLICARE (pre-compilare) la matrice
+        wants_application = any([
+            'applica' in lower_question,
+            'compila' in lower_question,
+            'punteggi' in lower_question,
+            'valuta i progetti' in lower_question,
+            'classifica i progetti' in lower_question,
+            re.search(r'assegna.*punteggi', lower_question),
+            re.search(r'calcola.*score', lower_question),
+        ])
+        
+        if wants_application:
+            # L'utente vuole la matrice PRE-COMPILATA → OK ma con GROSSO DISCLAIMER
+            return """
+=== REGOLE SPECIALI: MATRICE DECISIONALE PRE-COMPILATA ===
+
+L'utente ha chiesto di APPLICARE la matrice ai progetti. Puoi farlo, ma:
+
+1. **DISCLAIMER OBBLIGATORIO** all'inizio della sezione punteggi:
+   > ⚠️ **STIMA AUTOMATICA - DA VALIDARE**
+   > I punteggi seguenti sono stime generate automaticamente basandosi sui documenti disponibili.
+   > NON sostituiscono la valutazione degli uffici competenti (RUP, Dirigenti, Ragioneria).
+   > Ogni punteggio deve essere verificato con dati reali prima di qualsiasi decisione.
+
+2. **CRITERI DICHIARATI**: Spiega come hai assegnato ogni punteggio
+   - Se basato su dati reali → 🟢 con fonte [Prot. XXX]
+   - Se stimato/inferito → 🟠 con motivazione
+   - Se ipotetico → 🔴 con "da verificare"
+
+3. **RANGE, MAI PUNTUALI**: Score come "3.5-4.0" non "3.7"
+
+4. **TABELLA FINALE VUOTA**: Includi comunque la tabella vuota come template per la revisione manuale
+
+"""
+        else:
+            # L'utente vuole solo il DESIGN della matrice → Template VUOTO
+            return """
+=== REGOLE SPECIALI: MATRICE DECISIONALE (SOLO TEMPLATE) ===
+
+L'utente ha chiesto di CREARE una matrice decisionale. Fornisci:
+
+1. **METODOLOGIA** (PARTE A - 🟢)
+   - Definizione dei criteri (es. Impatto, Urgenza, Costo, Fattibilità)
+   - Pesi per ogni criterio (es. 30%, 25%, 20%, 25%)
+   - Scale di valutazione (1-5 con descrizione di ogni livello)
+
+2. **TEMPLATE TABELLA VUOTA** (PARTE A - 🟢)
+   | Progetto | Impatto (1-5) | Urgenza (1-5) | Costo (1-5) | Fattibilità (1-5) | Score |
+   |----------|---------------|---------------|-------------|-------------------|-------|
+   | _____    |               |               |             |                   |       |
+   | _____    |               |               |             |                   |       |
+
+3. **ISTRUZIONI DI COMPILAZIONE** (PARTE A - 🟢)
+   - Chi deve compilare (RUP, Dirigente, Ragioneria)
+   - Con quali dati (atti, cronoprogrammi, SAL, contabilità)
+   - Frequenza di aggiornamento suggerita
+
+4. **LISTA PROGETTI IDENTIFICATI** (PARTE A - 🟢)
+   Lista i progetti trovati nei documenti, MA SENZA assegnare punteggi:
+   - Progetto X [Prot. XXX] - Fase: ___
+   - Progetto Y [Prot. YYY] - Fase: ___
+
+⚠️ NON ASSEGNARE PUNTEGGI AI PROGETTI!
+La matrice deve restare VUOTA per essere compilata dagli uffici competenti.
+
+"""
+
     def _extract_search_entities(self, question: str) -> List[str]:
         """
         Estrae entità chiave dalla query per ricerca documenti più efficace
@@ -905,7 +1395,7 @@ Rispondi SOLO con il JSON, senza altro testo."""
             logger.info("STEP 6: Fact-checking ostile...")
             hallucinations = await self.fact_checker.hostile_check(answer, claims)
             
-            # Se ci sono allucinazioni gravi, rifiuta risposta
+            # Se ci sono allucinazioni, calcola URS e gestisci con modalità "supporto parziale"
             if hallucinations and hallucinations != ["NESSUNA_ALLUCINAZIONE"]:
                 logger.warning(f"Allucinazioni trovate: {hallucinations}")
                 # Calcola URS comunque
@@ -918,17 +1408,60 @@ Rispondi SOLO con il JSON, senza altro testo."""
                     citations_present=self._has_citations(answer)
                 )
                 
-                # Se URS < 90, rifiuta risposta
-                if urs_result["score"] < 90:
-                    return {
-                        "answer": "Non posso fornire una risposta verificata sufficientemente affidabile. Si prega di riformulare la domanda o consultare direttamente i documenti ufficiali.",
-                        "urs_score": urs_result["score"],
-                        "urs_explanation": f"{urs_result['explanation']} Risposta rifiutata per affidabilità insufficiente.",
-                        "claims_used": claim_numbers,
-                        "sources": self._build_sources_list(relevant_evidences),
-                        "hallucinations_found": hallucinations,
-                        "gaps_detected": gaps
-                    }
+                # MODALITÀ SUPPORTO PARZIALE: invece di bloccare, fornisci risposta con disclaimer
+                # Il dirigente può decidere se usare le informazioni parziali
+                sources = self._build_sources_list(relevant_evidences)
+                
+                # Scomponi la domanda in parti per mostrare cosa possiamo/non possiamo rispondere
+                question_parts = await self._decompose_question(question, len(sources))
+                
+                # Costruisci mapping CLAIM_XXX -> documento
+                # Associa ogni claim all'evidenza/documento da cui è stata estratta
+                claims_mapping = {}
+                for idx, claim in enumerate(claims):
+                    claim_id = f"CLAIM_{idx+1:03d}"
+                    # Associa al documento dell'evidenza corrispondente (se esiste)
+                    if idx < len(relevant_evidences):
+                        ev = relevant_evidences[idx]
+                        metadata = ev.get("metadata", {})
+                        # FIX: Il retriever mette document_id direttamente nell'evidenza, non in metadata
+                        # Priorità: ev.document_id > metadata.document_id > evidence_id (fallback)
+                        claims_mapping[claim_id] = {
+                            "document_id": ev.get("document_id") or metadata.get("document_id") or ev.get("evidence_id", ""),
+                            "title": ev.get("title") or metadata.get("title") or metadata.get("oggetto") or ev.get("source", claim_id)
+                        }
+                    else:
+                        # Fallback: usa la prima fonte disponibile
+                        if sources:
+                            claims_mapping[claim_id] = {
+                                "document_id": sources[0].get("document_id", ""),
+                                "title": sources[0].get("title", claim_id)
+                            }
+                
+                # Costruisci risposta con disclaimer trasparente - Template Low-URS
+                partial_response = self._build_partial_support_response(
+                    original_answer=answer,
+                    urs_score=urs_result["score"],
+                    hallucinations=hallucinations,
+                    gaps=gaps,
+                    claims_used=claim_numbers,
+                    total_claims=len(claims),
+                    sources=sources,
+                    claims_mapping=claims_mapping,
+                    question=question,
+                    question_parts=question_parts
+                )
+                
+                return {
+                    "answer": partial_response,
+                    "urs_score": urs_result["score"],
+                    "urs_explanation": urs_result['explanation'],
+                    "claims_used": claim_numbers,
+                    "sources": sources,
+                    "hallucinations_found": hallucinations,
+                    "gaps_detected": gaps,
+                    "partial_support": True  # Flag per il frontend
+                }
             
             # STEP 7: Calcola URS finale
             logger.info("STEP 7: Calcolo URS...")
@@ -941,6 +1474,33 @@ Rispondi SOLO con il JSON, senza altro testo."""
                 citations_present=self._has_citations(answer)
             )
             
+            # Costruisci claims_mapping per convertire CLAIM_XXX in link
+            claims_mapping = {}
+            for idx, claim in enumerate(claims):
+                claim_id = f"CLAIM_{idx+1:03d}"
+                if idx < len(relevant_evidences):
+                    ev = relevant_evidences[idx]
+                    metadata = ev.get("metadata", {})
+                    claims_mapping[claim_id] = {
+                        "document_id": ev.get("document_id") or metadata.get("document_id") or ev.get("evidence_id", ""),
+                        "title": ev.get("title") or metadata.get("title") or metadata.get("oggetto") or ev.get("source", claim_id)
+                    }
+            
+            # Converti i riferimenti (CLAIM_XXX) in link ai documenti
+            import re
+            answer_with_links = answer
+            if claims_mapping:
+                def replace_claim_ref(match):
+                    claim_id = match.group(1)
+                    if claim_id in claims_mapping:
+                        claim_info = claims_mapping[claim_id]
+                        doc_id = claim_info.get('document_id', '')
+                        if doc_id:
+                            return f"([{claim_id}](/natan/documents/view/{doc_id}))"
+                    return match.group(0)
+                
+                answer_with_links = re.sub(r'\((CLAIM_\d+)\)', replace_claim_ref, answer_with_links)
+            
             # Estrai fonti complete con metadata per visualizzazione con link
             sources_dict = {}
             for ev in relevant_evidences:
@@ -950,7 +1510,8 @@ Rispondi SOLO con il JSON, senza altro testo."""
                 
                 # Costruisci oggetto Source completo
                 metadata = ev.get("metadata", {})
-                document_id = metadata.get("document_id") or ev.get("evidence_id", "")
+                # FIX: Il retriever mette document_id direttamente nell'evidenza, non in metadata
+                document_id = ev.get("document_id") or metadata.get("document_id") or ev.get("evidence_id", "")
                 
                 # Se document_id esiste, crea link interno (#doc-{document_id})
                 if document_id:
@@ -959,7 +1520,20 @@ Rispondi SOLO con il JSON, senza altro testo."""
                     # Altrimenti usa source originale o metadata.url
                     source_url = metadata.get("url") or source_str
                 
-                source_title = metadata.get("title") or metadata.get("oggetto") or source_str
+                # FIX: Usa anche ev.title direttamente
+                source_title = ev.get("title") or metadata.get("title") or metadata.get("oggetto") or source_str
+                
+                # Estrai protocol_number e protocol_date
+                protocol_number = ev.get("protocol_number") or metadata.get("protocol_number") or metadata.get("numero_atto") or ""
+                protocol_date = ev.get("protocol_date") or metadata.get("protocol_date") or metadata.get("data_atto") or ""
+                
+                # Formatta la data se è un timestamp
+                if protocol_date and isinstance(protocol_date, (int, float)):
+                    try:
+                        from datetime import datetime
+                        protocol_date = datetime.fromtimestamp(protocol_date / 1000).strftime("%d/%m/%Y")
+                    except:
+                        protocol_date = str(protocol_date)
                 
                 # Usa source_str come chiave per evitare duplicati
                 if source_str not in sources_dict:
@@ -967,16 +1541,29 @@ Rispondi SOLO con il JSON, senza altro testo."""
                         "url": source_url,
                         "title": source_title,
                         "document_id": document_id,
+                        "protocol_number": protocol_number,
+                        "protocol_date": protocol_date,
                         "type": "internal" if document_id else "external"
                     }
             
             # Converti dict in lista
             sources = list(sources_dict.values())
             
+            # Costruisci risposta formattata con header metodologico e fonti ricche
+            formatted_answer = self._build_high_urs_response(
+                answer_with_links=answer_with_links,
+                urs_score=urs_result["score"],
+                sources=sources,
+                claims_used=claim_numbers,
+                gaps=gaps,
+                evidences=relevant_evidences,
+                tenant_id=tenant_id
+            )
+            
             logger.info(f"Pipeline completata - URS: {urs_result['score']}/100, Sources: {len(sources)}")
             
             return {
-                "answer": answer,
+                "answer": formatted_answer,
                 "urs_score": urs_result["score"],
                 "urs_explanation": urs_result["explanation"],
                 "claims_used": claim_numbers,
@@ -1202,6 +1789,9 @@ Estrai le informazioni chiave rilevanti per rispondere alla domanda dell'utente.
                 asset_categories_found=asset_categories
             )
             
+            # Ottieni istruzioni speciali per matrici decisionali (se applicabile)
+            matrix_instructions = self._get_matrix_instructions(question)
+            
             # Prompt finale per sintesi CON SISTEMA SEMAFORO e HEADER METODOLOGICO
             final_prompt = [
                 {
@@ -1222,6 +1812,7 @@ Descrivi ciò che emerge dai documenti. Usa 🟢 per dati verificati e 🟠 per 
 
 **PARTE B: PROPOSTE E RACCOMANDAZIONI** (solo 🔴)
 Proposte SEPARATE dai fatti, linguaggio condizionale. Usa 🔴 per ogni proposta.
+{matrix_instructions}
 
 === TONO PER PROPOSTE 🔴 ===
 Usa: "Si potrebbe...", "Sarebbe opportuno...", "Budget indicativo: €X-Y (da validare)"
@@ -1531,6 +2122,9 @@ Elabora la risposta seguendo la struttura obbligatoria."""
                 asset_categories_found=asset_categories
             )
             
+            # Ottieni istruzioni speciali per matrici decisionali (se applicabile)
+            matrix_instructions = self._get_matrix_instructions(question)
+            
             # Usa AI Router per generazione con contesto
             adapter_context = {
                 "tenant_id": int(tenant_id),
@@ -1580,7 +2174,7 @@ Descrivi ciò che emerge dai documenti. Usa 🟢 per dati verificati e 🟠 per 
 
 **PARTE B: PROPOSTE E RACCOMANDAZIONI** (solo 🔴)
 Proposte SEPARATE dai fatti, linguaggio condizionale. Usa 🔴 per ogni proposta.
-
+{matrix_instructions}
 === TONO PER PROPOSTE 🔴 ===
 Usa: "Si potrebbe...", "Sarebbe opportuno...", "Budget indicativo: €X-Y (da validare)"
 MAI: "Bisogna...", "È necessario...", numeri puntuali senza range
@@ -1677,8 +2271,9 @@ Elabora la risposta seguendo la struttura obbligatoria."""
         Post-processing della risposta per aggiungere link cliccabili
         
         1. Sostituisce riferimenti inline [DOCUMENTO X] con link Markdown
-        2. Rimuove qualsiasi sezione FONTI generata dall'AI
-        3. Aggiunge automaticamente sezione FONTI corretta con link puliti
+        2. Sostituisce riferimenti [Prot. XXXXX], [CUP XXXXX], [DG/XXX/YYYY], [C.O. XXXXX] con link
+        3. Rimuove qualsiasi sezione FONTI generata dall'AI
+        4. Aggiunge automaticamente sezione FONTI corretta con link puliti
         
         Args:
             answer: Risposta generata dall'AI
@@ -1696,27 +2291,92 @@ Elabora la risposta seguendo la struttura obbligatoria."""
                 'url': src.get('url', ''),
                 'title': src.get('title', f'Documento {i}'),
                 'protocol': src.get('protocol_number', ''),
-                'date': src.get('date', '')
+                'date': src.get('date', ''),
+                'document_id': src.get('document_id', '')
             }
         
+        # Helper: trova source per riferimento testuale
+        def find_source_by_reference(ref_text: str) -> dict:
+            """Cerca una source che contiene il riferimento nel titolo o altri campi"""
+            ref_clean = ref_text.lower().strip()
+            
+            # Normalizza: rimuovi caratteri speciali per matching più flessibile
+            ref_normalized = re.sub(r'[^\w\d]', '', ref_clean)
+            
+            for src in sources:
+                title = src.get('title', '').lower()
+                protocol = src.get('protocol_number', '').lower()
+                doc_id = src.get('document_id', '').lower()
+                
+                # Cerca nel titolo
+                if ref_clean in title or ref_normalized in re.sub(r'[^\w\d]', '', title):
+                    return src
+                
+                # Cerca nel protocol_number
+                if protocol and (ref_clean in protocol or ref_normalized in re.sub(r'[^\w\d]', '', protocol)):
+                    return src
+                
+                # Cerca nel document_id
+                if doc_id and ref_normalized in re.sub(r'[^\w\d]', '', doc_id):
+                    return src
+                
+                # Pattern specifici
+                # CUP: H13C23000120004
+                if 'cup' in ref_clean or ref_text.startswith('H'):
+                    cup_match = re.search(r'H\d{2}[A-Z]\d+', ref_text, re.IGNORECASE)
+                    if cup_match and cup_match.group().lower() in title:
+                        return src
+                
+                # Protocollo: 00XXX
+                if 'prot' in ref_clean:
+                    prot_match = re.search(r'(\d{5})', ref_text)
+                    if prot_match and prot_match.group() in title:
+                        return src
+                
+                # Codice Opera: C.O. XXXXXX o 220041
+                if 'c.o' in ref_clean or 'codice opera' in ref_clean:
+                    co_match = re.search(r'(\d{6})', ref_text)
+                    if co_match and co_match.group() in title:
+                        return src
+                
+                # DG/XXX/YYYY
+                if 'dg/' in ref_clean:
+                    if ref_clean.replace('dg/', '') in title:
+                        return src
+                
+                # AQ pattern: AQ0969/2025
+                if ref_text.lower().startswith('aq'):
+                    if ref_text.lower() in title:
+                        return src
+            
+            return None
+        
+        # Helper: genera link URL da source
+        def get_link_url(src: dict) -> str:
+            url = src.get('url', '')
+            doc_id = src.get('document_id', '')
+            
+            if url.startswith('#doc-') and doc_id:
+                return f"/natan/documents/view/{doc_id}"
+            elif url and not url.startswith('#'):
+                return url
+            elif doc_id:
+                return f"/natan/documents/view/{doc_id}"
+            return ''
+        
         # STEP 1: Sostituisci riferimenti inline [DOCUMENTO X] o [DOC X] con link Markdown
-        # Pattern: [DOCUMENTO 13], [DOC 13], o [DOCUMENTI 1,3]
         def replace_inline_doc(match):
-            full_match = match.group(0)  # es: "[DOCUMENTO 13]" o "[DOC 13]"
-            doc_part = match.group(1)    # es: "DOCUMENTO 13" o "DOC 13"
+            full_match = match.group(0)
+            doc_part = match.group(1)
             
-            # Estrai numeri dal riferimento
             numbers = re.findall(r'\d+', doc_part)
-            
             if not numbers:
-                return full_match  # No numbers found, return as is
+                return full_match
             
-            # Crea link Markdown per ogni numero
             links = []
             for num_str in numbers:
                 num = int(num_str)
                 
-                # Cerca per doc_number (multi-step) o per posizione (standard)
                 source_info = None
                 for src in sources:
                     if src.get('doc_number') == num or sources.index(src) + 1 == num:
@@ -1724,62 +2384,83 @@ Elabora la risposta seguendo la struttura obbligatoria."""
                         break
                 
                 if source_info:
-                    url = source_info.get('url', '')
-                    doc_id = source_info.get('document_id', '')
-                    
-                    # Se è un documento interno (#doc-xxx), crea link alla pagina documento
-                    if url.startswith('#doc-') and doc_id:
-                        link_url = f"/natan/documents/view/{doc_id}"
-                    elif url and not url.startswith('#'):
-                        link_url = url
-                    else:
-                        link_url = ''
-                    
+                    link_url = get_link_url(source_info)
                     if link_url:
-                        # Link Markdown: [DOCUMENTO X](/path)
                         display_text = f"DOC {num}" if "DOC" in full_match and "DOCUMENTO" not in full_match else f"DOCUMENTO {num}"
                         links.append(f"[{display_text}]({link_url})")
                     else:
-                        # Fallback senza link
                         display_text = f"DOC {num}" if "DOC" in full_match and "DOCUMENTO" not in full_match else f"DOCUMENTO {num}"
                         links.append(f"**{display_text}**")
                 else:
-                    # Fallback senza link
                     display_text = f"DOC {num}" if "DOC" in full_match and "DOCUMENTO" not in full_match else f"DOCUMENTO {num}"
                     links.append(f"**{display_text}**")
             
-            # Se multipli documenti: [DOCUMENTI 1,3] -> [DOCUMENTO 1](/path), [DOCUMENTO 3](/path)
             return ", ".join(links)
         
-        # Applica sostituzione per entrambi i formati: [DOCUMENTO X] e [DOC X]
         answer = re.sub(r'\[(DOC(?:UMENT[OI])?\s+\d+(?:,\s*\d+)*)\]', replace_inline_doc, answer, flags=re.IGNORECASE)
         
-        # STEP 2: Rimuovi qualsiasi sezione FONTI generata dall'AI (la rigeneriamo noi con formato standard)
+        # STEP 2: Sostituisci riferimenti specifici PA con link
+        # Pattern supportati:
+        # - [Prot. 00XXX] o [Prot. 00XXX - Titolo]
+        # - [CUP H13C23000120004] o [CUP H13C23000120004 - Titolo]
+        # - [C.O. 220041] o [Codice opera 220041]
+        # - [DG/111/2024] o [DG/111/2024 - Titolo]
+        # - [AQ0969/2025] o [AQ0969/2025 - Titolo]
+        # - [CPV 45454000-4]
+        
+        def replace_pa_reference(match):
+            full_match = match.group(0)  # es: "[CUP H13C23000120004 - Titolo]"
+            content = match.group(1)      # es: "CUP H13C23000120004 - Titolo"
+            
+            # Prova a trovare la source corrispondente
+            source = find_source_by_reference(content)
+            
+            if source:
+                link_url = get_link_url(source)
+                if link_url:
+                    # Mantieni il testo originale come display ma aggiungi link
+                    return f"[{content}]({link_url})"
+            
+            # Se non trovato, restituisci come bold
+            return f"**[{content}]**"
+        
+        # Pattern per riferimenti PA comuni (tutto quello tra [ e ] che contiene pattern PA)
+        pa_patterns = [
+            r'\[(Prot\.?\s*\d+[^\]]*)\]',           # [Prot. 00XXX] o [Prot. 00XXX - Titolo]
+            r'\[(CUP\s+H\d+[A-Z\d]*[^\]]*)\]',      # [CUP H13C23000120004]
+            r'\[(C\.?O\.?\s*\d+[^\]]*)\]',          # [C.O. 220041] o [CO 220041]
+            r'\[(Codice\s+opera\s+\d+[^\]]*)\]',    # [Codice opera 220041]
+            r'\[(DG/\d+/\d+[^\]]*)\]',              # [DG/111/2024]
+            r'\[(AQ\d+/\d+[^\]]*)\]',               # [AQ0969/2025]
+            r'\[(CPV\s+[\d\-]+[^\]]*)\]',           # [CPV 45454000-4]
+            r'\[(FI\d+\.\d+\.\d+\.\d+[a-z]?[^\]]*)\]',  # [FI2.2.1.2a]
+            r'\[(L\d+/\d+[^\]]*)\]',                # [L1773/2024]
+            r'\[(Art\.?\s*\d+[^\]]*)\]',            # [Art. 159 D.Lgs...]
+        ]
+        
+        for pattern in pa_patterns:
+            answer = re.sub(pattern, replace_pa_reference, answer, flags=re.IGNORECASE)
+        
+        # STEP 3: Rimuovi qualsiasi sezione FONTI generata dall'AI
         fonti_section_start = answer.find("## FONTI CONSULTATE")
         if fonti_section_start != -1:
             answer = answer[:fonti_section_start].rstrip()
         
-        # Rimuovi anche altre varianti di sezione fonti che l'AI potrebbe generare
         fonti_patterns = ["## FONTI", "### FONTI", "**FONTI", "## Fonti consultate", "### Fonti consultate"]
         for pattern in fonti_patterns:
             idx = answer.find(pattern)
             if idx != -1:
                 answer = answer[:idx].rstrip()
         
-        # STEP 3: Aggiungi sezione FONTI CONSULTATE con link cliccabili
+        # STEP 4: Aggiungi sezione FONTI CONSULTATE con link cliccabili
         if sources:
             answer += "\n\n---\n\n## FONTI CONSULTATE\n\n"
             for idx, src in enumerate(sources, 1):
                 title = src.get("title", "Documento")
-                url = src.get("url", "")
-                doc_id = src.get("document_id", "")
+                link_url = get_link_url(src)
                 
-                # Se è un documento interno, crea link alla pagina documento
-                if url.startswith("#doc-") and doc_id:
-                    link_url = f"/natan/documents/view/{doc_id}"
+                if link_url:
                     answer += f"{idx}. [{title}]({link_url})\n"
-                elif url and not url.startswith("#"):
-                    answer += f"{idx}. [{title}]({url})\n"
                 else:
                     answer += f"{idx}. {title}\n"
         

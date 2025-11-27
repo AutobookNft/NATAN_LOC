@@ -64,6 +64,8 @@ class EvidenceVerifier:
             
             verified_results.append({
                 "evidence_id": ev.get("evidence_id"),
+                "document_id": ev.get("document_id", ""),  # FIX: Preserva document_id per link documenti
+                "title": ev.get("title", ""),  # FIX: Preserva title
                 "is_directly_relevant": is_relevant,
                 "exact_quote": None,  # Non disponibile senza chiamata AI
                 "supports_user_question": is_relevant,
