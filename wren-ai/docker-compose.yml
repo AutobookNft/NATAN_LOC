@@ -1,0 +1,108 @@
+version: "3.8"
+
+# Wren AI - Text-to-SQL and Data Visualization Platform
+# Documentation: https://docs.getwren.ai/
+
+services:
+  # Wren AI Engine - Core AI service
+  wren-engine:
+    image: ghcr.io/canner/wren-engine:latest
+    container_name: wren_engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - WREN_ENGINE_PORT=8080
+    volumes:
+      - wren-engine-data:/app/data
+    networks:
+      - wren-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Wren AI Service - API and AI processing
+  wren-ai-service:
+    image: ghcr.io/canner/wren-ai-service:latest
+    container_name: wren_ai_service
+    restart: unless-stopped
+    ports:
+      - "5556:5556"
+    environment:
+      - WREN_ENGINE_ENDPOINT=http://wren-engine:8080
+      - GENERATION_MODEL=gpt-4o-mini
+      - LLM_PROVIDER=openai
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_GENERATION_MODEL=gpt-4o-mini
+      - EMBEDDING_MODEL=text-embedding-3-small
+      - EMBEDDING_MODEL_DIMENSION=1536
+    depends_on:
+      wren-engine:
+        condition: service_healthy
+    networks:
+      - wren-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5556/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Wren UI - Web interface for data visualization
+  wren-ui:
+    image: ghcr.io/canner/wren-ui:latest
+    container_name: wren_ui
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - WREN_ENGINE_ENDPOINT=http://wren-engine:8080
+      - WREN_AI_ENDPOINT=http://wren-ai-service:5556
+      - IBIS_SERVER_ENDPOINT=http://ibis-server:8000
+      - NEXT_PUBLIC_USER_UUID=natan-loc-user
+      - GENERATION_MODEL=gpt-4o-mini
+    depends_on:
+      wren-ai-service:
+        condition: service_healthy
+    networks:
+      - wren-network
+
+  # Ibis Server - SQL execution engine
+  ibis-server:
+    image: ghcr.io/canner/wren-ibis:latest
+    container_name: wren_ibis
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - WREN_ENGINE_ENDPOINT=http://wren-engine:8080
+    networks:
+      - wren-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Qdrant - Vector database for semantic search
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: wren_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - wren-network
+
+volumes:
+  wren-engine-data:
+  qdrant-data:
+
+networks:
+  wren-network:
+    driver: bridge
+    name: wren_network
