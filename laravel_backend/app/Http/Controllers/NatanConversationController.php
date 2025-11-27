@@ -43,6 +43,7 @@ class NatanConversationController extends Controller
             'conversation_id' => 'nullable|string|max:255',
             'title' => 'nullable|string|max:500',
             'persona' => 'nullable|string|max:100',
+            'project_id' => 'nullable|integer|exists:collections,id',
             'messages' => 'required|array',
             'messages.*.id' => 'required|string',
             'messages.*.role' => 'required|in:user,assistant',
@@ -55,6 +56,14 @@ class NatanConversationController extends Controller
             'messages.*.model_used' => 'nullable|string',
             'messages.*.command_name' => 'nullable|string|max:255',
             'messages.*.command_result' => 'nullable|array',
+            // RAG-Fortress fields
+            'messages.*.urs_score' => 'nullable|numeric|min:0|max:100',
+            'messages.*.urs_explanation' => 'nullable|string|max:1000',
+            'messages.*.claims_used' => 'nullable|array',
+            'messages.*.sources_list' => 'nullable|array',
+            'messages.*.gaps_detected' => 'nullable|array',
+            'messages.*.hallucinations_found' => 'nullable|array',
+            'messages.*.avg_urs' => 'nullable|numeric|min:0|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -79,6 +88,7 @@ class NatanConversationController extends Controller
             $sessionId = $request->input('conversation_id') ?? 'natan_' . uniqid('', true);
             $messagesMetadata = $request->input('messages', []);
             $persona = $request->input('persona', 'strategic');
+            $projectId = $request->input('project_id', null);
 
             // Save each message as separate row in natan_chat_messages (existing table structure)
             // Only save new messages (check by id or content hash to avoid duplicates)
@@ -114,6 +124,25 @@ class NatanConversationController extends Controller
                             'verification_status' => $msg['verification_status'] ?? $msg['verificationStatus'] ?? null,
                             'avg_urs' => $msg['avg_urs'] ?? $msg['avgUrs'] ?? null,
                         ];
+                        // RAG-Fortress fields
+                        if (isset($msg['urs_score'])) {
+                            $ragSources['urs_score'] = $msg['urs_score'];
+                        }
+                        if (isset($msg['urs_explanation'])) {
+                            $ragSources['urs_explanation'] = $msg['urs_explanation'];
+                        }
+                        if (isset($msg['claims_used']) && is_array($msg['claims_used'])) {
+                            $ragSources['claims_used'] = $msg['claims_used'];
+                        }
+                        if (isset($msg['sources_list']) && is_array($msg['sources_list'])) {
+                            $ragSources['sources_list'] = $msg['sources_list'];
+                        }
+                        if (isset($msg['gaps_detected']) && is_array($msg['gaps_detected'])) {
+                            $ragSources['gaps_detected'] = $msg['gaps_detected'];
+                        }
+                        if (isset($msg['hallucinations_found']) && is_array($msg['hallucinations_found'])) {
+                            $ragSources['hallucinations_found'] = $msg['hallucinations_found'];
+                        }
                         if (isset($msg['command_name'])) {
                             $ragSources['command_name'] = $msg['command_name'];
                         }
@@ -175,6 +204,25 @@ class NatanConversationController extends Controller
                         'verification_status' => $msg['verification_status'] ?? $msg['verificationStatus'] ?? null,
                         'avg_urs' => $msg['avg_urs'] ?? $msg['avgUrs'] ?? null,
                     ];
+                    // RAG-Fortress fields
+                    if (isset($msg['urs_score'])) {
+                        $ragSources['urs_score'] = $msg['urs_score'];
+                    }
+                    if (isset($msg['urs_explanation'])) {
+                        $ragSources['urs_explanation'] = $msg['urs_explanation'];
+                    }
+                    if (isset($msg['claims_used']) && is_array($msg['claims_used'])) {
+                        $ragSources['claims_used'] = $msg['claims_used'];
+                    }
+                    if (isset($msg['sources_list']) && is_array($msg['sources_list'])) {
+                        $ragSources['sources_list'] = $msg['sources_list'];
+                    }
+                    if (isset($msg['gaps_detected']) && is_array($msg['gaps_detected'])) {
+                        $ragSources['gaps_detected'] = $msg['gaps_detected'];
+                    }
+                    if (isset($msg['hallucinations_found']) && is_array($msg['hallucinations_found'])) {
+                        $ragSources['hallucinations_found'] = $msg['hallucinations_found'];
+                    }
                     if (isset($msg['command_name'])) {
                         $ragSources['command_name'] = $msg['command_name'];
                     }
@@ -193,6 +241,7 @@ class NatanConversationController extends Controller
                 $saved = NatanChatMessage::create([
                     'tenant_id' => $tenantId,
                     'user_id' => $user->id,
+                    'project_id' => $projectId,
                     'session_id' => $sessionId,
                     'role' => $msg['role'],
                     'content' => $msg['content'],

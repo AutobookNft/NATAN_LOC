@@ -71,7 +71,7 @@ class NatanChatController extends Controller
                 return [
                     'id' => $session->session_id,
                     'title' => $title,
-                    'date' => $session->last_message_at,
+                    'date' => \Carbon\Carbon::parse($session->last_message_at),
                     'message_count' => $session->message_count,
                     'cost_eur' => $totalCostEur,
                     'persona' => $session->persona ?? 'strategic',

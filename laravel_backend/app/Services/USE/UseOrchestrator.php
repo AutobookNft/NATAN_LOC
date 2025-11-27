@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\DataSanitizerService;
 use App\Services\Gdpr\AuditLogService;
 use App\Services\Gdpr\ConsentService;
+use App\Services\MemoryDetectionService;
 use App\Enums\Gdpr\GdprActivityCategory;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -27,6 +28,7 @@ class UseOrchestrator
     protected ConsentService $consentService;
     protected AuditLogService $auditService;
     protected UseAuditService $useAuditService;
+    protected MemoryDetectionService $memoryService;
     protected UltraLogManager $logger;
     protected ErrorManagerInterface $errorManager;
     protected string $pythonApiUrl;
@@ -36,6 +38,7 @@ class UseOrchestrator
         ConsentService $consentService,
         AuditLogService $auditService,
         UseAuditService $useAuditService,
+        MemoryDetectionService $memoryService,
         UltraLogManager $logger,
         ErrorManagerInterface $errorManager
     ) {
@@ -43,6 +46,7 @@ class UseOrchestrator
         $this->consentService = $consentService;
         $this->auditService = $auditService;
         $this->useAuditService = $useAuditService;
+        $this->memoryService = $memoryService;
         $this->logger = $logger;
         $this->errorManager = $errorManager;
         $this->pythonApiUrl = config('services.python_ai.url', 'http://localhost:8000');
@@ -83,11 +87,23 @@ class UseOrchestrator
                 'log_category' => 'USE_QUERY_START'
             ]);
 
+            // Check for memory request BEFORE sending to Python
+            $memoryResult = $this->memoryService->processMessage($user->id, $tenantId, $question);
+            if ($memoryResult) {
+                $this->logger->info('[UseOrchestrator] Memory detected and saved', [
+                    'user_id' => $user->id,
+                    'memory_id' => $memoryResult['memory_id'],
+                    'type' => $memoryResult['type'],
+                    'log_category' => 'MEMORY_SAVED'
+                ]);
+            }
+
             // Call Python FastAPI USE endpoint
             $response = Http::timeout(120)
                 ->post("{$this->pythonApiUrl}/api/v1/use/query", [
                     'question' => $question,
                     'tenant_id' => $tenantId,
+                    'user_id' => $user->id,  // Pass user_id for personalized memories
                     'persona' => $persona,
                     'model' => config('natan.default_model', 'anthropic.sonnet-3.5'),
                     'query_embedding' => $queryEmbedding
@@ -98,6 +114,17 @@ class UseOrchestrator
             }
 
             $result = $response->json();
+
+            // If memory was saved, modify response to acknowledge it
+            if ($memoryResult) {
+                $memoryAck = "✅ Ho memorizzato questa informazione e la utilizzerò nelle conversazioni future.\n\n";
+                if (isset($result['answer'])) {
+                    $result['answer'] = $memoryAck . $result['answer'];
+                } else {
+                    $result['answer'] = $memoryAck . "Informazione salvata con successo.";
+                }
+                $result['memory_saved'] = $memoryResult;
+            }
 
             // Save USE result to MongoDB (non-blocking if fails)
             if (isset($result['answer_id']) && $result['status'] === 'success') {

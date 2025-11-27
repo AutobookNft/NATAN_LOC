@@ -187,4 +187,133 @@ class NatanUseProxyController extends Controller
             ], $e);
         }
     }
+
+    /**
+     * Proxy RAG-Fortress chat to Python FastAPI
+     * Handles authentication, consent check, and audit logging
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function proxyChat(Request $request): JsonResponse
+    {
+        // Handle CORS preflight requests
+        if ($request->isMethod('OPTIONS')) {
+            return response()->json([], 200)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, Accept, X-CSRF-TOKEN, Authorization');
+        }
+
+        try {
+            // 1. ULM: Log proxy request start
+            $this->logger->info('[NatanUseProxy] RAG-Fortress chat proxy start', [
+                'user_id' => Auth::id(),
+                'ip_address' => $request->ip(),
+                'log_category' => 'RAG_FORTRESS_CHAT_START'
+            ]);
+
+            // 2. Verify authentication
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => __('natan.errors.authentication_required'),
+                ], 401);
+            }
+
+            // 3. Validate request
+            $validated = $request->validate([
+                'messages' => 'required|array|min:1',
+                'messages.*.role' => 'required|string|in:user,assistant',
+                'messages.*.content' => 'required|string|max:10000',
+                'tenant_id' => 'required|integer|min:1',
+                'persona' => 'nullable|string|max:100',
+                'model' => 'nullable|string|max:100',
+                'use_rag_fortress' => 'nullable|boolean',
+            ]);
+
+            // 4. Resolve tenant_id
+            $tenantId = $validated['tenant_id'] ?? $user->tenant_id ?? null;
+            if (!$tenantId) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => __('natan.errors.tenant_id_required'),
+                ], 400);
+            }
+
+            // 5. Check GDPR consent for AI processing
+            if (!$this->consentService->hasConsent($user, 'ai_processing')) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => __('natan.errors.no_ai_consent'),
+                ], 403);
+            }
+
+            // 6. Call Python FastAPI /chat endpoint directly
+            $pythonApiUrl = config('services.python_ai.url', 'http://localhost:8001');
+            
+            // Build request payload, excluding null values
+            $payload = [
+                'messages' => $validated['messages'],
+                'tenant_id' => $tenantId,
+                'user_id' => $user->id,  // Passa user_id per memorie personalizzate
+                'persona' => $validated['persona'] ?? 'strategic',
+                'use_rag_fortress' => $validated['use_rag_fortress'] ?? true,
+            ];
+            
+            // Only include model if it's not null
+            if (!empty($validated['model'])) {
+                $payload['model'] = $validated['model'];
+            }
+            
+            $response = Http::timeout(240) // 4 minuti timeout per RAG-Fortress (ottimizzato per query generative)
+                ->post("{$pythonApiUrl}/api/v1/chat", $payload);
+
+            if (!$response->successful()) {
+                $error = $response->json() ?? ['detail' => 'Unknown error'];
+                $errorMessage = $error['detail'] ?? $error['message'] ?? "HTTP {$response->status()}";
+                // Ensure error message is a string, not an array
+                if (is_array($errorMessage)) {
+                    $errorMessage = json_encode($errorMessage);
+                }
+                throw new \Exception($errorMessage);
+            }
+
+            $result = $response->json();
+
+            // 7. ULM: Log proxy success
+            $this->logger->info('[NatanUseProxy] RAG-Fortress chat proxy completed', [
+                'user_id' => $user->id,
+                'tenant_id' => $tenantId,
+                'urs_score' => $result['urs_score'] ?? null,
+                'claims_count' => count($result['claims'] ?? []),
+                'sources_count' => count($result['sources'] ?? []),
+                'log_category' => 'RAG_FORTRESS_CHAT_SUCCESS'
+            ]);
+
+            // 8. Return result (preserve all Python API fields)
+            return response()->json($result);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Validation errors
+            $this->logger->warning('[NatanUseProxy] RAG-Fortress chat validation failed', [
+                'user_id' => Auth::id(),
+                'errors' => $e->errors(),
+                'log_category' => 'RAG_FORTRESS_CHAT_VALIDATION'
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => __('natan.errors.validation_failed'),
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            // UEM: Handle unexpected errors
+            return $this->errorManager->handle('RAG_FORTRESS_CHAT_PROXY_FAILED', [
+                'user_id' => Auth::id(),
+                'tenant_id' => $request->input('tenant_id'),
+                'error_message' => $e->getMessage(),
+            ], $e);
+        }
+    }
 }

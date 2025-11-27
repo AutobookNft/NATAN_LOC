@@ -90,4 +90,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserActivity::class, 'user_id');
     }
+
+    /**
+     * Get consents for this user (GDPR compliance)
+     */
+    public function consents()
+    {
+        return $this->hasMany(UserConsent::class, 'user_id');
+    }
 }
