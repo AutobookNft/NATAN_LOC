@@ -29,12 +29,21 @@ class TenantScope implements Scope
      */
     public function apply(Builder $builder, Model $model): void
     {
-        $tenantId = \App\Helpers\TenancyHelper::getTenantId()
-            ?? request()->header('X-Tenant-ID')
-            ?? (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::user()?->tenant_id : null);
+        // Skip during console commands without request (e.g., migrations, composer scripts)
+        if (app()->runningInConsole() && !app()->bound('request')) {
+            return;
+        }
 
-        if ($tenantId) {
-            $builder->where($model->getTable() . '.tenant_id', $tenantId);
+        try {
+            $tenantId = \App\Helpers\TenancyHelper::getTenantId()
+                ?? request()?->header('X-Tenant-ID')
+                ?? (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::user()?->tenant_id : null);
+
+            if ($tenantId) {
+                $builder->where($model->getTable() . '.tenant_id', $tenantId);
+            }
+        } catch (\Exception $e) {
+            // Silently fail during bootstrap - scope will be applied on actual queries
         }
     }
 

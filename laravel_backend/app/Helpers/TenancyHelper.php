@@ -37,10 +37,20 @@ class TenancyHelper
             return self::$currentTenant;
         }
         
+        // Skip durante console commands senza DB (migrations, composer)
+        if (app()->runningInConsole()) {
+            return null;
+        }
+        
         // Prova a caricare il tenant dall'ID se disponibile
         $tenantId = app()->bound('currentTenantId') ? app('currentTenantId') : null;
         if ($tenantId) {
-            self::$currentTenant = Tenant::find($tenantId);
+            try {
+                self::$currentTenant = Tenant::find($tenantId);
+            } catch (\Exception $e) {
+                // DB non disponibile - ritorna null
+                return null;
+            }
             return self::$currentTenant;
         }
         
@@ -48,10 +58,28 @@ class TenancyHelper
     }
 
     /**
-     * Ottiene l'ID del tenant corrente
+     * Ottiene l'ID del tenant corrente (senza query DB)
      */
     public static function getTenantId(): ?int
     {
+        // Prima prova a ottenere l'ID senza fare query
+        if (app()->bound('currentTenantId')) {
+            $id = app('currentTenantId');
+            if ($id !== null) {
+                return (int) $id;
+            }
+        }
+        
+        // Poi prova dal tenant caricato (se già in memoria)
+        if (self::$currentTenant !== null) {
+            return self::$currentTenant->id;
+        }
+        
+        // Skip query durante console
+        if (app()->runningInConsole()) {
+            return null;
+        }
+        
         return self::getTenant()?->id;
     }
 
