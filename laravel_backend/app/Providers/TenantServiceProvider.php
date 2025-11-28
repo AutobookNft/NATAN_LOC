@@ -10,15 +10,21 @@ use Illuminate\Support\ServiceProvider;
 /**
  * @package App\Providers
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
- * @version 1.0.0 (NATAN_LOC)
- * @date 2025-11-02
+ * @version 1.1.0 (NATAN_LOC)
+ * @date 2025-11-28
  * @purpose Service Provider per gestione tenant resolution e injection nel container
  * 
  * CONTESTO: /home/fabio/NATAN_LOC
  * PERCORSO FILE: app/Providers/TenantServiceProvider.php
  * 
- * Registra il tenant_id risolto nel container Laravel come 'currentTenantId',
- * rendendolo disponibile per Global Scopes, modelli, e servizi.
+ * IMPORTANTE: Questo provider NON fa query DB in register() o boot().
+ * La risoluzione del tenant avviene SOLO tramite il middleware InitializeTenancy
+ * o su richiesta esplicita via TenantResolver::resolve().
+ * 
+ * Questo approccio evita errori durante:
+ * - composer install/update
+ * - artisan commands (migrate, cache:clear, etc.)
+ * - queue workers prima dell'inizializzazione
  */
 class TenantServiceProvider extends ServiceProvider
 {
@@ -36,62 +42,29 @@ class TenantServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $tenantId = null;
+        // IMPORTANTE: Non fare MAI query DB in register()!
+        // Il DB potrebbe non essere ancora configurato (es: durante composer install, artisan)
+        // La risoluzione del tenant avviene SOLO nel boot() o via middleware
         
-        // Salta la risoluzione del tenant durante migration/console per evitare errori
-        // Il tenant sarà risolto on-demand quando necessario via TenantResolver::resolve()
-        if ($this->app->runningInConsole() && !$this->app->runningUnitTests()) {
-            // In console, controlla se siamo in una richiesta HTTP (es: queue worker con HTTP context)
-            // Altrimenti salta la risoluzione (es: durante migration)
-            if (!app()->bound('request') || request() === null) {
-                // Durante migration, non c'è request disponibile
-                $this->app->instance('currentTenantId', null);
-                return;
-            }
-        }
-        
-        // Prova a risolvere il tenant solo se request() è disponibile
-        // NOTA: In register(), Auth::user() potrebbe non essere ancora disponibile
-        // Il middleware InitializeTenancy aggiornerà questo valore dopo l'autenticazione
-        try {
-            if (app()->bound('request') && request() !== null) {
-                // Tenta di risolvere, ma non fare affidamento su Auth::user() qui
-                // perché il middleware di autenticazione non è ancora stato eseguito
-                $tenantId = TenantResolver::resolve();
-            }
-        } catch (\Exception $e) {
-            // Se la risoluzione fallisce (es: database non ancora migrato), usa null
-            $tenantId = null;
-        }
-        
-        // Registra nel container come singleton per essere accessibile ovunque
-        // Sarà aggiornato dal middleware InitializeTenancy dopo l'autenticazione
-        $this->app->instance('currentTenantId', $tenantId);
-        
-        // Facilita l'accesso via helper se necessario
-        if ($tenantId !== null && !$this->app->runningInConsole()) {
-            // Log per debug (rimuovere in produzione se necessario)
-            if (config('app.debug')) {
-                try {
-                    \Log::debug('[Tenancy] Tenant risolto', [
-                        'tenant_id' => $tenantId,
-                        'host' => request()?->getHost(),
-                        'user_id' => auth()->id(),
-                    ]);
-                } catch (\Exception $e) {
-                    // Ignora errori di logging durante bootstrap
-                }
-            }
-        }
+        // Registra null come placeholder - sarà aggiornato nel boot() o dal middleware
+        $this->app->instance('currentTenantId', null);
     }
 
     /**
      * Bootstrap services.
      * 
+     * La risoluzione del tenant avviene qui, dopo che il DB è stato configurato.
+     * Tuttavia, per le request HTTP, è meglio lasciar fare al middleware.
+     * 
      * @return void
      */
     public function boot(): void
     {
-        //
+        // La risoluzione effettiva del tenant avviene:
+        // 1. Per request HTTP: nel middleware InitializeTenancy (dopo auth)
+        // 2. Per console: su richiesta via TenantResolver::resolve()
+        // 
+        // NON facciamo risoluzione automatica qui per evitare query
+        // premature durante artisan commands o composer scripts.
     }
 }

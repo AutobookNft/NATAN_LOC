@@ -2,7 +2,7 @@
 
 **Versione**: 2.4.0  
 **Data**: 2025-01-28  
-**Ultimo Aggiornamento**: 2025-11-27 (Multi-Model AI Architecture & Wren AI Integration)  
+**Ultimo Aggiornamento**: 2025-11-28 (EGI-HUB Integration & Aggregazioni P2P)  
 **Autore**: Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici  
 **Contesto**: FlorenceEGI - NATAN_LOC Production System
 
@@ -12,7 +12,7 @@
 
 **NATAN_LOC** è un sistema SaaS multi-tenant per la gestione e notarizzazione di documenti con integrazione AI avanzata, sviluppato per Pubbliche Amministrazioni e aziende.
 
-**Status Attuale**: ✅ **PRODUCTION-READY** - Architettura completa implementata, RAG-Fortress v2.0 Zero-Hallucination attivo, Multi-Model AI con Groq LLaMA, Wren AI per infografiche, Compliance Scanner operativo, Natan Pro UI/UX redesign completato, Sistema Memoria Semantica personalizzata funzionante
+**Status Attuale**: ✅ **PRODUCTION-READY** - Architettura completa implementata, RAG-Fortress Zero-Hallucination attivo, Compliance Scanner operativo, Natan Pro UI/UX redesign completato, Sistema Memoria Semantica personalizzata funzionante
 
 **Deployment**:
 
@@ -184,7 +184,7 @@
 
 ## 🤖 AI & RAG Systems
 
-### **RAG-Fortress v2.0 Zero-Hallucination Pipeline** ✅ PRODUCTION-READY
+### **RAG-Fortress Zero-Hallucination Pipeline** ✅ PRODUCTION-READY
 
 **Sistema avanzato anti-allucinazione per PA italiana - Implementazione completa (10/10 passi)**
 
@@ -198,12 +198,6 @@
 6. **Hostile Fact-Checker** - Gemini-1.5-Flash verifica ostile allucinazioni
 7. **URS Calculator** - Calcola Ultra Reliability Score 0-100 con penalità/bonus
 8. **Pipeline Orchestrator** - Coordina tutti i componenti, rifiuta risposte con URS < 90
-
-**NEW v2.0 Features (2025-11-27):**
-- ✅ **Coverage Gaps Detection** - Rileva e mostra 9 categorie patrimoniali mancanti
-- ✅ **Coverage Warnings** - 🔴 < 10%, 🟠 10-30% coverage
-- ✅ **Template Gold Standard** - Sezione Ponti con format verificabile
-- ✅ **Methodology Header** - Header con categorie coperte e mancanti
 
 **Caratteristiche:**
 
@@ -238,24 +232,20 @@
 
 ### **AI Models Supportati**
 
-- ✅ **OpenAI** (GPT-4, GPT-3.5-Turbo, text-embedding-3-small)
+- ✅ **OpenAI** (GPT-4, GPT-3.5-Turbo)
 - ✅ **Anthropic** (Claude 3.5 Sonnet, Claude 3 Opus)
-- ✅ **Groq** (LLaMA 3.1 70B, LLaMA 3.1 8B, Mixtral 8x7B) - **NEW v2.4.0**
 - ✅ **Ollama** (Local mode - Llama-3.1-70B, Mistral, NATAN-LegalPA-v1 LoRA)
 - ✅ **Google** (Gemini-1.5-Flash, Gemini-1.5-Pro)
 - ✅ **Grok** (Grok-4)
 
 ### **Features AI**
 
-- ✅ Embeddings generation (OpenAI text-embedding-3-small)
+- ✅ Embeddings generation (OpenAI, local)
 - ✅ Vector search (MongoDB Atlas con $vectorSearch)
-- ✅ RAG-Fortress v2.0 Zero-Hallucination Pipeline (completo)
+- ✅ RAG-Fortress Zero-Hallucination Pipeline (completo)
 - ✅ USE Pipeline con URS scoring (completo)
 - ✅ Multi-model gateway con Policy Engine
 - ✅ LoRA support (Ollama locale)
-- ✅ **Groq LLaMA 3.1 70B** - Cloud API gratuito per task generativi (NEW v2.4.0)
-- ✅ **API Error Handling** - Gestione graceful errori billing/rate limit (NEW v2.4.0)
-- ✅ **Wren AI** - Text-to-SQL e infografiche automatiche (NEW v2.4.0)
 
 ---
 
@@ -355,15 +345,6 @@ chat_messages
 - **MariaDB**: `localhost:3306`
 - **Redis**: `localhost:6379`
 
-### **Wren AI (NEW v2.4.0)**
-
-- **UI**: `localhost:3000` - Interfaccia web per query e visualizzazioni
-- **Engine**: `localhost:8080` - Core engine
-- **AI Service**: `localhost:5555` - API AI
-- **Ibis Server**: `localhost:8000` - SQL execution
-- **Qdrant**: `localhost:6333-6334` - Vector DB
-- **Status**: ✅ Configurato e funzionante
-
 ---
 
 ## 📁 Struttura Progetto
@@ -390,14 +371,9 @@ chat_messages
 │
 ├── python_ai_service/        # FastAPI AI service
 │   ├── app/
-│   │   ├── routers/         # API endpoints (chat, admin, memories)
+│   │   ├── routers/         # API endpoints (chat, admin)
 │   │   ├── services/        # AI services
-│   │   │   ├── providers/       # Multi-model adapters (NEW v2.4.0)
-│   │   │   │   ├── anthropic_adapter.py
-│   │   │   │   ├── groq_adapter.py      # LLaMA 3.1 70B via Groq
-│   │   │   │   ├── api_errors.py        # Error handling graceful
-│   │   │   │   └── __init__.py
-│   │   │   ├── rag_fortress/    # RAG-Fortress v2.0 pipeline
+│   │   │   ├── rag_fortress/    # RAG-Fortress pipeline completa
 │   │   │   │   ├── retriever.py
 │   │   │   │   ├── evidence_verifier.py
 │   │   │   │   ├── claim_extractor.py
@@ -405,15 +381,13 @@ chat_messages
 │   │   │   │   ├── constrained_synthesizer.py
 │   │   │   │   ├── hostile_factchecker.py
 │   │   │   │   ├── urs_calculator.py
-│   │   │   │   └── pipeline.py          # Coverage gaps detection
+│   │   │   │   └── pipeline.py
 │   │   │   ├── compliance_scanner/  # Compliance Scanner
 │   │   │   │   ├── scanner.py
 │   │   │   │   ├── atto_extractor.py
 │   │   │   │   ├── report_generator.py
 │   │   │   │   └── email_sender.py
-│   │   │   ├── *_query_patterns.py  # 11 pattern files (2500+ patterns)
-│   │   │   ├── ai_router.py         # Multi-model routing
-│   │   │   ├── use_pipeline.py      # USE Pipeline
+│   │   │   ├── use_pipeline.py    # USE Pipeline
 │   │   │   ├── question_classifier.py
 │   │   │   ├── execution_router.py
 │   │   │   ├── retriever_service.py
@@ -426,15 +400,9 @@ chat_messages
 │   │   │   ├── trasparenza_vm_scraper.py
 │   │   │   └── drupal_scraper.py
 │   │   ├── config/          # Configuration
-│   │   │   └── ai_policies.yaml  # Policy engine config
 │   │   └── main.py
 │   ├── scripts/             # Test scripts
 │   └── requirements.txt
-│
-├── wren-ai/                  # Wren AI (NEW v2.4.0)
-│   ├── docker-compose.yml   # Wren AI services
-│   ├── .env                 # OpenAI API key
-│   └── README.md            # Setup guide
 │
 ├── docker/                   # Docker compose
 │   └── docker-compose.yml
@@ -543,30 +511,6 @@ chat_messages
 ---
 
 ### **Completato Recentemente** ✅
-
-#### **Multi-Model AI Architecture & Wren AI** (2025-11-27)
-- ✅ **Groq Adapter**: `groq_adapter.py` per LLaMA 3.1 70B via cloud API gratuito
-  - Modelli: llama-3.1-70b, llama-3.1-8b, mixtral-8x7b, gemma2-9b
-  - Streaming support per UX real-time
-  - Integrazione completa con `api_errors.py`
-- ✅ **API Error Handling**: Sistema gestione errori graceful
-  - `InsufficientFundsError`, `RateLimitError`, `QuotaExceededError`
-  - Messaggi user-friendly in italiano
-  - Parsing errori HTTP 400/401/402
-- ✅ **Policy Engine Update**: `ai_policies.yaml` con Groq primario
-  - Fallback chain: groq → anthropic → openai → ollama
-  - Policy `generative_high_volume` per task economici
-- ✅ **Wren AI Setup**: Piattaforma Text-to-SQL e infografiche
-  - 5 servizi Docker configurati e funzionanti
-  - Integrazione con MongoDB NATAN
-  - Documentazione completa
-
-#### **RAG-Fortress v2.0 Coverage Gaps** (2025-11-27)
-- ✅ **9 Categorie Patrimoniali**: Rilevamento automatico copertura
-- ✅ **Coverage Warnings**: 🔴 < 10%, 🟠 10-30%
-- ✅ **Methodology Header**: Mostra categorie coperte E mancanti
-- ✅ **Template Gold Standard**: Sezione Ponti con format verificabile
-- ✅ **Bug Fix**: `AttributeError` in estrazione contenuto dict/string
 
 #### **MongoDB Duplicati Prevention & Cleanup** (2025-11-20)
 
@@ -850,26 +794,12 @@ chat_messages
 
 ## 📈 Metriche e Risultati
 
-### **RAG-Fortress v2.0 Performance**
-- ✅ Pipeline completa funzionante con coverage gaps detection
+### **RAG-Fortress Performance**
+
+- ✅ Pipeline completa funzionante
 - ✅ URS scoring accurato (0-100)
 - ✅ Rifiuto automatico risposte non affidabili (URS < 90)
 - ✅ Zero allucinazioni garantite tramite multi-layer verification
-- ✅ 9 categorie patrimoniali rilevate automaticamente
-- ✅ Coverage warnings (🔴 < 10%, 🟠 10-30%)
-
-### **Multi-Model AI Performance (NEW v2.4.0)**
-- ✅ **Groq LLaMA 3.1 70B**: Generazione veloce e economica (free tier)
-- ✅ **Claude 3.5 Sonnet**: Analisi critica e verification
-- ✅ **OpenAI**: Embeddings (text-embedding-3-small)
-- ✅ **Fallback chain**: Resilienza garantita
-- ✅ **Costo stimato**: ~€10/giorno (vs €50/giorno con solo Claude)
-
-### **Wren AI Performance (NEW v2.4.0)**
-- ✅ Text-to-SQL automatico in linguaggio naturale
-- ✅ Generazione grafici e dashboard
-- ✅ Integrazione MongoDB NATAN
-- ✅ 5 servizi Docker funzionanti
 
 ### **Compliance Scanner Results**
 
@@ -1111,45 +1041,6 @@ Vite Build Output:
 
 ---
 
-## 📝 Changelog Recente (2025-11-27)
-
-### **🤖 Architettura Multi-Model AI con Groq LLaMA 3.1 70B**
-- Creato `groq_adapter.py` per integrazione Groq API (LLaMA 3.1 70B cloud gratuito)
-- Implementato sistema gestione errori API (`api_errors.py`) con messaggi user-friendly
-- Classi errore: `InsufficientFundsError`, `RateLimitError`, `QuotaExceededError`, `InvalidAPIKeyError`
-- Integrato Groq in `ai_router.py` con routing `groq.*`
-- Aggiornato `ai_policies.yaml` con Groq come provider primario per task generativi
-- Fallback chain: `groq.llama-3.1-70b` → `anthropic.sonnet-3.5` → `openai.gpt-4.1`
-- **Riduzione costi stimata**: da ~€50/giorno a ~€10/giorno per task generativi
-
-### **📊 Wren AI - Text-to-SQL e Infografiche**
-- Configurato Wren AI in Docker (`wren-ai/docker-compose.yml`)
-- Servizi: wren-ui (3000), wren-engine (8080), wren-ai-service (5555), ibis-server (8000), qdrant (6333)
-- Integrazione con OpenAI API per generazione SQL
-- Supporto query in linguaggio naturale → SQL automatico
-- Generazione automatica grafici e dashboard
-- Documentazione setup in `wren-ai/README.md`
-
-### **🔒 RAG-Fortress v2.0 - Coverage Gaps Detection**
-- Implementato `_extract_asset_categories_from_evidences()` per rilevamento 9 categorie patrimoniali
-- Categorie: Viabilità, Scuole, Sport, Verde, Illuminazione, Cimiteri, Edifici, Mercati, Patrimonio Culturale
-- Aggiornato `_build_methodology_header()` per mostrare categorie coperte E mancanti
-- Aggiunto warning coverage: 🔴 < 10%, 🟠 10-30%
-- Implementato Template Gold Standard sezione Ponti
-- Fix `AttributeError: 'dict' object has no attribute 'lower'` in estrazione contenuto
-
-### **⚠️ API Error Handling Graceful**
-- Gestione errori billing Anthropic ("credito esaurito") con messaggi user-friendly
-- Messaggio: "⚠️ Servizio AI temporaneamente non disponibile - credito esaurito"
-- Parsing errori HTTP 400/401/402 in `anthropic_adapter.py`
-- Catch `APIError` in tutti i blocchi except di `pipeline.py`
-
-### **📚 Documentazione**
-- Aggiornato `COMUNI_SCRAPING_TRACKER.md` v1.1.0 con dettagli scraper
-- Aggiornato `RAG_FORTRESS_IMPLEMENTATION.md` v2.0 con coverage gaps
-
----
-
 ## 📝 Changelog Recente (2025-11-26)
 
 ### **🧠 Sistema Memoria Semantica Personalizzata**
@@ -1207,3 +1098,106 @@ Vite Build Output:
 - Aggiornato stato dell'arte con tutte le modifiche recenti
 - Aggiunta documentazione `COMUNI_SCRAPING_TRACKER.md`
 - Aggiunta documentazione `TEST_SCRAPER_UNITARI.md`
+
+---
+
+## 📝 Changelog (2025-11-28)
+
+### **🌐 EGI-HUB Integration - Sistema Aggregazioni P2P**
+
+**Branch**: `feature/rivoluzione-natan`
+
+#### Contesto
+
+Implementazione del layer di coordinamento centrale **EGI-HUB** (`/home/fabio/EGI-HUB`) per condividere modelli e logiche tra NATAN_LOC e altri progetti dell'ecosistema FlorenceEGI.
+
+#### Architettura Aggregazioni P2P
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        🌐 EGI-HUB                                   │
+│                    florenceegi/hub                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  Models/Aggregation.php         ← Gruppi P2P di tenant             │
+│  Models/AggregationMember.php   ← Membership con workflow inviti   │
+│  Traits/HasAggregations.php     ← Trait per modelli Tenant         │
+└─────────────────────────────────┬───────────────────────────────────┘
+                                  │ symlink
+                                  ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                        NATAN_LOC                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│  App\Models\Tenant.php          ← usa HasAggregations trait        │
+│  vendor/florenceegi/hub → /home/fabio/EGI-HUB                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### Scopo Sistema Aggregazioni
+
+Permette ai tenant (es. Comuni) di formare **federazioni consensuali** per condividere dati:
+
+- **Peer-to-Peer**: Nessuna gerarchia rigida, qualsiasi tenant può creare un'aggregazione
+- **Consensuale**: I membri devono accettare esplicitamente l'invito
+- **Flessibile**: Un tenant può essere in più aggregazioni contemporaneamente
+- **Revocabile**: Uscita volontaria sempre possibile
+
+#### Esempio d'Uso
+
+```
+Comune di Firenze crea aggregazione "Piana Fiorentina"
+    │
+    ├── Invita Comune di Scandicci → Accetta ✅
+    ├── Invita Comune di Sesto → Pending ⏳
+    └── Invita Comune di Calenzano → Rifiuta ❌
+
+Utente di Scandicci può ora cercare nei documenti di Firenze E Scandicci
+```
+
+#### Modifiche Effettuate
+
+1. **composer.json**
+   - Aggiunto repository: `/home/fabio/EGI-HUB` (symlink)
+   - Aggiunta dipendenza: `florenceegi/hub: @dev`
+
+2. **App\Models\Tenant.php**
+   - Aggiunto trait: `use FlorenceEgi\Hub\Traits\HasAggregations;`
+   - Nuovi metodi disponibili:
+     - `$tenant->getActiveAggregations()`
+     - `$tenant->getAccessibleTenantIds()`
+     - `$tenant->canAccessTenant($tenantId)`
+     - `$tenant->createAggregation($name, $options)`
+
+3. **Database (MariaDB condiviso)**
+   - Nuova tabella: `aggregations`
+   - Nuova tabella: `aggregation_members`
+
+#### Prossimi Passi
+
+- [ ] API Controller per gestione aggregazioni (inviti, accettazioni)
+- [ ] Frontend selector per scelta fonti dati
+- [ ] Integrazione Python service per passare `tenant_ids[]` a MongoDB
+- [ ] NATAN_DDQF integration (Document-Driven Question Framework)
+
+#### File di Riferimento
+
+- **EGI-HUB README**: `/home/fabio/EGI-HUB/README.md`
+- **Modello Aggregation**: `/home/fabio/EGI-HUB/src/Models/Aggregation.php`
+- **Trait HasAggregations**: `/home/fabio/EGI-HUB/src/Traits/HasAggregations.php`
+
+---
+
+## 🔗 Integrazione con Ecosistema FlorenceEGI
+
+### Progetti Collegati
+
+| Progetto | Path | Database | Stato |
+|----------|------|----------|-------|
+| **EGI-HUB** | `/home/fabio/EGI-HUB` | - | ✅ Package condiviso |
+| **EGI** (FlorenceArtEGI) | `/home/fabio/EGI` | MariaDB (condiviso) | ✅ Integrato |
+| **NATAN_LOC** | `/home/fabio/NATAN_LOC` | MariaDB + MongoDB Atlas | ✅ Attivo |
+
+### Documentazione Correlata
+
+- **EGI-HUB**: `/home/fabio/EGI-HUB/README.md` - Architettura e stato dell'arte HUB
+- **EGI (FlorenceArtEGI)**: `/home/fabio/EGI/docs/EGI_STATO_DELLARTE.md` - Stato dell'arte FlorenceArtEGI
+- **NATAN_LOC**: Questo documento
