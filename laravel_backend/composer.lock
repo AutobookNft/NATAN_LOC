@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fedd86889292bbc8bd368e509f142721",
+    "content-hash": "091e91c60ff5713ba5a62e81de264623",
     "packages": [
         {
             "name": "brick/math",
@@ -639,12 +639,12 @@
             "time": "2020-10-16T08:27:54+00:00"
         },
         {
-            "name": "florenceegi/core-models",
+            "name": "florenceegi/hub",
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "/home/fabio/egi-core-models",
-                "reference": "7ef5b45e43d38e11f97779111ad0a79e6d885b31"
+                "url": "/home/fabio/EGI-HUB",
+                "reference": "5aa4c9f3d6628a9cfbef9921066b0c3902ebdb16"
             },
             "require": {
                 "illuminate/database": "^10.0|^11.0|^12.0",
@@ -655,13 +655,13 @@
             "extra": {
                 "laravel": {
                     "providers": [
-                        "FlorenceEgi\\CoreModels\\CoreModelsServiceProvider"
+                        "FlorenceEgi\\Hub\\HubServiceProvider"
                     ]
                 }
             },
             "autoload": {
                 "psr-4": {
-                    "FlorenceEgi\\CoreModels\\": "src/"
+                    "FlorenceEgi\\Hub\\": "src/"
                 }
             },
             "license": [
@@ -673,7 +673,16 @@
                     "email": "fabio@florenceegi.com"
                 }
             ],
-            "description": "Modelli condivisi tra FlorenceEGI, NATAN_LOC e altri progetti EGI",
+            "description": "FlorenceEGI Hub - Central coordination layer for the entire EGI platform ecosystem",
+            "homepage": "https://florenceegi.com",
+            "keywords": [
+                "aggregations",
+                "egi",
+                "florenceegi",
+                "hub",
+                "multi-tenant",
+                "natan"
+            ],
             "transport-options": {
                 "symlink": true,
                 "relative": false
@@ -9414,7 +9423,7 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "florenceegi/core-models": 20,
+        "florenceegi/hub": 20,
         "ultra/ultra-error-manager": 20,
         "ultra/ultra-log-manager": 20,
         "ultra/ultra-translation-manager": 20
