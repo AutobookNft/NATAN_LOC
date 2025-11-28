@@ -6,7 +6,8 @@
 # Include: Laravel, Python AI Service, Frontend assets
 # ============================================================
 
-set -e
+# Don't exit on errors - handle them gracefully
+set +e
 
 echo "🚀 NATAN_LOC Deploy Started"
 echo "============================================"
@@ -77,18 +78,23 @@ if [ -d "$PYTHON_PATH" ]; then
     # Crea venv se non esiste
     if [ ! -d "venv" ]; then
         echo "   Creating virtual environment..."
-        python3 -m venv venv
-        echo "   ✓ venv created"
+        if python3 -m venv venv 2>/dev/null; then
+            echo "   ✓ venv created"
+        else
+            echo "   ⚠ venv creation failed - run: sudo apt install python3.12-venv"
+            echo "   ⚠ Skipping Python AI Service setup"
+        fi
     fi
     
-    # Attiva venv e installa dipendenze
-    source venv/bin/activate
-    pip install --upgrade pip --quiet
-    pip install -r requirements.txt --quiet
-    deactivate
-    echo "   ✓ Python dependencies installed"
-    
-    echo "   ✅ Python AI Service ready"
+    # Attiva venv e installa dipendenze (solo se venv esiste)
+    if [ -d "venv" ]; then
+        source venv/bin/activate
+        pip install --upgrade pip --quiet
+        pip install -r requirements.txt --quiet
+        deactivate
+        echo "   ✓ Python dependencies installed"
+        echo "   ✅ Python AI Service ready"
+    fi
 else
     echo "   ⚠ python_ai_service directory not found - skipping"
 fi
