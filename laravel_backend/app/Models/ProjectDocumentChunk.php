@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\NatanDocument;
 
 /**
  * ProjectDocumentChunk Model
@@ -63,12 +64,12 @@ class ProjectDocumentChunk extends Model {
      * Get parent EGI (universal relation)
      */
     public function egi(): BelongsTo {
-        return $this->belongsTo(Egi::class, 'egi_id');
+        return $this->belongsTo(NatanDocument::class, 'egi_id');
     }
 
     /**
      * Get parent document (alias for NATAN context)
-     * 
+     *
      * This provides backward compatibility and semantic clarity
      * when working with NATAN documents (egis with context='pa_document')
      */

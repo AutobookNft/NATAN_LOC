@@ -7,6 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "florenceegi/core-models": "@dev",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "spatie/laravel-medialibrary": "^11.17",
@@ -95,6 +96,7 @@
         }
     },
     "repositories": [
+        { "type": "path", "url": "/home/fabio/egi-core-models", "options": { "symlink": true } },
         { "type": "vcs", "url": "https://github.com/AutobookNft/UltraErrorManager.git" },
         { "type": "vcs", "url": "https://github.com/AutobookNft/UltraTranslationManager.git" },
         { "type": "vcs", "url": "https://github.com/AutobookNft/UltraLogManager.git" }

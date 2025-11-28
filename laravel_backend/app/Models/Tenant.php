@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use FlorenceEgi\CoreModels\Traits\HasAggregations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,9 +12,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * @package App\Models
  * @author Padmin D. Curtis (AI Partner OS3.0) for Fabio Cherici
- * @version 1.0.0 (NATAN_LOC)
- * @date 2025-11-02
- * @purpose Model per tenant (PA o Enterprise)
+ * @version 1.1.0 (NATAN_LOC)
+ * @date 2025-11-28
+ * @purpose Model per tenant (PA o Enterprise) con supporto Aggregazioni P2P
  *
  * Rappresenta un tenant (ente PA o azienda) nel sistema multi-tenant.
  * NATAN_LOC supporta sia Pubblica Amministrazione che Aziende Private.
@@ -26,10 +27,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * - 'company': Aziende private
  * - 'public_entity': Enti pubblici non territoriali
  * - 'other': Altri tipi di entità
+ * 
+ * AGGREGAZIONI P2P:
+ * I tenant possono formare aggregazioni consensuali per condividere dati.
+ * Usa HasAggregations trait per le funzionalità di aggregazione.
  */
 class Tenant extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, HasAggregations;
 
     protected $table = 'tenants';
 
