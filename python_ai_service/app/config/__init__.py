@@ -4,10 +4,19 @@ import yaml
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-# This ensures .env is loaded before any configuration is read
-env_path = Path(__file__).parent.parent.parent / '.env'
-load_dotenv(dotenv_path=env_path, override=True)
+# Load environment variables from .env files
+# Priority: 1. Root .env (unified), 2. Service-specific .env
+# Root .env is loaded first, service .env can override if needed
+
+# Root .env (NATAN_LOC/.env)
+root_env_path = Path(__file__).parent.parent.parent.parent / '.env'
+if root_env_path.exists():
+    load_dotenv(dotenv_path=root_env_path, override=False)
+
+# Service-specific .env (python_ai_service/.env) - can override
+service_env_path = Path(__file__).parent.parent.parent / '.env'
+if service_env_path.exists():
+    load_dotenv(dotenv_path=service_env_path, override=True)
 
 # Load AI policies
 POLICIES_PATH = Path(__file__).parent / "ai_policies.yaml"
