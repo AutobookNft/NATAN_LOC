@@ -24,38 +24,8 @@ use App\Http\Controllers\NatanDocumentController;
 Route::middleware(['auth:web'])->post('/context/switch', [ApiController::class, 'switchContext'])
     ->name('api.context.switch');
 
-// API Session endpoint (no auth required for session check)
-Route::get('/session', function () {
-    $user = Auth::user();
-
-    if (!$user) {
-        return response()->json([
-            'user' => null,
-            'tenant' => null,
-        ], 200);
-    }
-
-    // Get tenant from user or resolver
-    $tenant = null;
-    if ($user->tenant_id) {
-        $tenant = \App\Models\Tenant::find($user->tenant_id);
-    }
-
-    return response()->json([
-        'user' => $user ? [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'tenant_id' => $user->tenant_id,
-        ] : null,
-        'tenant' => $tenant ? [
-            'id' => $tenant->id,
-            'name' => $tenant->name,
-            'slug' => $tenant->slug,
-            'domain' => $tenant->slug . '.natan.loc',
-        ] : null,
-    ]);
-})->name('api.session');
+// NOTE: /api/session route is defined in web.php as /api/session (not in api.php)
+// This avoids the api/ prefix duplication and name conflict
 
 // NATAN API Routes (require authentication)
 Route::middleware(['auth:sanctum'])->prefix('natan')->name('api.natan.')->group(function () {

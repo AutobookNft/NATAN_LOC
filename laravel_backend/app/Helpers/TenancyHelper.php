@@ -36,12 +36,12 @@ class TenancyHelper
         if (self::$currentTenant !== null) {
             return self::$currentTenant;
         }
-        
+
         // Skip durante console commands senza DB (migrations, composer)
         if (app()->runningInConsole()) {
             return null;
         }
-        
+
         // Prova a caricare il tenant dall'ID se disponibile
         $tenantId = app()->bound('currentTenantId') ? app('currentTenantId') : null;
         if ($tenantId) {
@@ -53,7 +53,7 @@ class TenancyHelper
             }
             return self::$currentTenant;
         }
-        
+
         return null;
     }
 
@@ -69,17 +69,17 @@ class TenancyHelper
                 return (int) $id;
             }
         }
-        
+
         // Poi prova dal tenant caricato (se già in memoria)
         if (self::$currentTenant !== null) {
             return self::$currentTenant->id;
         }
-        
+
         // Skip query durante console
         if (app()->runningInConsole()) {
             return null;
         }
-        
+
         return self::getTenant()?->id;
     }
 
@@ -91,14 +91,3 @@ class TenancyHelper
         return self::getTenant() !== null;
     }
 }
-
-
-
-
-
-
-
-
-
-
-

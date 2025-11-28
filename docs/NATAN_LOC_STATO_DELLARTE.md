@@ -560,6 +560,7 @@ chat_messages
 - ✅ Tutti i test passati, copertura completa
 
 #### **Sistema Memoria Semantica Personalizzata** (2025-11-26)
+
 - ✅ **Pattern Classifier**: 11 file pattern con 2500+ pattern totali
   - `personal_query_patterns.py` (300+ pattern personali)
   - `conversational_query_patterns.py` (150+ pattern conversazionali)
@@ -1044,6 +1045,7 @@ Vite Build Output:
 ## 📝 Changelog Recente (2025-11-26)
 
 ### **🧠 Sistema Memoria Semantica Personalizzata**
+
 - Creati 11 file pattern per classificazione query (2500+ pattern totali)
 - Implementato sistema salvataggio memorie: PHP → MySQL → Python → MongoDB Atlas
 - Risolto bug endpoint `/api/v1/memories/generate-embedding` (era chiamato senza prefisso)
@@ -1053,6 +1055,7 @@ Vite Build Output:
 - Memorie archiviate su MongoDB Atlas con embeddings OpenAI (text-embedding-3-small, 1536 dim)
 
 ### **🔧 Bug Fix & Ottimizzazioni**
+
 - Rimosso codice duplicato: `retriever_service._retrieve_user_memories()` (ora solo in RAG-Fortress)
 - Aggiunto import `logging` in `chat.py` per logger
 - Corretto endpoint Laravel `MemoryDetectionService` per chiamare URL corretto Python
@@ -1156,10 +1159,12 @@ Utente di Scandicci può ora cercare nei documenti di Firenze E Scandicci
 #### Modifiche Effettuate
 
 1. **composer.json**
+
    - Aggiunto repository: `/home/fabio/EGI-HUB` (symlink)
    - Aggiunta dipendenza: `florenceegi/hub: @dev`
 
 2. **App\Models\Tenant.php**
+
    - Aggiunto trait: `use FlorenceEgi\Hub\Traits\HasAggregations;`
    - Nuovi metodi disponibili:
      - `$tenant->getActiveAggregations()`
@@ -1190,11 +1195,11 @@ Utente di Scandicci può ora cercare nei documenti di Firenze E Scandicci
 
 ### Progetti Collegati
 
-| Progetto | Path | Database | Stato |
-|----------|------|----------|-------|
-| **EGI-HUB** | `/home/fabio/EGI-HUB` | - | ✅ Package condiviso |
-| **EGI** (FlorenceArtEGI) | `/home/fabio/EGI` | MariaDB (condiviso) | ✅ Integrato |
-| **NATAN_LOC** | `/home/fabio/NATAN_LOC` | MariaDB + MongoDB Atlas | ✅ Attivo |
+| Progetto                 | Path                    | Database                | Stato                |
+| ------------------------ | ----------------------- | ----------------------- | -------------------- |
+| **EGI-HUB**              | `/home/fabio/EGI-HUB`   | -                       | ✅ Package condiviso |
+| **EGI** (FlorenceArtEGI) | `/home/fabio/EGI`       | MariaDB (condiviso)     | ✅ Integrato         |
+| **NATAN_LOC**            | `/home/fabio/NATAN_LOC` | MariaDB + MongoDB Atlas | ✅ Attivo            |
 
 ### Documentazione Correlata
 
